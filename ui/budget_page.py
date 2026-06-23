@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
 
 from budget_model import create_next_month_budget, format_money
 from ui.helpers import get_category, money_item
-from ui.widgets import MonthScroller, VISIBLE_MONTHS
+from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
 class BudgetPage(QWidget):
@@ -22,14 +22,14 @@ class BudgetPage(QWidget):
         super().__init__()
         self.budgets = budgets
         self.on_budget_changed = on_budget_changed
-        self.start_index = 0
+        self.active_index = 0
         self.rows = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 8)
         layout.setSpacing(3)
 
-        self.month_scroller = MonthScroller(self.budgets, self.set_start_month)
+        self.month_scroller = MonthScroller(self.set_active_month)
         layout.addWidget(self.month_scroller, 0, Qt.AlignmentFlag.AlignTop)
 
         self.table = QTableWidget()
@@ -52,24 +52,35 @@ class BudgetPage(QWidget):
         self.refresh()
 
     def visible_budgets(self):
-        return self.budgets[self.start_index : self.start_index + VISIBLE_MONTHS]
+        return self.budgets[self.active_index : self.active_index + VISIBLE_MONTHS]
 
-    def set_start_month(self, index):
-        index = max(index, 0)
-        created_future_month = False
-        while index + VISIBLE_MONTHS > len(self.budgets):
-            self.budgets.append(create_next_month_budget(self.budgets[-1]))
-            created_future_month = True
+    def visible_scroller_indexes(self):
+        half_window = VISIBLE_SCROLLER_MONTHS // 2
+        start_index = max(self.active_index - half_window, 0)
+        return range(start_index, start_index + VISIBLE_SCROLLER_MONTHS)
 
-        self.month_scroller.sync_buttons()
-        self.start_index = index
+    def set_active_month(self, index):
+        self.active_index = max(index, 0)
+        created_future_month = self.ensure_visible_months()
         self.refresh()
         if created_future_month:
             self.on_budget_changed()
 
+    def ensure_visible_months(self):
+        scroller_indexes = list(self.visible_scroller_indexes())
+        count = max(self.active_index + VISIBLE_MONTHS, scroller_indexes[-1] + 1)
+        created_future_month = False
+        while count > len(self.budgets):
+            self.budgets.append(create_next_month_budget(self.budgets[-1]))
+            created_future_month = True
+        return created_future_month
+
     def refresh(self):
+        self.ensure_visible_months()
+        scroller_indexes = list(self.visible_scroller_indexes())
         budgets = self.visible_budgets()
-        self.month_scroller.set_active_months(self.start_index)
+        indexed_budgets = [(index, self.budgets[index]) for index in scroller_indexes]
+        self.month_scroller.set_months(indexed_budgets, self.active_index)
         self._refresh_budget_table(budgets)
 
     def _refresh_budget_table(self, budgets):
