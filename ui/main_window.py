@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.budgets = create_sample_budgets()
         self.accounts = create_sample_accounts()
-        self.setWindowTitle("EZ Budget Prototype")
+        self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)
 
         shell = QWidget()
