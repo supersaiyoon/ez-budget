@@ -10,6 +10,7 @@ from ui.transactions_page import TransactionsPage
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        # Shared state so pages reflect same sample budget world.
         self.budgets = create_sample_budgets()
         self.accounts = create_sample_accounts()
         self.setWindowTitle("EZ Budget")
@@ -20,6 +21,7 @@ class MainWindow(QMainWindow):
         shell_layout.setContentsMargins(0, 0, 0, 0)
         shell_layout.setSpacing(0)
 
+        # Left rail kept fixed so page switching stays predictable.
         self.nav = QListWidget()
         self.nav.setObjectName("navList")
         self.nav.setFixedWidth(170)
@@ -29,6 +31,7 @@ class MainWindow(QMainWindow):
             self.nav.addItem(item)
         shell_layout.addWidget(self.nav)
 
+        # Stack lets navigation swap full workflows without rebuilding windows.
         self.stack = QStackedWidget()
         self.budget_page = BudgetPage(self.budgets, self.refresh_reports)
         self.checking_page = TransactionsPage(self.accounts[0], self.category_names())
@@ -40,15 +43,18 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.reports_page)
         shell_layout.addWidget(self.stack)
 
+        # Row order mirrors stack order so navigation needs no mapping table.
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.nav.setCurrentRow(0)
         self.setCentralWidget(shell)
         self.setStyleSheet(APP_STYLE)
 
     def refresh_reports(self):
+        # Budget edits need report totals recalculated on demand.
         self.reports_page.refresh()
 
     def category_names(self):
+        # Transaction categories sourced from budget structure to avoid drift.
         names = ["Income"]
         for category in self.budgets[0].master_categories:
             for subcategory in category.subcategories:
