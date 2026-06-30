@@ -1,4 +1,4 @@
--- Accounts kept separate so transactions can support multiple balances later.
+-- Accounts kept separate so transactions can support multiple balances later
 CREATE TABLE IF NOT EXISTS accounts (
     id                  INT PRIMARY KEY,
     name                TEXT NOT NULL,
@@ -6,20 +6,20 @@ CREATE TABLE IF NOT EXISTS accounts (
     closed              BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Payees normalized so repeated merchants do not need duplicate text.
+-- Normalize payees to avoid repeated merchants
 CREATE TABLE IF NOT EXISTS payees (
     id                  INT PRIMARY KEY,
     name                TEXT NOT NULL UNIQUE
 );
 
--- Categories stored independently so budgets and transactions can share labels.
+-- Budgets and transactions can share labels
 CREATE TABLE IF NOT EXISTS budget_categories (
     id                  INT PRIMARY KEY,
     name                TEXT NOT NULL UNIQUE,
     hidden              BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Amount stored as integer so persisted money can avoid floating point drift.
+-- Amount stored as integer to avoid floating point drift
 CREATE TABLE IF NOT EXISTS transactions (
     id                  INT PRIMARY KEY,
     account_id          INT NOT NULL REFERENCES accounts(id),

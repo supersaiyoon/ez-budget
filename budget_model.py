@@ -5,31 +5,31 @@ from datetime import date
 
 @dataclass
 class Subcategory:
-    # Smallest budget bucket so adjustments have one clear target.
+    # Smallest budget bucket so adjustments have one clear target
     name: str
     budgeted: Decimal
     spent: Decimal
 
     @property
     def remaining(self):
-        # Negative values allowed so overspending stays visible.
+        # Negative values allowed so overspending stays visible
         return self.budgeted - self.spent
 
 
 @dataclass
 class MasterCategory:
     name: str
-    # Default factory keeps categories from sharing one mutable list.
+    # Default factory keeps categories from sharing one mutable list
     subcategories: list = field(default_factory=list)
 
     @property
     def budgeted(self):
-        # Decimal zero seed keeps empty categories and money math predictable.
+        # Decimal zero seed keeps empty categories and money math predictable
         return sum((item.budgeted for item in self.subcategories), Decimal("0.00"))
 
     @property
     def spent(self):
-        # Rollup calculated live so subcategory edits need no sync step.
+        # Rollup calculated live so subcategory edits need no sync step
         return sum((item.spent for item in self.subcategories), Decimal("0.00"))
 
     @property
@@ -39,7 +39,7 @@ class MasterCategory:
 
 @dataclass
 class Budget:
-    # Stored date supports month math without parsing the display label.
+    # Stored date supports month math without parsing the display label
     month_date: date
     month_name: str
     monthly_income: Decimal
@@ -47,7 +47,7 @@ class Budget:
 
     @property
     def total_budgeted(self):
-        # Derived total avoids stale budget summaries after edits.
+        # Derived total avoids stale budget summaries after edits
         return sum((category.budgeted for category in self.master_categories), Decimal("0.00"))
 
     @property
@@ -56,7 +56,7 @@ class Budget:
 
     @property
     def available_to_budget(self):
-        # Budgeting pool shrinks as dollars get assigned.
+        # Budgeting pool shrinks as dollars get assigned
         return self.monthly_income - self.total_budgeted
 
     @property
@@ -64,14 +64,14 @@ class Budget:
         return self.total_budgeted - self.total_spent
 
     def apply_adjustment(self, master_name, subcategory_name, raw_value):
-        # Raw text parsed here so UI and tests share one validation rule.
+        # Raw text parsed here so UI and tests share one validation rule
         amount = parse_money(raw_value)
         subcategory = self.get_subcategory(master_name, subcategory_name)
         subcategory.budgeted += amount
         return amount
 
     def get_subcategory(self, master_name, subcategory_name):
-        # Names are enough for sample data before persistent IDs exist.
+        # Names are enough for sample data before persistent IDs exist
         for category in self.master_categories:
             if category.name != master_name:
                 continue
@@ -95,12 +95,12 @@ class Transaction:
 @dataclass
 class Account:
     name: str
-    # Each account owns its own transaction list.
+    # Each account owns its own transaction list
     transactions: list = field(default_factory=list)
 
     @property
     def cleared_balance(self):
-        # Cleared total mirrors reconciled bank activity.
+        # Cleared total mirrors reconciled bank activity
         return sum(
             (transaction.incoming - transaction.outgoing for transaction in self.transactions if transaction.cleared),
             Decimal("0.00"),
@@ -108,7 +108,7 @@ class Account:
 
     @property
     def working_balance(self):
-        # Working total includes pending activity for day-to-day cash view.
+        # Working total includes pending activity for day-to-day cash view
         return sum(
             (transaction.incoming - transaction.outgoing for transaction in self.transactions),
             Decimal("0.00"),
@@ -116,7 +116,7 @@ class Account:
 
 
 def parse_money(raw_value):
-    # User-friendly formatting accepted before Decimal sees the value.
+    # User-friendly formatting accepted before Decimal sees the value
     normalized = raw_value.strip().replace("$", "").replace(",", "")
     if not normalized:
         raise ValueError("Enter an amount.")
@@ -124,22 +124,22 @@ def parse_money(raw_value):
     try:
         amount = Decimal(normalized)
     except InvalidOperation as exc:
-        # ValueError keeps UI handling simple and domain-focused.
+        # ValueError keeps UI handling simple and domain-focused
         raise ValueError("Use a valid number.") from exc
 
-    # Cents precision everywhere so totals compare cleanly.
+    # Cents precision everywhere so totals compare cleanly
     return amount.quantize(Decimal("0.01"))
 
 
 def format_money(amount):
-    # Manual sign handling keeps negative amounts as -$1.00.
+    # Manual sign handling keeps negative amounts as -$1.00
     sign = "-" if amount < 0 else ""
     absolute = abs(amount)
     return f"{sign}${absolute:,.2f}"
 
 
 def create_sample_budget():
-    # Middle sample month kept explicit as the baseline for tests and UI demos.
+    # Middle sample month kept explicit as the baseline for tests and UI demos
     return Budget(
         month_date=date(2026, 5, 1),
         month_name="May 2026",
@@ -174,7 +174,7 @@ def create_sample_budget():
 
 
 def create_month_budget(month_date, monthly_income, bill_offset=Decimal("0.00"), spending_offset=Decimal("0.00")):
-    # Offsets create realistic month-to-month variation without duplicating fixtures.
+    # Offsets create realistic month-to-month variation without duplicating fixtures
     return Budget(
         month_date=month_date,
         month_name=format_month_name(month_date),
@@ -209,7 +209,7 @@ def create_month_budget(month_date, monthly_income, bill_offset=Decimal("0.00"),
 
 
 def create_sample_budgets():
-    # Multiple months included so scroller, reports, and comparisons have real context.
+    # Multiple months included so scroller, reports, and comparisons have real context
     return [
         create_month_budget(date(2026, 3, 1), "5100.00", Decimal("-10.00"), Decimal("-35.00")),
         create_month_budget(date(2026, 4, 1), "5150.00", Decimal("-5.00"), Decimal("-20.00")),
@@ -221,7 +221,7 @@ def create_sample_budgets():
 
 
 def create_sample_accounts():
-    # Account fixtures mirror the two transaction pages in the main window.
+    # Account fixtures mirror the two transaction pages in the main window
     return [
         Account(
             "Checking",
@@ -291,7 +291,7 @@ def create_sample_accounts():
 
 
 def create_next_month_budget(previous_budget):
-    # Next month inherits structure while leaving new dollars unassigned.
+    # Next month inherits structure while leaving new dollars unassigned
     month_date = next_month(previous_budget.month_date)
     return Budget(
         month_date=month_date,
@@ -311,12 +311,12 @@ def create_next_month_budget(previous_budget):
 
 
 def next_month(month_date):
-    # December rollover handled directly so generated budgets stay calendar-valid.
+    # December rollover handled directly so generated budgets stay calendar-valid
     if month_date.month == 12:
         return date(month_date.year + 1, 1, 1)
     return date(month_date.year, month_date.month + 1, 1)
 
 
 def format_month_name(month_date):
-    # Display label generated from date so stored month values stay consistent.
+    # Display label generated from date so stored month values stay consistent
     return month_date.strftime("%B %Y")

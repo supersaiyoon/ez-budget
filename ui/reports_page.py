@@ -6,7 +6,7 @@ from ui.helpers import money_item
 class ReportsPage(QWidget):
     def __init__(self, budgets):
         super().__init__()
-        # Shared budget list so reports reflect budget-page edits and generated months.
+        # Shared budget list so reports reflect budget-page edits and generated months
         self.budgets = budgets
 
         layout = QVBoxLayout(self)
@@ -21,7 +21,7 @@ class ReportsPage(QWidget):
         description.setObjectName("statusText")
         layout.addWidget(description)
 
-        # Read-only table fits month-by-month totals better than editable controls.
+        # Read-only table fits month-by-month totals better than editable controls
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["Month", "Income", "Budgeted", "Spent", "Remaining"])
@@ -34,10 +34,10 @@ class ReportsPage(QWidget):
         self.refresh()
 
     def refresh(self):
-        # Row count follows budget list because future months can be added from navigation.
+        # Row count follows budget list because future months can be added from navigation
         self.table.setRowCount(len(self.budgets))
         for row, budget in enumerate(self.budgets):
-            # Values pulled live so totals stay consistent with model properties.
+            # Values pulled live so totals stay consistent with model properties
             self.table.setItem(row, 0, QTableWidgetItem(budget.month_name))
             self.table.setItem(row, 1, money_item(budget.monthly_income))
             self.table.setItem(row, 2, money_item(budget.total_budgeted))
