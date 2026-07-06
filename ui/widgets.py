@@ -15,6 +15,7 @@ class MonthScroller(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         # Parent owns month changes because it can create missing future budgets
         self.on_month_selected = on_month_selected
+        self.active_index = 0
         # Buttons reused between refreshes so Qt widgets do not churn unnecessarily
         self.buttons = []
 
@@ -50,11 +51,11 @@ class MonthScroller(QWidget):
         layout.addWidget(self.next_button)
 
     def shift_months(self, direction):
-        # Active property used because visible button indexes are not always zero-based
-        active_index = next((button.property("budget_index") for button in self.buttons if button.property("active")), 0)
-        self.on_month_selected(active_index + direction)
+        # Stored index stays stable while refreshes move the visible button window.
+        self.on_month_selected(self.active_index + direction)
 
     def set_months(self, indexed_budgets, active_index):
+        self.active_index = active_index
         # Extra buttons removed when the visible month window shrinks
         while len(self.buttons) > len(indexed_budgets):
             button = self.buttons.pop()
