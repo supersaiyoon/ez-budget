@@ -12,11 +12,19 @@ CREATE TABLE IF NOT EXISTS payees (
     name                TEXT NOT NULL UNIQUE
 );
 
--- Budgets and transactions can share labels
-CREATE TABLE IF NOT EXISTS budget_categories (
+-- Normalize master budget categories
+CREATE TABLE IF NOT EXISTS master_budget_categories (
     id                  INT PRIMARY KEY,
     name                TEXT NOT NULL UNIQUE,
     hidden              BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- Budgets and transactions can share labels
+CREATE TABLE IF NOT EXISTS budget_categories (
+    id                          INT PRIMARY KEY,
+    master_budget_category_id   INT NOT NULL REFERENCES master_budget_categories(id),
+    name                        TEXT NOT NULL UNIQUE,
+    hidden                      BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Amount stored as integer to avoid floating point drift
