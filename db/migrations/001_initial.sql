@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     closed              BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Normalize payees to avoid repeated merchants
+-- Normalize payees
 CREATE TABLE IF NOT EXISTS payees (
     id                  INTEGER PRIMARY KEY,
     name                TEXT NOT NULL UNIQUE

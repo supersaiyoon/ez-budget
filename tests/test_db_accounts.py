@@ -4,6 +4,7 @@ from db.schema import initialize_database
 
 
 def test_create_account_inserts_account_row():
+    # In-memory db for testing
     con = connect(":memory:")
     initialize_database(con)
 
