@@ -1,6 +1,9 @@
 from PyQt6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QStackedWidget, QWidget
 
 from budget_model import create_sample_accounts, create_sample_budgets
+from db.accounts import create_account, list_accounts
+from db.connection import connect
+from db.schema import initialize_database
 from ui.budget_page import BudgetPage
 from ui.reports_page import ReportsPage
 from ui.styles import APP_STYLE
@@ -13,6 +16,9 @@ class MainWindow(QMainWindow):
         # Shared state so pages reflect same sample budget world
         self.budgets = create_sample_budgets()
         self.accounts = create_sample_accounts()
+        self.con = connect(":memory:")
+        initialize_database(self.con)
+        self.create_sample_account_rows()
         self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)
 
@@ -25,7 +31,7 @@ class MainWindow(QMainWindow):
         self.nav = QListWidget()
         self.nav.setObjectName("navList")
         self.nav.setFixedWidth(170)
-        for name in ["Budget", "Checking", "Credit Card", "Reports"]:
+        for name in self.nav_names():
             item = QListWidgetItem(name)
             item.setSizeHint(item.sizeHint())
             self.nav.addItem(item)
@@ -48,6 +54,16 @@ class MainWindow(QMainWindow):
         self.nav.setCurrentRow(0)
         self.setCentralWidget(shell)
         self.setStyleSheet(APP_STYLE)
+
+    def create_sample_account_rows(self):
+        for account in self.accounts:
+            create_account(self.con, account.name)
+
+    def nav_names(self):
+        account_names = []
+        for account in list_accounts(self.con):
+            account_names.append(account["name"])
+        return ["Budget"] + account_names + ["Reports"]
 
     def refresh_reports(self):
         # Budget edits need report totals recalculated on demand
