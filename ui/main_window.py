@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QStackedWidget, QWidget
 
 from budget_model import create_sample_accounts, create_sample_budgets
-from db.accounts import create_account, list_accounts
-from db import database
+from db import accounts, database
 from ui.budget_page import BudgetPage
 from ui.reports_page import ReportsPage
 from ui.styles import APP_STYLE
@@ -56,11 +55,11 @@ class MainWindow(QMainWindow):
 
     def create_sample_account_rows(self):
         for account in self.accounts:
-            create_account(self.con, account.name)
+            accounts.create_account(self.con, account.name)
 
     def nav_names(self):
         account_names = []
-        for account in list_accounts(self.con):
+        for account in accounts.list_accounts(self.con):
             account_names.append(account["name"])
         return ["Budget"] + account_names + ["Reports"]
 
