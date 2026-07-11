@@ -1,12 +1,9 @@
-from pathlib import Path
+SCHEMA_PATH = "db/schema.sql"
 
 
-MIGRATIONS_DIR = Path(__file__).with_name("migrations")
+def initialize_database(con):
+    with open(SCHEMA_PATH) as f:
+        sql = f.read()
 
-
-def initialize_database(con, migrations_dir=MIGRATIONS_DIR):
-    # Create database tables from SQL migration files
-    for migration_path in sorted(migrations_dir.glob("*.sql")):
-        sql = migration_path.read_text(encoding="utf-8")
-        con.executescript(sql)
+    con.executescript(sql)
     con.commit()
