@@ -1,5 +1,4 @@
-from db.accounts import create_account, list_accounts
-from db import database
+from db import accounts, database
 
 
 def test_create_account_inserts_account_row():
@@ -9,7 +8,7 @@ def test_create_account_inserts_account_row():
 
     account_name = "Checking"
 
-    create_account(con, account_name)
+    accounts.create_account(con, account_name)
     # Parameter binding expects tuple so comma is required even for single value
     account = con.execute("SELECT * FROM accounts WHERE name = ?", (account_name,)).fetchone()
 
@@ -23,11 +22,11 @@ def test_list_accounts_excludes_closed_accounts():
     con = database.connect(":memory:")
     database.initialize_database(con)
 
-    checking = create_account(con, "Checking")
-    create_account(con, "Credit Card")
+    checking = accounts.create_account(con, "Checking")
+    accounts.create_account(con, "Credit Card")
     con.execute("UPDATE accounts SET closed = TRUE WHERE id = ?", (checking["id"],))
     con.commit()
 
-    accounts = list_accounts(con)
+    accounts = accounts.list_accounts(con)
 
     assert [account["name"] for account in accounts] == ["Credit Card"]
