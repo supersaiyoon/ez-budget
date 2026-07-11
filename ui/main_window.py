@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QStackedWidget, QWidget
 
-from budget_model import create_sample_accounts, create_sample_budgets
+import budget_model
 from db import accounts, database
 from ui.budget_page import BudgetPage
 from ui.reports_page import ReportsPage
@@ -12,8 +12,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         # Shared state so pages reflect same sample budget world
-        self.budgets = create_sample_budgets()
-        self.accounts = create_sample_accounts()
+        self.budgets = budget_model.create_sample_budgets()
+        self.accounts = budget_model.create_sample_accounts()
         self.con = database.connect(":memory:")
         database.initialize_database(self.con)
         self.create_sample_account_rows()
