@@ -2,10 +2,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWind
 
 import budget_model
 from db import accounts, database
-from ui.budget_page import BudgetPage
-from ui.reports_page import ReportsPage
-from ui.styles import APP_STYLE
-from ui.transactions_page import TransactionsPage
+from ui import budget_page, reports_page, styles, transactions_page
 
 
 class MainWindow(QMainWindow):
@@ -37,10 +34,10 @@ class MainWindow(QMainWindow):
 
         # Stack lets navigation swap full workflows without rebuilding windows
         self.stack = QStackedWidget()
-        self.budget_page = BudgetPage(self.budgets, self.refresh_reports)
-        self.checking_page = TransactionsPage(self.accounts[0], self.category_names())
-        self.credit_card_page = TransactionsPage(self.accounts[1], self.category_names())
-        self.reports_page = ReportsPage(self.budgets)
+        self.budget_page = budget_page.BudgetPage(self.budgets, self.refresh_reports)
+        self.checking_page = transactions_page.TransactionsPage(self.accounts[0], self.category_names())
+        self.credit_card_page = transactions_page.TransactionsPage(self.accounts[1], self.category_names())
+        self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
         self.stack.addWidget(self.checking_page)
         self.stack.addWidget(self.credit_card_page)
@@ -51,7 +48,7 @@ class MainWindow(QMainWindow):
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.nav.setCurrentRow(0)
         self.setCentralWidget(shell)
-        self.setStyleSheet(APP_STYLE)
+        self.setStyleSheet(styles.APP_STYLE)
 
     def create_sample_account_rows(self):
         for account in self.accounts:
