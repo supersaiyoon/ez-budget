@@ -1,12 +1,11 @@
 from db.accounts import create_account, list_accounts
-from db.connection import connect
-from db.schema import initialize_database
+from db import database
 
 
 def test_create_account_inserts_account_row():
     # In-memory db
-    con = connect(":memory:")
-    initialize_database(con)
+    con = database.connect(":memory:")
+    database.initialize_database(con)
 
     account_name = "Checking"
 
@@ -21,8 +20,8 @@ def test_create_account_inserts_account_row():
 
 
 def test_list_accounts_excludes_closed_accounts():
-    con = connect(":memory:")
-    initialize_database(con)
+    con = database.connect(":memory:")
+    database.initialize_database(con)
 
     checking = create_account(con, "Checking")
     create_account(con, "Credit Card")

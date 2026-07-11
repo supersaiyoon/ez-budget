@@ -2,8 +2,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWind
 
 from budget_model import create_sample_accounts, create_sample_budgets
 from db.accounts import create_account, list_accounts
-from db.connection import connect
-from db.schema import initialize_database
+from db import database
 from ui.budget_page import BudgetPage
 from ui.reports_page import ReportsPage
 from ui.styles import APP_STYLE
@@ -16,8 +15,8 @@ class MainWindow(QMainWindow):
         # Shared state so pages reflect same sample budget world
         self.budgets = create_sample_budgets()
         self.accounts = create_sample_accounts()
-        self.con = connect(":memory:")
-        initialize_database(self.con)
+        self.con = database.connect(":memory:")
+        database.initialize_database(self.con)
         self.create_sample_account_rows()
         self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)

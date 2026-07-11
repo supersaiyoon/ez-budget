@@ -1,11 +1,10 @@
-from db.connection import connect
-from db.schema import initialize_database
+from db import database
 
 
 def test_initialize_database_creates_core_tables():
-    con = connect(":memory:")
+    con = database.connect(":memory:")
 
-    initialize_database(con)
+    database.initialize_database(con)
 
     table_names = {
         row["name"]
@@ -24,8 +23,8 @@ def test_initialize_database_creates_core_tables():
 
 
 def test_schema_allows_inserting_related_transaction():
-    con = connect(":memory:")
-    initialize_database(con)
+    con = database.connect(":memory:")
+    database.initialize_database(con)
 
     account_id = con.execute(
         "INSERT INTO accounts (name) VALUES (?) RETURNING id",
