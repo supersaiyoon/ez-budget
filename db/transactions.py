@@ -9,3 +9,15 @@ def add_transaction(con, account_id, transaction_date, amount, cleared=False):
     ).fetchone()
     con.commit()
     return row
+
+
+def list_transactions(con, account_id):
+    return con.execute(
+        """
+        SELECT id, account_id, transaction_date, amount, cleared
+        FROM transactions
+        WHERE account_id = ?
+        ORDER BY transaction_date, id
+        """,
+        (account_id,),
+    ).fetchall()
