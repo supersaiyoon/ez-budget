@@ -51,6 +51,9 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(styles.APP_STYLE)
 
     def create_sample_account_rows(self):
+        if accounts.has_accounts(self.con):
+            return
+
         for account in self.accounts:
             accounts.create_account(self.con, account.name)
 
