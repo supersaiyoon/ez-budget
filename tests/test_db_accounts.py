@@ -27,9 +27,9 @@ def test_list_accounts_excludes_closed_accounts():
     con.execute("UPDATE accounts SET closed = TRUE WHERE id = ?", (checking["id"],))
     con.commit()
 
-    accounts = accounts.list_accounts(con)
+    account_rows = accounts.list_accounts(con)
 
-    assert [account["name"] for account in accounts] == ["Credit Card"]
+    assert [account["name"] for account in account_rows] == ["Credit Card"]
 
 
 def test_has_accounts_reports_whether_accounts_exist():
