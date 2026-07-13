@@ -22,6 +22,24 @@ def test_initialize_database_creates_core_tables():
     }.issubset(table_names)
 
 
+def test_transaction_relationship_columns_are_required():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+
+    # Ensures assertions fail if columns are missing or nullable
+    payee_required = False
+    budget_category_required = False
+
+    for column in con.execute("PRAGMA table_info(transactions)"):
+        if column["name"] == "payee_id":
+            payee_required = column["notnull"]
+        if column["name"] == "budget_category_id":
+            budget_category_required = column["notnull"]
+
+    assert payee_required == True
+    assert budget_category_required == True
+
+
 def test_schema_allows_inserting_related_transaction():
     con = database.connect(":memory:")
     database.initialize_database(con)

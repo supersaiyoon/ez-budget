@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS budget_categories (
 CREATE TABLE IF NOT EXISTS transactions (
     id                  INTEGER PRIMARY KEY,
     account_id          INT NOT NULL REFERENCES accounts(id),
-    payee_id            INT REFERENCES payees(id),
-    budget_category_id  INT REFERENCES budget_categories(id),
+    payee_id            INT NOT NULL REFERENCES payees(id),
+    budget_category_id  INT NOT NULL REFERENCES budget_categories(id),
     transaction_date    TEXT NOT NULL,
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     notes               TEXT,
