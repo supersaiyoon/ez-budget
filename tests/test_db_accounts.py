@@ -30,3 +30,14 @@ def test_list_accounts_excludes_closed_accounts():
     accounts = accounts.list_accounts(con)
 
     assert [account["name"] for account in accounts] == ["Credit Card"]
+
+
+def test_has_accounts_reports_whether_accounts_exist():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+
+    assert accounts.has_accounts(con) is False
+
+    accounts.create_account(con, "Checking")
+
+    assert accounts.has_accounts(con) is True

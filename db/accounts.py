@@ -20,3 +20,8 @@ def list_accounts(con):
         ORDER BY id
         """
     ).fetchall()
+
+
+def has_accounts(con):
+    row = con.execute("SELECT COUNT(*) FROM accounts").fetchone()
+    return row[0] > 0
