@@ -17,7 +17,7 @@ def test_add_transaction_inserts_transaction_row():
     assert transaction["account_id"] == account["id"]
     assert transaction["transaction_date"] == "2026-07-13"
     assert transaction["amount"] == -4250
-    assert transaction["cleared"] == 0
+    assert transaction["cleared"] == False
 
 
 def test_list_transactions_returns_only_account_rows():

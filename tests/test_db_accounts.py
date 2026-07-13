@@ -14,8 +14,8 @@ def test_create_account_inserts_account_row():
 
     assert account["id"] == 1
     assert account["name"] == "Checking"
-    assert account["on_budget"] == 1
-    assert account["closed"] == 0
+    assert account["on_budget"] == True
+    assert account["closed"] == False
 
 
 def test_list_accounts_excludes_closed_accounts():
