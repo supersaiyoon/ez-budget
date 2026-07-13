@@ -6,12 +6,12 @@ from ui import budget_page, reports_page, styles, transactions_page
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, db_path="ez_budget.db"):
         super().__init__()
         # Shared state so pages reflect same sample budget world
         self.budgets = budget_model.create_sample_budgets()
         self.accounts = budget_model.create_sample_accounts()
-        self.con = database.connect(":memory:")
+        self.con = database.connect(db_path)
         database.initialize_database(self.con)
         self.create_sample_account_rows()
         self.setWindowTitle("EZ Budget")

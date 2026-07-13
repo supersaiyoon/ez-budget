@@ -10,7 +10,7 @@ from ui.main_window import MainWindow
 def test_nav_uses_account_table_names():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
-    window = MainWindow()
+    window = MainWindow(":memory:")
 
     nav_names = []
     for row in range(window.nav.count()):
@@ -22,7 +22,7 @@ def test_nav_uses_account_table_names():
 def test_sample_accounts_are_not_duplicated():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
-    window = MainWindow()
+    window = MainWindow(":memory:")
 
     window.create_sample_account_rows()
 
