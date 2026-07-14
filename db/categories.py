@@ -22,3 +22,16 @@ def add_budget_category(con, master_category_id, name, hidden=False):
     ).fetchone()
     con.commit()
     return row
+
+
+def get_budget_category_by_name(con, name):
+    return con.execute(
+        """
+        SELECT id, master_budget_category_id, name, hidden
+        FROM budget_categories
+        WHERE name = ?
+        ORDER BY id
+        LIMIT 1
+        """,
+        (name,),
+    ).fetchone()
