@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+import budget_model
 
 from budget_model import (
     create_next_month_budget,
@@ -137,3 +138,31 @@ def test_account_balances_use_incoming_minus_outgoing():
 
     assert checking.working_balance == expected_working
     assert checking.cleared_balance == expected_cleared
+
+
+def test_transaction_amount_in_cents_makes_outgoing_negative():
+    transaction = budget_model.Transaction(
+        date="2026-07-14",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("142.38"),
+    )
+
+    amount = budget_model.transaction_amount_in_cents(transaction)
+
+    assert amount == -14238
+
+
+def test_transaction_amount_in_cents_keeps_incoming_positive():
+    transaction = budget_model.Transaction(
+        date="2026-07-14",
+        payee="Online Return",
+        category="Clothing",
+        notes="Refund",
+        incoming=Decimal("34.99"),
+    )
+
+    amount = budget_model.transaction_amount_in_cents(transaction)
+
+    assert amount == 3499

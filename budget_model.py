@@ -87,9 +87,19 @@ class Transaction:
     payee: str
     category: str
     notes: str
-    outgoing: Decimal
-    incoming: Decimal
+    outgoing: Decimal = Decimal("0.00")
+    incoming: Decimal = Decimal("0.00")
     cleared: bool = False
+
+
+def transaction_amount_in_cents(transaction):
+    # Outgoing and incoming are mutually exclusive so one is always zero
+    if transaction.outgoing != 0:
+        cents = transaction.outgoing * 100
+        return -int(cents)
+
+    cents = transaction.incoming * 100
+    return int(cents)
 
 
 @dataclass
