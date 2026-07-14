@@ -11,6 +11,19 @@ def add_master_category(con, name, hidden=False):
     return row
 
 
+def get_master_category_by_name(con, name):
+    return con.execute(
+        """
+        SELECT id, name, hidden
+        FROM master_budget_categories
+        WHERE name = ?
+        ORDER BY id
+        LIMIT 1
+        """,
+        (name,),
+    ).fetchone()
+
+
 def add_budget_category(con, master_category_id, name, hidden=False):
     row = con.execute(
         """
