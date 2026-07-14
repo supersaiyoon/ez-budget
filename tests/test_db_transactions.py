@@ -16,6 +16,7 @@ def test_add_transaction_inserts_transaction_row():
         category["id"],
         "2026-07-13",
         -4250,
+        "weekly groceries",
     )
 
     assert transaction["id"] == 1
@@ -24,6 +25,7 @@ def test_add_transaction_inserts_transaction_row():
     assert transaction["budget_category_id"] == category["id"]
     assert transaction["transaction_date"] == "2026-07-13"
     assert transaction["amount"] == -4250
+    assert transaction["notes"] == "weekly groceries"
     assert transaction["cleared"] == False
 
 
@@ -100,6 +102,8 @@ def test_list_transactions_returns_rows_in_date_order():
 def test_list_transactions_returns_payee_and_category_names():
     con = database.connect(":memory:")
     database.initialize_database(con)
+
+    # Set up db with transaction that has payee and category
     checking = accounts.create_account(con, "Checking")
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")

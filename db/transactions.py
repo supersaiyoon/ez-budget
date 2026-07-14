@@ -5,6 +5,7 @@ def add_transaction(
     budget_category_id,
     transaction_date,
     amount,
+    notes=None,
     cleared=False,
 ):
     row = con.execute(
@@ -15,9 +16,10 @@ def add_transaction(
             budget_category_id,
             transaction_date,
             amount,
+            notes,
             cleared
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING
             id,
             account_id,
@@ -25,6 +27,7 @@ def add_transaction(
             budget_category_id,
             transaction_date,
             amount,
+            notes,
             cleared
         """,
         (
@@ -33,6 +36,7 @@ def add_transaction(
             budget_category_id,
             transaction_date,
             amount,
+            notes,
             cleared,
         ),
     ).fetchone()
