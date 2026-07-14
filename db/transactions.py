@@ -51,6 +51,7 @@ def list_transactions(con, account_id):
             transactions.id,
             transactions.account_id,
             transactions.transaction_date,
+            transactions.notes,
             transactions.amount,
             transactions.cleared,
             payees.name AS payee_name,

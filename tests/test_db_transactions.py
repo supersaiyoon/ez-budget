@@ -122,3 +122,26 @@ def test_list_transactions_returns_payee_and_category_names():
 
     assert transaction_rows[0]["payee_name"] == "Grocery Store"
     assert transaction_rows[0]["category_name"] == "Groceries"
+
+
+def test_list_transactions_returns_notes():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    checking = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+        "weekly groceries",
+    )
+
+    transaction_rows = transactions.list_transactions(con, checking["id"])
+
+    assert transaction_rows[0]["notes"] == "weekly groceries"
