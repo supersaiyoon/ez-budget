@@ -145,3 +145,25 @@ def test_list_transactions_returns_notes():
     transaction_rows = transactions.list_transactions(con, checking["id"])
 
     assert transaction_rows[0]["notes"] == "weekly groceries"
+
+
+def test_has_transactions_reports_whether_transactions_exist():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+
+    assert transactions.has_transactions(con) == False
+
+    checking = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+    )
+
+    assert transactions.has_transactions(con) == True

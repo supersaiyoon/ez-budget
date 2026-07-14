@@ -65,3 +65,8 @@ def list_transactions(con, account_id):
         """,
         (account_id,),
     ).fetchall()
+
+
+def has_transactions(con):
+    row = con.execute("SELECT COUNT(*) FROM transactions").fetchone()
+    return row[0] > 0
