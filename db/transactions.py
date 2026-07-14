@@ -43,10 +43,20 @@ def add_transaction(
 def list_transactions(con, account_id):
     return con.execute(
         """
-        SELECT id, account_id, transaction_date, amount, cleared
+        SELECT
+            transactions.id,
+            transactions.account_id,
+            transactions.transaction_date,
+            transactions.amount,
+            transactions.cleared,
+            payees.name AS payee_name,
+            budget_categories.name AS category_name
         FROM transactions
-        WHERE account_id = ?
-        ORDER BY transaction_date, id
+        JOIN payees ON payees.id = transactions.payee_id
+        JOIN budget_categories
+            ON budget_categories.id = transactions.budget_category_id
+        WHERE transactions.account_id = ?
+        ORDER BY transactions.transaction_date, transactions.id
         """,
         (account_id,),
     ).fetchall()
