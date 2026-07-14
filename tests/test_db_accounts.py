@@ -32,6 +32,18 @@ def test_list_accounts_excludes_closed_accounts():
     assert [account["name"] for account in account_rows] == ["Credit Card"]
 
 
+def test_get_account_by_name_returns_matching_account():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    accounts.create_account(con, "Checking")
+    credit_card = accounts.create_account(con, "Credit Card")
+
+    account = accounts.get_account_by_name(con, "Credit Card")
+
+    assert account["id"] == credit_card["id"]
+    assert account["name"] == "Credit Card"
+
+
 def test_has_accounts_reports_whether_accounts_exist():
     con = database.connect(":memory:")
     database.initialize_database(con)

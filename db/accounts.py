@@ -22,6 +22,19 @@ def list_accounts(con):
     ).fetchall()
 
 
+def get_account_by_name(con, name):
+    return con.execute(
+        """
+        SELECT id, name, on_budget, closed
+        FROM accounts
+        WHERE name = ?
+        ORDER BY id
+        LIMIT 1
+        """,
+        (name,),
+    ).fetchone()
+
+
 def has_accounts(con):
     row = con.execute("SELECT COUNT(*) FROM accounts").fetchone()
     return row[0] > 0
