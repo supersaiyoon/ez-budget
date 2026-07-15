@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QStackedWidget, QWidget
 
 import budget_model
-from db import accounts, database
+from db import accounts, categories, database
 from ui import budget_page, reports_page, styles, transactions_page
 
 
@@ -14,6 +14,7 @@ class MainWindow(QMainWindow):
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
         self.create_sample_account_rows()
+        self.create_sample_category_rows()
         self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)
 
@@ -56,6 +57,32 @@ class MainWindow(QMainWindow):
 
         for account in self.accounts:
             accounts.create_account(self.con, account.name)
+
+    def create_sample_category_rows(self):
+        for master_category in self.budgets[0].master_categories:
+            master_category_row = categories.get_master_category_by_name(
+                self.con,
+                master_category.name,
+            )
+
+            if master_category_row is None:
+                master_category_row = categories.add_master_category(
+                    self.con,
+                    master_category.name,
+                )
+
+            for subcategory in master_category.subcategories:
+                category_row = categories.get_budget_category_by_name(
+                    self.con,
+                    subcategory.name,
+                )
+
+                if category_row is None:
+                    categories.add_budget_category(
+                        self.con,
+                        master_category_row["id"],
+                        subcategory.name,
+                    )
 
     def nav_names(self):
         account_names = []
