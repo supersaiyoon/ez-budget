@@ -194,3 +194,6 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python
 ez_budget.db
+
+# Local project handoff summaries
+project_summaries/
