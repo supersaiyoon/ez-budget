@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -21,8 +23,16 @@ class MainWindow(QMainWindow):
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
 
+        # Load master categories from db into budget
         for category_row in categories.list_master_categories(self.con):
             category = budget_model.MasterCategory(category_row["name"])
+            for subcategory_row in categories.list_budget_categories(self.con, category_row["id"]):
+                subcategory = budget_model.Subcategory(
+                    subcategory_row["name"],
+                    Decimal("0.00"),
+                    Decimal("0.00"),
+                )
+                category.subcategories.append(subcategory)
             self.budgets[0].master_categories.append(category)
 
         self.accounts = []
