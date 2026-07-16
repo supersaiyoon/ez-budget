@@ -5,7 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication
 
-from db import accounts
+from db import accounts, categories, database
 from ui.main_window import MainWindow
 
 
@@ -35,3 +35,18 @@ def test_new_window_starts_without_sample_budget_values():
     assert window.budgets[0].master_categories == []
     assert window.budgets[0].total_budgeted == Decimal("0.00")
     assert window.budgets[0].total_spent == Decimal("0.00")
+
+
+def test_new_window_loads_saved_master_categories(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    categories.add_master_category(con, "Monthly Bills")
+    con.close()
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+
+    window = MainWindow(db_path)
+    category_names = [category.name for category in window.budgets[0].master_categories]
+
+    assert category_names == ["Monthly Bills"]

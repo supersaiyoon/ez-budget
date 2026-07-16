@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
-from db import accounts, database
+from db import accounts, categories, database
 from ui import budget_page, reports_page, styles, transactions_page
 
 
@@ -20,6 +20,10 @@ class MainWindow(QMainWindow):
         self.budgets = [budget_model.create_empty_budget()]
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
+
+        for category_row in categories.list_master_categories(self.con):
+            category = budget_model.MasterCategory(category_row["name"])
+            self.budgets[0].master_categories.append(category)
 
         self.accounts = []
         for account_row in accounts.list_accounts(self.con):
