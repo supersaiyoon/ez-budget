@@ -16,8 +16,8 @@ from ui import budget_page, reports_page, styles, transactions_page
 class MainWindow(QMainWindow):
     def __init__(self, db_path="ez_budget.db"):
         super().__init__()
-        # Budgets still use sample data while database work continues
-        self.budgets = budget_model.create_sample_budgets()
+        # One month keeps navigation valid without showing sample data
+        self.budgets = [budget_model.create_empty_budget()]
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
 

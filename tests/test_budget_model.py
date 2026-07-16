@@ -1,15 +1,29 @@
+from datetime import date
 from decimal import Decimal
 
 import pytest
 import budget_model
 
 from budget_model import (
+    create_empty_budget,
     create_next_month_budget,
     create_sample_accounts,
     create_sample_budget,
     create_sample_budgets,
     parse_money,
 )
+
+
+def test_empty_budget_starts_current_month_with_zero_values():
+    budget = create_empty_budget()
+    current_month = date.today().replace(day=1)
+
+    assert budget.month_date == current_month
+    assert budget.month_name == current_month.strftime("%B %Y")
+    assert budget.monthly_income == Decimal("0.00")
+    assert budget.master_categories == []
+    assert budget.total_budgeted == Decimal("0.00")
+    assert budget.total_spent == Decimal("0.00")
 
 
 def test_positive_adjustment_increases_budget_and_reduces_available():

@@ -148,6 +148,16 @@ def format_money(amount):
     return f"{sign}${absolute:,.2f}"
 
 
+def create_empty_budget():
+    month_date = date.today().replace(day=1)
+    return Budget(
+        month_date=month_date,
+        month_name=format_month_name(month_date),
+        monthly_income=Decimal("0.00"),
+        master_categories=[],
+    )
+
+
 def create_sample_budget():
     # Middle sample month kept explicit as the baseline for tests and UI demos
     return Budget(
