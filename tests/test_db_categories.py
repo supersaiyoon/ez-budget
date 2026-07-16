@@ -56,6 +56,21 @@ def test_add_budget_category_inserts_budget_category_row():
     assert category["hidden"] == False
 
 
+def test_list_budget_categories_returns_visible_categories_for_master_in_id_order():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    bills = categories.add_master_category(con, "Monthly Bills")
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    categories.add_budget_category(con, bills["id"], "Electricity")
+    categories.add_budget_category(con, expenses["id"], "Hidden Expense", hidden=True)
+    categories.add_budget_category(con, expenses["id"], "Groceries")
+    categories.add_budget_category(con, expenses["id"], "Gas")
+
+    category_rows = categories.list_budget_categories(con, expenses["id"])
+
+    assert [category["name"] for category in category_rows] == ["Groceries", "Gas"]
+
+
 def test_get_budget_category_by_name_returns_matching_category():
     con = database.connect(":memory:")
     database.initialize_database(con)

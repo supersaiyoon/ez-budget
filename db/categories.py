@@ -48,6 +48,19 @@ def add_budget_category(con, master_category_id, name, hidden=False):
     return row
 
 
+def list_budget_categories(con, master_category_id):
+    return con.execute(
+        """
+        SELECT id, master_budget_category_id, name, hidden
+        FROM budget_categories
+        WHERE master_budget_category_id = ?
+          AND hidden = FALSE
+        ORDER BY id
+        """,
+        (master_category_id,),
+    ).fetchall()
+
+
 def get_budget_category_by_name(con, name):
     return con.execute(
         """
