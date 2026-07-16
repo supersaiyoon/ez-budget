@@ -12,6 +12,21 @@ def test_add_master_category_inserts_master_category_row():
     assert category["hidden"] == False
 
 
+def test_list_master_categories_returns_visible_categories_in_id_order():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    categories.add_master_category(con, "Hidden Category", hidden=True)
+    categories.add_master_category(con, "Monthly Bills")
+    categories.add_master_category(con, "Everyday Expenses")
+
+    category_rows = categories.list_master_categories(con)
+
+    assert [category["name"] for category in category_rows] == [
+        "Monthly Bills",
+        "Everyday Expenses",
+    ]
+
+
 def test_get_master_category_by_name_returns_matching_category():
     con = database.connect(":memory:")
     database.initialize_database(con)
