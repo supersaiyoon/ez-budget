@@ -25,7 +25,10 @@ class MainWindow(QMainWindow):
 
         # Load master categories from db into budget
         for category_row in categories.list_master_categories(self.con):
-            category = budget_model.MasterCategory(category_row["name"])
+            category = budget_model.MasterCategory(
+                category_row["name"],
+                database_id=category_row["id"],
+            )
             for subcategory_row in categories.list_budget_categories(self.con, category_row["id"]):
                 subcategory = budget_model.Subcategory(
                     subcategory_row["name"],
