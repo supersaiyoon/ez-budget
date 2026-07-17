@@ -103,3 +103,26 @@ def test_add_master_category_rejects_duplicate_name():
 
     category_rows = categories.list_master_categories(window.con)
     assert [category["name"] for category in category_rows] == ["Savings"]
+
+
+def test_add_subcategory_persists_and_updates_loaded_budgets():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+
+    window.add_subcategory(master_category_id, "Groceries")
+
+    saved_subcategory = categories.list_budget_categories(window.con, master_category_id)[0]
+    loaded_names = [
+        budget.master_categories[0].subcategories[0].name
+        for budget in window.budgets
+    ]
+    loaded_ids = [
+        budget.master_categories[0].subcategories[0].database_id
+        for budget in window.budgets
+    ]
+    assert saved_subcategory["name"] == "Groceries"
+    assert loaded_names == ["Groceries"] * len(window.budgets)
+    assert loaded_ids == [saved_subcategory["id"]] * len(window.budgets)

@@ -125,6 +125,28 @@ class MainWindow(QMainWindow):
 
         self.budget_page.refresh()
 
+    def add_subcategory(self, master_category_id, name):
+        subcategory_row = categories.add_budget_category(
+            self.con,
+            master_category_id,
+            name,
+        )
+
+        for budget in self.budgets:
+            for master_category in budget.master_categories:
+                if master_category.database_id != master_category_id:
+                    continue
+                subcategory = budget_model.Subcategory(
+                    subcategory_row["name"],
+                    Decimal("0.00"),
+                    Decimal("0.00"),
+                    database_id=subcategory_row["id"],
+                )
+                master_category.subcategories.append(subcategory)
+                break
+
+        self.budget_page.refresh()
+
     def category_names(self):
         # Transaction categories sourced from budget structure to avoid drift
         names = ["Income"]
