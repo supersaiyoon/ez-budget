@@ -1,6 +1,8 @@
 import os
 from decimal import Decimal
 
+import pytest
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication
@@ -83,3 +85,16 @@ def test_add_master_category_persists_and_updates_loaded_budgets():
     assert saved_category["name"] == "Savings"
     assert loaded_names == ["Savings"] * len(window.budgets)
     assert loaded_ids == [saved_category["id"]] * len(window.budgets)
+
+
+def test_add_master_category_rejects_duplicate_name():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_master_category("Savings")
+
+    with pytest.raises(ValueError, match="Master category already exists"):
+        window.add_master_category("Savings")
+
+    category_rows = categories.list_master_categories(window.con)
+    assert [category["name"] for category in category_rows] == ["Savings"]

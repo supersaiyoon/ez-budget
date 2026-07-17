@@ -109,6 +109,9 @@ class MainWindow(QMainWindow):
         self.reports_page.refresh()
 
     def add_master_category(self, name):
+        if categories.get_master_category_by_name(self.con, name) is not None:
+            raise ValueError("Master category already exists.")
+
         category_row = categories.add_master_category(self.con, name)
 
         # Category definitions shared across months
