@@ -9,6 +9,8 @@ class Subcategory:
     name: str
     budgeted: Decimal
     spent: Decimal
+    # SQLite row identity kept for future edits
+    database_id: int | None = None
 
     @property
     def remaining(self):
@@ -323,7 +325,12 @@ def create_next_month_budget(previous_budget):
             MasterCategory(
                 category.name,
                 [
-                    Subcategory(subcategory.name, Decimal("0.00"), Decimal("0.00"))
+                    Subcategory(
+                        subcategory.name,
+                        Decimal("0.00"),
+                        Decimal("0.00"),
+                        database_id=subcategory.database_id,
+                    )
                     for subcategory in category.subcategories
                 ],
                 database_id=category.database_id,

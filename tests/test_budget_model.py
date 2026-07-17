@@ -129,6 +129,16 @@ def test_next_month_budget_keeps_master_category_database_id():
     assert next_budget.master_categories[0].database_id == 12
 
 
+def test_next_month_budget_keeps_subcategory_database_id():
+    budget = create_sample_budget()
+    budget.master_categories[0].subcategories[0].database_id = 24
+
+    next_budget = create_next_month_budget(budget)
+    next_subcategory = next_budget.master_categories[0].subcategories[0]
+
+    assert next_subcategory.database_id == 24
+
+
 def test_next_month_budget_starts_unbudgeted_and_unspent():
     next_budget = create_next_month_budget(create_sample_budgets()[-1])
 
