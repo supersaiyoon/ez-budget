@@ -68,3 +68,18 @@ def test_new_window_loads_saved_budget_categories_under_their_master(tmp_path):
     subcategory_names = [subcategory.name for subcategory in loaded_master.subcategories]
 
     assert subcategory_names == ["Groceries"]
+
+
+def test_add_master_category_persists_and_updates_loaded_budgets():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+
+    window.add_master_category("Savings")
+
+    saved_category = categories.get_master_category_by_name(window.con, "Savings")
+    loaded_names = [budget.master_categories[0].name for budget in window.budgets]
+    loaded_ids = [budget.master_categories[0].database_id for budget in window.budgets]
+    assert saved_category["name"] == "Savings"
+    assert loaded_names == ["Savings"] * len(window.budgets)
+    assert loaded_ids == [saved_category["id"]] * len(window.budgets)

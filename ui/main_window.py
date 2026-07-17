@@ -104,6 +104,19 @@ class MainWindow(QMainWindow):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
 
+    def add_master_category(self, name):
+        category_row = categories.add_master_category(self.con, name)
+
+        # Category definitions shared across months
+        for budget in self.budgets:
+            category = budget_model.MasterCategory(
+                category_row["name"],
+                database_id=category_row["id"],
+            )
+            budget.master_categories.append(category)
+
+        self.budget_page.refresh()
+
     def category_names(self):
         # Transaction categories sourced from budget structure to avoid drift
         names = ["Income"]
