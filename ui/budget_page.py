@@ -181,7 +181,12 @@ class BudgetPage(QWidget):
             self.status.setText("Enter a master category name.")
             return
 
-        self.on_master_category_added(name)
+        try:
+            self.on_master_category_added(name)
+        except ValueError as exc:
+            self.status.setText(str(exc))
+            return
+
         self.status.setText(f'Added master category "{name}".')
 
     def _set_master_row(self, row, category_name, budgets):

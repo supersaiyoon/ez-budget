@@ -42,3 +42,20 @@ def test_master_category_name_is_sent_to_callback():
 
     assert page.add_master_category_button.text() == "+"
     assert added_names == ["Savings"]
+
+
+def test_master_category_error_is_shown_in_status():
+    _app = QApplication.instance() or QApplication([])
+
+    def reject_duplicate(name):
+        raise ValueError("Master category already exists.")
+
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        reject_duplicate,
+    )
+
+    page.submit_master_category_name("Savings")
+
+    assert page.status.text() == "Master category already exists."
