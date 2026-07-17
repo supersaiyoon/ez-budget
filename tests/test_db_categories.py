@@ -74,11 +74,13 @@ def test_list_budget_categories_returns_visible_categories_for_master_in_id_orde
 def test_get_budget_category_by_name_returns_matching_category():
     con = database.connect(":memory:")
     database.initialize_database(con)
-    master_category = categories.add_master_category(con, "Everyday Expenses")
-    categories.add_budget_category(con, master_category["id"], "Groceries")
-    gas = categories.add_budget_category(con, master_category["id"], "Gas")
+    bills = categories.add_master_category(con, "Monthly Bills")
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    categories.add_budget_category(con, bills["id"], "Other")
+    expense_category = categories.add_budget_category(con, expenses["id"], "Other")
 
-    category = categories.get_budget_category_by_name(con, "Gas")
+    category = categories.get_budget_category_by_name(con, expenses["id"], "Other")
 
-    assert category["id"] == gas["id"]
-    assert category["name"] == "Gas"
+    assert category["id"] == expense_category["id"]
+    assert category["master_budget_category_id"] == expenses["id"]
+    assert category["name"] == "Other"

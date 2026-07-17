@@ -61,14 +61,15 @@ def list_budget_categories(con, master_category_id):
     ).fetchall()
 
 
-def get_budget_category_by_name(con, name):
+def get_budget_category_by_name(con, master_category_id, name):
     return con.execute(
         """
         SELECT id, master_budget_category_id, name, hidden
         FROM budget_categories
-        WHERE name = ?
+        WHERE master_budget_category_id = ?
+          AND name = ?
         ORDER BY id
         LIMIT 1
         """,
-        (name,),
+        (master_category_id, name),
     ).fetchone()
