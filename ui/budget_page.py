@@ -4,8 +4,11 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QHeaderView,
+    QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -18,13 +21,14 @@ from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
 class BudgetPage(QWidget):
-    def __init__(self, budgets, on_budget_changed):
+    def __init__(self, budgets, on_budget_changed, on_master_category_added):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
         self.budgets = budgets
         
         # Only signals changed budget data
         self.on_budget_changed = on_budget_changed
+        self.on_master_category_added = on_master_category_added
         self.active_index = 0
 
         # For matching visual rows back to category names
@@ -49,6 +53,20 @@ class BudgetPage(QWidget):
         for column in range(1, self.table.columnCount()):
             self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table, 1)
+
+        self.category_header = QWidget()
+        category_header_layout = QHBoxLayout(self.category_header)
+        category_header_layout.setContentsMargins(8, 0, 8, 0)
+        category_label = QLabel("Category")
+        category_label.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        category_header_layout.addWidget(category_label)
+        category_header_layout.addStretch()
+        self.add_master_category_button = QPushButton("+")
+        self.add_master_category_button.setObjectName("addMasterCategoryButton")
+        self.add_master_category_button.setToolTip("Add master category")
+        self.add_master_category_button.setFixedWidth(28)
+        self.add_master_category_button.clicked.connect(self.prompt_for_master_category)
+        category_header_layout.addWidget(self.add_master_category_button)
 
         self.status = QLabel("Enter a positive or negative amount, then press Enter or leave the field.")
         self.status.setObjectName("statusText")
@@ -120,10 +138,8 @@ class BudgetPage(QWidget):
         self.table.setItem(0, 0, QTableWidgetItem(""))
 
         # Category header separated from month headers for scan-friendly budgeting
-        category = QTableWidgetItem("Category")
-        category.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
-        category.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.table.setItem(1, 0, category)
+        if self.table.cellWidget(1, 0) is None:
+            self.table.setCellWidget(1, 0, self.category_header)
 
         for month_index, budget in enumerate(budgets):
             # Month group owns three child columns, keeping totals close to inputs
@@ -149,6 +165,24 @@ class BudgetPage(QWidget):
 
         self.table.setRowHeight(0, 98)
         self.table.setRowHeight(1, 30)
+
+    def prompt_for_master_category(self):
+        name, accepted = QInputDialog.getText(
+            self,
+            "Add Master Category",
+            "Master category name:",
+        )
+        if accepted:
+            self.submit_master_category_name(name)
+
+    def submit_master_category_name(self, name):
+        name = name.strip()
+        if not name:
+            self.status.setText("Enter a master category name.")
+            return
+
+        self.on_master_category_added(name)
+        self.status.setText(f'Added master category "{name}".')
 
     def _set_master_row(self, row, category_name, budgets):
         title = QTableWidgetItem(category_name)

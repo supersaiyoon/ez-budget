@@ -63,7 +63,11 @@ class MainWindow(QMainWindow):
 
         # Stack lets navigation swap full workflows without rebuilding windows
         self.stack = QStackedWidget()
-        self.budget_page = budget_page.BudgetPage(self.budgets, self.refresh_reports)
+        self.budget_page = budget_page.BudgetPage(
+            self.budgets,
+            self.refresh_reports,
+            self.add_master_category,
+        )
         self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
 

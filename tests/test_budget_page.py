@@ -17,7 +17,7 @@ def test_next_month_arrow_can_generate_future_months():
         nonlocal change_count
         change_count += 1
 
-    page = BudgetPage(budgets, on_budget_changed)
+    page = BudgetPage(budgets, on_budget_changed, lambda name: None)
 
     for _ in range(10):
         page.month_scroller.next_button.click()
@@ -27,3 +27,18 @@ def test_next_month_arrow_can_generate_future_months():
     assert page.month_scroller.active_index == 10
     assert len(budgets) >= 13
     assert change_count > 0
+
+
+def test_master_category_name_is_sent_to_callback():
+    _app = QApplication.instance() or QApplication([])
+    added_names = []
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        added_names.append,
+    )
+
+    page.submit_master_category_name(" Savings ")
+
+    assert page.add_master_category_button.text() == "+"
+    assert added_names == ["Savings"]
