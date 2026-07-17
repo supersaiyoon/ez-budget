@@ -17,7 +17,12 @@ def test_next_month_arrow_can_generate_future_months():
         nonlocal change_count
         change_count += 1
 
-    page = BudgetPage(budgets, on_budget_changed, lambda name: None)
+    page = BudgetPage(
+        budgets,
+        on_budget_changed,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
 
     for _ in range(10):
         page.month_scroller.next_button.click()
@@ -36,6 +41,7 @@ def test_master_category_name_is_sent_to_callback():
         create_sample_budgets(),
         lambda: None,
         added_names.append,
+        lambda master_category_id, name: None,
     )
 
     page.submit_master_category_name(" Savings ")
@@ -54,8 +60,30 @@ def test_master_category_error_is_shown_in_status():
         create_sample_budgets(),
         lambda: None,
         reject_duplicate,
+        lambda master_category_id, name: None,
     )
 
     page.submit_master_category_name("Savings")
 
     assert page.status.text() == "Master category already exists."
+
+
+def test_subcategory_error_is_shown_in_status():
+    _app = QApplication.instance() or QApplication([])
+    submitted_categories = []
+
+    def reject_duplicate(master_category_id, name):
+        submitted_categories.append((master_category_id, name))
+        raise ValueError("Subcategory already exists in this master category.")
+
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        reject_duplicate,
+    )
+
+    page.submit_subcategory_name(12, " Groceries ")
+
+    assert submitted_categories == [(12, "Groceries")]
+    assert page.status.text() == "Subcategory already exists in this master category."

@@ -21,7 +21,13 @@ from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
 class BudgetPage(QWidget):
-    def __init__(self, budgets, on_budget_changed, on_master_category_added):
+    def __init__(
+        self,
+        budgets,
+        on_budget_changed,
+        on_master_category_added,
+        on_subcategory_added,
+    ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
         self.budgets = budgets
@@ -29,6 +35,7 @@ class BudgetPage(QWidget):
         # Only signals changed budget data
         self.on_budget_changed = on_budget_changed
         self.on_master_category_added = on_master_category_added
+        self.on_subcategory_added = on_subcategory_added
         self.active_index = 0
 
         # For matching visual rows back to category names
@@ -188,6 +195,20 @@ class BudgetPage(QWidget):
             return
 
         self.status.setText(f'Added master category "{name}".')
+
+    def submit_subcategory_name(self, master_category_id, name):
+        name = name.strip()
+        if not name:
+            self.status.setText("Enter a subcategory name.")
+            return
+
+        try:
+            self.on_subcategory_added(master_category_id, name)
+        except ValueError as exc:
+            self.status.setText(str(exc))
+            return
+
+        self.status.setText(f'Added subcategory "{name}".')
 
     def _set_master_row(self, row, category_name, budgets):
         title = QTableWidgetItem(category_name)
