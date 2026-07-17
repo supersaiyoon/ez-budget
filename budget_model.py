@@ -21,6 +21,8 @@ class MasterCategory:
     name: str
     # Default factory keeps categories from sharing one mutable list
     subcategories: list = field(default_factory=list)
+    # SQLite row identity kept when model reaches UI
+    database_id: int | None = None
 
     @property
     def budgeted(self):
@@ -324,6 +326,7 @@ def create_next_month_budget(previous_budget):
                     Subcategory(subcategory.name, Decimal("0.00"), Decimal("0.00"))
                     for subcategory in category.subcategories
                 ],
+                database_id=category.database_id,
             )
             for category in previous_budget.master_categories
         ],
