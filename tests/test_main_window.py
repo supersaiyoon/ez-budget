@@ -60,16 +60,21 @@ def test_new_window_loads_saved_budget_categories_under_their_master(tmp_path):
     con = database.connect(db_path)
     database.initialize_database(con)
     master_category = categories.add_master_category(con, "Everyday Expenses")
-    categories.add_budget_category(con, master_category["id"], "Groceries")
+    budget_category = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Groceries",
+    )
     con.close()
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
     loaded_master = window.budgets[0].master_categories[0]
-    subcategory_names = [subcategory.name for subcategory in loaded_master.subcategories]
+    loaded_subcategory = loaded_master.subcategories[0]
 
-    assert subcategory_names == ["Groceries"]
+    assert loaded_subcategory.name == "Groceries"
+    assert loaded_subcategory.database_id == budget_category["id"]
 
 
 def test_add_master_category_persists_and_updates_loaded_budgets():

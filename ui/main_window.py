@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
                     subcategory_row["name"],
                     Decimal("0.00"),
                     Decimal("0.00"),
+                    database_id=subcategory_row["id"],
                 )
                 category.subcategories.append(subcategory)
             self.budgets[0].master_categories.append(category)
