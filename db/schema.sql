@@ -23,8 +23,9 @@ CREATE TABLE IF NOT EXISTS master_budget_categories (
 CREATE TABLE IF NOT EXISTS budget_categories (
     id                          INTEGER PRIMARY KEY,
     master_budget_category_id   INT NOT NULL REFERENCES master_budget_categories(id),
-    name                        TEXT NOT NULL UNIQUE,
-    hidden                      BOOLEAN NOT NULL DEFAULT FALSE
+    name                        TEXT NOT NULL,
+    hidden                      BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE (master_budget_category_id, name)
 );
 
 -- Amount stored as integer to avoid floating point drift

@@ -1,3 +1,7 @@
+import sqlite3
+
+import pytest
+
 from db import database
 
 
@@ -38,6 +42,34 @@ def test_transaction_relationship_columns_are_required():
 
     assert payee_required == True
     assert budget_category_required == True
+
+
+def test_budget_category_names_are_unique_within_each_master():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    bills_id = con.execute(
+        "INSERT INTO master_budget_categories (name) VALUES (?) RETURNING id",
+        ("Monthly Bills",),
+    ).fetchone()["id"]
+    spending_id = con.execute(
+        "INSERT INTO master_budget_categories (name) VALUES (?) RETURNING id",
+        ("Everyday Spending",),
+    ).fetchone()["id"]
+
+    con.execute(
+        "INSERT INTO budget_categories (master_budget_category_id, name) VALUES (?, ?)",
+        (bills_id, "Other"),
+    )
+    con.execute(
+        "INSERT INTO budget_categories (master_budget_category_id, name) VALUES (?, ?)",
+        (spending_id, "Other"),
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        con.execute(
+            "INSERT INTO budget_categories (master_budget_category_id, name) VALUES (?, ?)",
+            (bills_id, "Other"),
+        )
 
 
 def test_schema_allows_inserting_related_transaction():
