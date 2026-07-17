@@ -126,6 +126,14 @@ class MainWindow(QMainWindow):
         self.budget_page.refresh()
 
     def add_subcategory(self, master_category_id, name):
+        existing_subcategory = categories.get_budget_category_by_name(
+            self.con,
+            master_category_id,
+            name,
+        )
+        if existing_subcategory is not None:
+            raise ValueError("Subcategory already exists in this master category.")
+
         subcategory_row = categories.add_budget_category(
             self.con,
             master_category_id,
