@@ -33,7 +33,7 @@ def test_get_master_category_by_name_returns_matching_category():
     categories.add_master_category(con, "Monthly Bills")
     everyday_expenses = categories.add_master_category(con, "Everyday Expenses")
 
-    category = categories.get_master_category_by_name(con, "Everyday Expenses")
+    category = categories.get_master_category_by_name(con, "everyday expenses")
 
     assert category["id"] == everyday_expenses["id"]
     assert category["name"] == "Everyday Expenses"

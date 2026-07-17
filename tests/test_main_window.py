@@ -99,7 +99,7 @@ def test_add_master_category_rejects_duplicate_name():
     window.add_master_category("Savings")
 
     with pytest.raises(ValueError, match="Master category already exists"):
-        window.add_master_category("Savings")
+        window.add_master_category("sAvInGs")
 
     category_rows = categories.list_master_categories(window.con)
     assert [category["name"] for category in category_rows] == ["Savings"]
