@@ -19,6 +19,22 @@ def test_new_window_leaves_account_table_empty():
     assert accounts.has_accounts(window.con) == False
 
 
+def test_new_window_loads_saved_account_database_id(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    saved_account = accounts.create_account(con, "Checking")
+    con.close()
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+
+    window = MainWindow(db_path)
+    loaded_account = window.accounts[0]
+
+    assert loaded_account.name == "Checking"
+    assert loaded_account.database_id == saved_account["id"]
+
+
 def test_empty_account_database_shows_empty_state():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])

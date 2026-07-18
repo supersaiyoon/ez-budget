@@ -41,7 +41,10 @@ class MainWindow(QMainWindow):
 
         self.accounts = []
         for account_row in accounts.list_accounts(self.con):
-            account = budget_model.Account(account_row["name"])
+            account = budget_model.Account(
+                account_row["name"],
+                database_id=account_row["id"],
+            )
             self.accounts.append(account)
 
         self.setWindowTitle("EZ Budget")
