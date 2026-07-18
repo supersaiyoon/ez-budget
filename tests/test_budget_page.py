@@ -1,10 +1,11 @@
 import os
+from decimal import Decimal
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QPushButton
 
-from budget_model import create_sample_budgets
+from budget_model import Subcategory, create_sample_budgets
 from ui.budget_page import BudgetPage
 
 
@@ -107,3 +108,24 @@ def test_master_category_row_has_subcategory_button_with_database_id():
 
     assert add_button.text() == "+"
     assert add_button.isEnabled() == True
+
+
+def test_refresh_removes_stale_master_widget_from_new_subcategory_row():
+    _app = QApplication.instance() or QApplication([])
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    for budget in budgets:
+        budget.master_categories[0].subcategories.append(
+            Subcategory("Other", Decimal("0.00"), Decimal("0.00"))
+        )
+    page.refresh()
+    row = page.rows.index(("Monthly Bills", "Other")) + 2
+
+    assert page.table.cellWidget(row, 0) is None
+    assert page.table.item(row, 0).text().strip() == "Other"

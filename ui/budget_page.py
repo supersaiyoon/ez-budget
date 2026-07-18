@@ -133,6 +133,8 @@ class BudgetPage(QWidget):
 
         # Two header rows leave room for month summary plus per-month money columns
         self.table.clearSpans()
+        # Drop old data widgets before shifted rows rebuild
+        self.table.setRowCount(2)
         self.table.setRowCount(len(self.rows) + 2)
         self._set_table_headers(budgets)
         for row, (category_name, subcategory_name) in enumerate(self.rows, start=2):
