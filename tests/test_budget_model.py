@@ -156,6 +156,12 @@ def test_sample_accounts_include_checking_and_credit_card():
     assert accounts[1].transactions
 
 
+def test_account_keeps_database_id():
+    account = budget_model.Account("Checking", database_id=12)
+
+    assert account.database_id == 12
+
+
 def test_account_balances_use_incoming_minus_outgoing():
     checking = create_sample_accounts()[0]
 

@@ -111,6 +111,8 @@ class Account:
     name: str
     # Each account owns its own transaction list
     transactions: list = field(default_factory=list)
+    # SQLite row identity for account UI and transactions
+    database_id: int | None = None
 
     @property
     def cleared_balance(self):
