@@ -44,6 +44,34 @@ def test_empty_account_database_shows_empty_state():
     assert window.empty_accounts_page.text() == "No accounts yet."
 
 
+def test_add_account_persists_and_updates_loaded_accounts():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+
+    window.add_account("Checking")
+
+    saved_account = accounts.get_account_by_name(window.con, "Checking")
+    loaded_account = window.accounts[0]
+    assert saved_account["name"] == "Checking"
+    assert loaded_account.name == "Checking"
+    assert loaded_account.database_id == saved_account["id"]
+
+
+def test_add_account_rejects_duplicate_name():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+
+    with pytest.raises(ValueError, match="Account already exists"):
+        window.add_account("cHeCkInG")
+
+    account_rows = accounts.list_accounts(window.con)
+    assert [account["name"] for account in account_rows] == ["Checking"]
+    assert [account.name for account in window.accounts] == ["Checking"]
+
+
 def test_new_window_starts_without_sample_budget_values():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])

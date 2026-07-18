@@ -113,6 +113,17 @@ class MainWindow(QMainWindow):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
 
+    def add_account(self, name):
+        if accounts.get_account_by_name(self.con, name) is not None:
+            raise ValueError("Account already exists.")
+
+        account_row = accounts.create_account(self.con, name)
+        account = budget_model.Account(
+            account_row["name"],
+            database_id=account_row["id"],
+        )
+        self.accounts.append(account)
+
     def add_master_category(self, name):
         if categories.get_master_category_by_name(self.con, name) is not None:
             raise ValueError("Master category already exists.")
