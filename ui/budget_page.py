@@ -182,6 +182,15 @@ class BudgetPage(QWidget):
         if accepted:
             self.submit_master_category_name(name)
 
+    def prompt_for_subcategory(self, master_category_id):
+        name, accepted = QInputDialog.getText(
+            self,
+            "Add Subcategory",
+            "Subcategory name:",
+        )
+        if accepted:
+            self.submit_subcategory_name(master_category_id, name)
+
     def submit_master_category_name(self, name):
         name = name.strip()
         if not name:
@@ -211,10 +220,31 @@ class BudgetPage(QWidget):
         self.status.setText(f'Added subcategory "{name}".')
 
     def _set_master_row(self, row, category_name, budgets):
-        title = QTableWidgetItem(category_name)
+        master_category = get_category(budgets[0], category_name)
+        category_cell = QWidget()
+        category_cell.setObjectName("masterCategoryCell")
+        category_cell.setStyleSheet("#masterCategoryCell { background: lightgray; }")
+        category_layout = QHBoxLayout(category_cell)
+        category_layout.setContentsMargins(8, 0, 4, 0)
+
+        title = QLabel(category_name)
         title.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
-        title.setBackground(Qt.GlobalColor.lightGray)
-        self.table.setItem(row, 0, title)
+        category_layout.addWidget(title)
+        category_layout.addStretch()
+
+        add_button = QPushButton("+")
+        add_button.setObjectName("addSubcategoryButton")
+        add_button.setToolTip(f"Add subcategory to {category_name}")
+        add_button.setProperty("master_category_id", master_category.database_id)
+        add_button.setFixedSize(24, 24)
+        add_button.setEnabled(master_category.database_id is not None)
+        add_button.clicked.connect(
+            lambda checked=False, category_id=master_category.database_id: self.prompt_for_subcategory(
+                category_id
+            )
+        )
+        category_layout.addWidget(add_button)
+        self.table.setCellWidget(row, 0, category_cell)
 
         for month_index, budget in enumerate(budgets):
             category = get_category(budget, category_name)

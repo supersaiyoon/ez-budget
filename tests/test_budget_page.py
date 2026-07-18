@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QPushButton
 
 from budget_model import create_sample_budgets
 from ui.budget_page import BudgetPage
@@ -87,3 +87,23 @@ def test_subcategory_error_is_shown_in_status():
 
     assert submitted_categories == [(12, "Groceries")]
     assert page.status.text() == "Subcategory already exists in this master category."
+
+
+def test_master_category_row_has_subcategory_button_with_database_id():
+    _app = QApplication.instance() or QApplication([])
+    budgets = create_sample_budgets()
+    budgets[0].master_categories[0].database_id = 12
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    buttons = page.findChildren(QPushButton, "addSubcategoryButton")
+    add_button = next(
+        button for button in buttons if button.property("master_category_id") == 12
+    )
+
+    assert add_button.text() == "+"
+    assert add_button.isEnabled() == True
