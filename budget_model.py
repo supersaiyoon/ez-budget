@@ -113,6 +113,9 @@ class Account:
     transactions: list = field(default_factory=list)
     # SQLite row identity for account UI and transactions
     database_id: int | None = None
+    # Navigation group stored with account
+    on_budget: bool = True
+    closed: bool = False
 
     @property
     def cleared_balance(self):

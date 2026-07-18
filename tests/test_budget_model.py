@@ -162,6 +162,13 @@ def test_account_keeps_database_id():
     assert account.database_id == 12
 
 
+def test_account_keeps_budget_and_closed_state():
+    account = budget_model.Account("Tracking", on_budget=False, closed=True)
+
+    assert account.on_budget is False
+    assert account.closed is True
+
+
 def test_account_balances_use_incoming_minus_outgoing():
     checking = create_sample_accounts()[0]
 

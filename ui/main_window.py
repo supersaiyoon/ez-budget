@@ -44,6 +44,8 @@ class MainWindow(QMainWindow):
             account = budget_model.Account(
                 account_row["name"],
                 database_id=account_row["id"],
+                on_budget=bool(account_row["on_budget"]),
+                closed=bool(account_row["closed"]),
             )
             self.accounts.append(account)
 
@@ -121,6 +123,8 @@ class MainWindow(QMainWindow):
         account = budget_model.Account(
             account_row["name"],
             database_id=account_row["id"],
+            on_budget=bool(account_row["on_budget"]),
+            closed=bool(account_row["closed"]),
         )
         self.accounts.append(account)
 

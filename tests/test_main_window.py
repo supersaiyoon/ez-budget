@@ -19,11 +19,11 @@ def test_new_window_leaves_account_table_empty():
     assert accounts.has_accounts(window.con) == False
 
 
-def test_new_window_loads_saved_account_database_id(tmp_path):
+def test_new_window_loads_saved_account_details(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
     database.initialize_database(con)
-    saved_account = accounts.create_account(con, "Checking")
+    saved_account = accounts.create_account(con, "Tracking", on_budget=False)
     con.close()
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
@@ -31,8 +31,10 @@ def test_new_window_loads_saved_account_database_id(tmp_path):
     window = MainWindow(db_path)
     loaded_account = window.accounts[0]
 
-    assert loaded_account.name == "Checking"
+    assert loaded_account.name == "Tracking"
     assert loaded_account.database_id == saved_account["id"]
+    assert loaded_account.on_budget is False
+    assert loaded_account.closed is False
 
 
 def test_empty_account_database_shows_empty_state():
@@ -56,6 +58,8 @@ def test_add_account_persists_and_updates_loaded_accounts():
     assert saved_account["name"] == "Checking"
     assert loaded_account.name == "Checking"
     assert loaded_account.database_id == saved_account["id"]
+    assert loaded_account.on_budget is True
+    assert loaded_account.closed is False
 
 
 def test_add_account_rejects_duplicate_name():
