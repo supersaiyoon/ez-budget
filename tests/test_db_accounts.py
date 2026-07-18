@@ -38,7 +38,7 @@ def test_get_account_by_name_returns_matching_account():
     accounts.create_account(con, "Checking")
     credit_card = accounts.create_account(con, "Credit Card")
 
-    account = accounts.get_account_by_name(con, "Credit Card")
+    account = accounts.get_account_by_name(con, "credit card")
 
     assert account["id"] == credit_card["id"]
     assert account["name"] == "Credit Card"

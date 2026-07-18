@@ -27,7 +27,7 @@ def get_account_by_name(con, name):
         """
         SELECT id, name, on_budget, closed
         FROM accounts
-        WHERE name = ?
+        WHERE LOWER(name) = LOWER(?)
         ORDER BY id
         LIMIT 1
         """,
