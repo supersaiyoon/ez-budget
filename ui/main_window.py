@@ -4,7 +4,6 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
-    QLabel,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
@@ -75,8 +74,24 @@ class MainWindow(QMainWindow):
         self.nav = QListWidget()
         self.nav.setObjectName("navList")
         self.nav.setFixedWidth(170)
-        for page_index, name in enumerate(self.nav_names()):
+        for page_index, name in enumerate(["Budget", "Reports"]):
             item = QListWidgetItem(name)
+            item.setSizeHint(item.sizeHint())
+            item.setData(Qt.ItemDataRole.UserRole, page_index)
+            self.nav.addItem(item)
+
+        self.accounts_header_item = QListWidgetItem("Accounts")
+        header_font = self.accounts_header_item.font()
+        header_font.setPixelSize(12)
+        header_font.setBold(True)
+        self.accounts_header_item.setFont(header_font)
+        self.accounts_header_item.setFlags(
+            self.accounts_header_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+        )
+        self.nav.addItem(self.accounts_header_item)
+
+        for page_index, account in enumerate(self.accounts, start=2):
+            item = QListWidgetItem(account.name)
             item.setSizeHint(item.sizeHint())
             item.setData(Qt.ItemDataRole.UserRole, page_index)
             self.nav.addItem(item)
@@ -120,11 +135,6 @@ class MainWindow(QMainWindow):
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
 
-        if not self.accounts:
-            self.empty_accounts_page = QLabel("No accounts yet.")
-            self.empty_accounts_page.setObjectName("pageTitle")
-            self.stack.addWidget(self.empty_accounts_page)
-
         shell_layout.addWidget(self.stack)
 
         self.nav.currentRowChanged.connect(self.show_navigation_page)
@@ -137,10 +147,7 @@ class MainWindow(QMainWindow):
         for account in self.accounts:
             account_names.append(account.name)
 
-        if not account_names:
-            account_names.append("Accounts")
-
-        return ["Budget", "Reports"] + account_names
+        return ["Budget", "Reports", "Accounts"] + account_names
 
     def show_navigation_page(self, row):
         item = self.nav.item(row)
@@ -189,12 +196,6 @@ class MainWindow(QMainWindow):
         self.accounts.append(account)
 
         account_index = len(self.accounts) + 1
-        replacing_empty_page = len(self.accounts) == 1
-        empty_page_selected = replacing_empty_page and self.nav.currentRow() == 2
-        if replacing_empty_page:
-            self.stack.removeWidget(self.empty_accounts_page)
-            self.nav.takeItem(2)
-
         page = transactions_page.TransactionsPage(
             account,
             self.category_names(),
@@ -205,9 +206,7 @@ class MainWindow(QMainWindow):
         nav_item = QListWidgetItem(account.name)
         nav_item.setSizeHint(nav_item.sizeHint())
         nav_item.setData(Qt.ItemDataRole.UserRole, account_index)
-        self.nav.insertItem(account_index, nav_item)
-        if empty_page_selected:
-            self.nav.setCurrentRow(account_index)
+        self.nav.insertItem(account_index + 1, nav_item)
 
     def add_master_category(self, name):
         if categories.get_master_category_by_name(self.con, name) is not None:

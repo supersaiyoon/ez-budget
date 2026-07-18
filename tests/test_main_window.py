@@ -62,13 +62,16 @@ def test_new_window_loads_closed_accounts_separately(tmp_path):
     assert loaded_account.closed is True
 
 
-def test_empty_account_database_shows_empty_state():
+def test_empty_account_database_shows_account_header():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     assert window.nav_names() == ["Budget", "Reports", "Accounts"]
-    assert window.empty_accounts_page.text() == "No accounts yet."
+    assert window.accounts_header_item.text() == "Accounts"
+    assert window.accounts_header_item.font().pixelSize() == 12
+    assert not window.accounts_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
+    assert window.accounts_header_item.data(Qt.ItemDataRole.UserRole) is None
 
 
 def test_add_account_persists_and_updates_loaded_accounts():
@@ -113,7 +116,7 @@ def test_add_account_rejects_duplicate_name():
     assert [account.name for account in window.accounts] == ["Checking"]
 
 
-def test_add_first_account_replaces_empty_account_page():
+def test_add_first_account_keeps_account_header():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
@@ -124,8 +127,7 @@ def test_add_first_account_replaces_empty_account_page():
         window.nav.item(row).text()
         for row in range(window.nav.count() - 1)
     ]
-    assert nav_names == ["Budget", "Reports", "Checking"]
-    assert window.stack.indexOf(window.empty_accounts_page) == -1
+    assert nav_names == ["Budget", "Reports", "Accounts", "Checking"]
     assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
 
@@ -142,7 +144,7 @@ def test_add_later_account_keeps_reports_before_account_pages():
         window.nav.item(row).text()
         for row in range(window.nav.count() - 1)
     ]
-    assert nav_names == ["Budget", "Reports", "Checking", "Savings"]
+    assert nav_names == ["Budget", "Reports", "Accounts", "Checking", "Savings"]
     assert window.stack.widget(1) is window.reports_page
     assert window.stack.widget(3) is window.transaction_pages[1]
 
