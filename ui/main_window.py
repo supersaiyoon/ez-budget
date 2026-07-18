@@ -125,11 +125,11 @@ class MainWindow(QMainWindow):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
 
-    def add_account(self, name):
+    def add_account(self, name, on_budget=True):
         if accounts.get_account_by_name(self.con, name) is not None:
             raise ValueError("Account already exists.")
 
-        account_row = accounts.create_account(self.con, name)
+        account_row = accounts.create_account(self.con, name, on_budget)
         account = budget_model.Account(
             account_row["name"],
             database_id=account_row["id"],

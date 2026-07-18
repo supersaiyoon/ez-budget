@@ -86,6 +86,18 @@ def test_add_account_persists_and_updates_loaded_accounts():
     assert loaded_account.closed is False
 
 
+def test_add_account_preserves_off_budget_state():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+
+    window.add_account("House Value", on_budget=False)
+
+    saved_account = accounts.get_account_by_name(window.con, "House Value")
+    assert saved_account["on_budget"] == False
+    assert window.accounts[0].on_budget is False
+
+
 def test_add_account_rejects_duplicate_name():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
