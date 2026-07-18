@@ -124,6 +124,26 @@ class MainWindow(QMainWindow):
         )
         self.accounts.append(account)
 
+        account_index = len(self.accounts)
+        replacing_empty_page = account_index == 1
+        empty_page_selected = replacing_empty_page and self.nav.currentRow() == 1
+        if replacing_empty_page:
+            self.stack.removeWidget(self.empty_accounts_page)
+            self.nav.takeItem(1)
+
+        page = transactions_page.TransactionsPage(
+            account,
+            self.category_names(),
+        )
+        self.transaction_pages.append(page)
+        self.stack.insertWidget(account_index, page)
+
+        nav_item = QListWidgetItem(account.name)
+        nav_item.setSizeHint(nav_item.sizeHint())
+        self.nav.insertItem(account_index, nav_item)
+        if empty_page_selected:
+            self.nav.setCurrentRow(account_index)
+
     def add_master_category(self, name):
         if categories.get_master_category_by_name(self.con, name) is not None:
             raise ValueError("Master category already exists.")
