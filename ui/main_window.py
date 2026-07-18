@@ -49,6 +49,16 @@ class MainWindow(QMainWindow):
             )
             self.accounts.append(account)
 
+        self.closed_accounts = []
+        for account_row in accounts.list_closed_accounts(self.con):
+            account = budget_model.Account(
+                account_row["name"],
+                database_id=account_row["id"],
+                on_budget=bool(account_row["on_budget"]),
+                closed=bool(account_row["closed"]),
+            )
+            self.closed_accounts.append(account)
+
         self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)
 

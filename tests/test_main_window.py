@@ -37,6 +37,30 @@ def test_new_window_loads_saved_account_details(tmp_path):
     assert loaded_account.closed is False
 
 
+def test_new_window_loads_closed_accounts_separately(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    closed_account = accounts.create_account(con, "Old Checking", on_budget=False)
+    con.execute(
+        "UPDATE accounts SET closed = TRUE WHERE id = ?",
+        (closed_account["id"],),
+    )
+    con.commit()
+    con.close()
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+
+    window = MainWindow(db_path)
+    loaded_account = window.closed_accounts[0]
+
+    assert window.accounts == []
+    assert loaded_account.name == "Old Checking"
+    assert loaded_account.database_id == closed_account["id"]
+    assert loaded_account.on_budget is False
+    assert loaded_account.closed is True
+
+
 def test_empty_account_database_shows_empty_state():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
