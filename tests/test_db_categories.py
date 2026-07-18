@@ -79,7 +79,7 @@ def test_get_budget_category_by_name_returns_matching_category():
     categories.add_budget_category(con, bills["id"], "Other")
     expense_category = categories.add_budget_category(con, expenses["id"], "Other")
 
-    category = categories.get_budget_category_by_name(con, expenses["id"], "Other")
+    category = categories.get_budget_category_by_name(con, expenses["id"], "other")
 
     assert category["id"] == expense_category["id"]
     assert category["master_budget_category_id"] == expenses["id"]

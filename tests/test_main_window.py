@@ -137,7 +137,7 @@ def test_add_subcategory_rejects_duplicate_name_within_master():
     window.add_subcategory(master_category_id, "Groceries")
 
     with pytest.raises(ValueError, match="Subcategory already exists"):
-        window.add_subcategory(master_category_id, "Groceries")
+        window.add_subcategory(master_category_id, "gRoCeRiEs")
 
     category_rows = categories.list_budget_categories(window.con, master_category_id)
     loaded_subcategories = window.budgets[0].master_categories[0].subcategories

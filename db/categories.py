@@ -67,7 +67,7 @@ def get_budget_category_by_name(con, master_category_id, name):
         SELECT id, master_budget_category_id, name, hidden
         FROM budget_categories
         WHERE master_budget_category_id = ?
-          AND name = ?
+          AND LOWER(name) = LOWER(?)
         ORDER BY id
         LIMIT 1
         """,
