@@ -22,6 +22,17 @@ def list_accounts(con):
     ).fetchall()
 
 
+def list_closed_accounts(con):
+    return con.execute(
+        """
+        SELECT id, name, on_budget, closed
+        FROM accounts
+        WHERE closed = TRUE
+        ORDER BY id
+        """
+    ).fetchall()
+
+
 def get_account_by_name(con, name):
     return con.execute(
         """

@@ -32,6 +32,21 @@ def test_list_accounts_excludes_closed_accounts():
     assert [account["name"] for account in account_rows] == ["Credit Card"]
 
 
+def test_list_closed_accounts_excludes_open_accounts():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+
+    checking = accounts.create_account(con, "Checking")
+    accounts.create_account(con, "Credit Card")
+    con.execute("UPDATE accounts SET closed = TRUE WHERE id = ?", (checking["id"],))
+    con.commit()
+
+    account_rows = accounts.list_closed_accounts(con)
+
+    assert [account["name"] for account in account_rows] == ["Checking"]
+    assert account_rows[0]["closed"] == True
+
+
 def test_get_account_by_name_returns_matching_account():
     con = database.connect(":memory:")
     database.initialize_database(con)
