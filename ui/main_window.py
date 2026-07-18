@@ -87,6 +87,7 @@ class MainWindow(QMainWindow):
         )
         self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
+        self.stack.addWidget(self.reports_page)
 
         self.transaction_pages = []
         for account in self.accounts:
@@ -102,7 +103,6 @@ class MainWindow(QMainWindow):
             self.empty_accounts_page.setObjectName("pageTitle")
             self.stack.addWidget(self.empty_accounts_page)
 
-        self.stack.addWidget(self.reports_page)
         shell_layout.addWidget(self.stack)
 
         # Row order mirrors stack order so navigation needs no mapping table
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         if not account_names:
             account_names.append("Accounts")
 
-        return ["Budget"] + account_names + ["Reports"]
+        return ["Budget", "Reports"] + account_names
 
     def refresh_reports(self):
         # Budget edits need report totals recalculated on demand
@@ -138,12 +138,12 @@ class MainWindow(QMainWindow):
         )
         self.accounts.append(account)
 
-        account_index = len(self.accounts)
-        replacing_empty_page = account_index == 1
-        empty_page_selected = replacing_empty_page and self.nav.currentRow() == 1
+        account_index = len(self.accounts) + 1
+        replacing_empty_page = len(self.accounts) == 1
+        empty_page_selected = replacing_empty_page and self.nav.currentRow() == 2
         if replacing_empty_page:
             self.stack.removeWidget(self.empty_accounts_page)
-            self.nav.takeItem(1)
+            self.nav.takeItem(2)
 
         page = transactions_page.TransactionsPage(
             account,

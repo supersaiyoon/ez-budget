@@ -66,7 +66,7 @@ def test_empty_account_database_shows_empty_state():
     _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
-    assert window.nav_names() == ["Budget", "Accounts", "Reports"]
+    assert window.nav_names() == ["Budget", "Reports", "Accounts"]
     assert window.empty_accounts_page.text() == "No accounts yet."
 
 
@@ -120,13 +120,13 @@ def test_add_first_account_replaces_empty_account_page():
     window.add_account("Checking")
 
     nav_names = [window.nav.item(row).text() for row in range(window.nav.count())]
-    assert nav_names == ["Budget", "Checking", "Reports"]
+    assert nav_names == ["Budget", "Reports", "Checking"]
     assert window.stack.indexOf(window.empty_accounts_page) == -1
-    assert window.stack.widget(1) is window.transaction_pages[0]
+    assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
 
 
-def test_add_later_account_inserts_page_before_reports():
+def test_add_later_account_keeps_reports_before_account_pages():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
@@ -135,9 +135,9 @@ def test_add_later_account_inserts_page_before_reports():
     window.add_account("Savings")
 
     nav_names = [window.nav.item(row).text() for row in range(window.nav.count())]
-    assert nav_names == ["Budget", "Checking", "Savings", "Reports"]
-    assert window.stack.widget(2) is window.transaction_pages[1]
-    assert window.stack.widget(3) is window.reports_page
+    assert nav_names == ["Budget", "Reports", "Checking", "Savings"]
+    assert window.stack.widget(1) is window.reports_page
+    assert window.stack.widget(3) is window.transaction_pages[1]
 
 
 def test_new_window_starts_without_sample_budget_values():
