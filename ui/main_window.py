@@ -1,11 +1,15 @@
 from decimal import Decimal
 
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
+    QMessageBox,
+    QPushButton,
     QStackedWidget,
     QWidget,
 )
@@ -71,10 +75,28 @@ class MainWindow(QMainWindow):
         self.nav = QListWidget()
         self.nav.setObjectName("navList")
         self.nav.setFixedWidth(170)
-        for name in self.nav_names():
+        for page_index, name in enumerate(self.nav_names()):
             item = QListWidgetItem(name)
             item.setSizeHint(item.sizeHint())
+            item.setData(Qt.ItemDataRole.UserRole, page_index)
             self.nav.addItem(item)
+
+        self.add_account_button = QPushButton("+ Add Account")
+        self.add_account_button.setObjectName("addAccountButton")
+        self.add_account_button.clicked.connect(self.prompt_for_account)
+        add_account_item = QListWidgetItem()
+        # Extra height offsets nav item padding around embedded button
+        add_account_item.setSizeHint(
+            QSize(
+                self.nav.width(),
+                self.add_account_button.sizeHint().height() + 28,
+            )
+        )
+        add_account_item.setFlags(
+            add_account_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+        )
+        self.nav.addItem(add_account_item)
+        self.nav.setItemWidget(add_account_item, self.add_account_button)
         shell_layout.addWidget(self.nav)
 
         # Stack lets navigation swap full workflows without rebuilding windows
@@ -105,8 +127,7 @@ class MainWindow(QMainWindow):
 
         shell_layout.addWidget(self.stack)
 
-        # Row order mirrors stack order so navigation needs no mapping table
-        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.nav.currentRowChanged.connect(self.show_navigation_page)
         self.nav.setCurrentRow(0)
         self.setCentralWidget(shell)
         self.setStyleSheet(styles.APP_STYLE)
@@ -121,9 +142,38 @@ class MainWindow(QMainWindow):
 
         return ["Budget", "Reports"] + account_names
 
+    def show_navigation_page(self, row):
+        item = self.nav.item(row)
+        if item is None:
+            return
+
+        page_index = item.data(Qt.ItemDataRole.UserRole)
+        if page_index is not None:
+            self.stack.setCurrentIndex(page_index)
+
     def refresh_reports(self):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
+
+    def prompt_for_account(self):
+        name, accepted = QInputDialog.getText(
+            self,
+            "Add Account",
+            "Account name:",
+        )
+        if accepted:
+            self.submit_account_name(name)
+
+    def submit_account_name(self, name):
+        name = name.strip()
+        if not name:
+            QMessageBox.warning(self, "Add Account", "Enter an account name.")
+            return
+
+        try:
+            self.add_account(name)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Add Account", str(exc))
 
     def add_account(self, name, on_budget=True):
         if accounts.get_account_by_name(self.con, name) is not None:
@@ -154,6 +204,7 @@ class MainWindow(QMainWindow):
 
         nav_item = QListWidgetItem(account.name)
         nav_item.setSizeHint(nav_item.sizeHint())
+        nav_item.setData(Qt.ItemDataRole.UserRole, account_index)
         self.nav.insertItem(account_index, nav_item)
         if empty_page_selected:
             self.nav.setCurrentRow(account_index)

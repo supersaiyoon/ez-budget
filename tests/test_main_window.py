@@ -5,6 +5,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from db import accounts, categories, database
@@ -119,7 +120,10 @@ def test_add_first_account_replaces_empty_account_page():
 
     window.add_account("Checking")
 
-    nav_names = [window.nav.item(row).text() for row in range(window.nav.count())]
+    nav_names = [
+        window.nav.item(row).text()
+        for row in range(window.nav.count() - 1)
+    ]
     assert nav_names == ["Budget", "Reports", "Checking"]
     assert window.stack.indexOf(window.empty_accounts_page) == -1
     assert window.stack.widget(2) is window.transaction_pages[0]
@@ -134,10 +138,51 @@ def test_add_later_account_keeps_reports_before_account_pages():
 
     window.add_account("Savings")
 
-    nav_names = [window.nav.item(row).text() for row in range(window.nav.count())]
+    nav_names = [
+        window.nav.item(row).text()
+        for row in range(window.nav.count() - 1)
+    ]
     assert nav_names == ["Budget", "Reports", "Checking", "Savings"]
     assert window.stack.widget(1) is window.reports_page
     assert window.stack.widget(3) is window.transaction_pages[1]
+
+
+def test_add_account_button_follows_account_entries():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    window.show()
+    _app.processEvents()
+
+    button_item = window.nav.item(window.nav.count() - 1)
+
+    assert window.nav.itemWidget(button_item) is window.add_account_button
+    assert window.add_account_button.text() == "+ Add Account"
+    assert window.add_account_button.height() > 0
+    assert not button_item.flags() & Qt.ItemFlag.ItemIsSelectable
+
+
+def test_navigation_ignores_rows_without_a_page():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.stack.setCurrentIndex(1)
+    button_row = window.nav.count() - 1
+
+    window.show_navigation_page(button_row)
+
+    assert window.stack.currentIndex() == 1
+
+
+def test_submit_account_name_trims_and_creates_account():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+
+    window.submit_account_name(" Checking ")
+
+    assert window.accounts[0].name == "Checking"
 
 
 def test_new_window_starts_without_sample_budget_values():
