@@ -2,13 +2,17 @@ from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
     QHBoxLayout,
-    QInputDialog,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QStackedWidget,
     QWidget,
 )
@@ -16,6 +20,32 @@ from PyQt6.QtWidgets import (
 import budget_model
 from db import accounts, categories, database
 from ui import budget_page, reports_page, styles, transactions_page
+
+
+class AccountDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Account")
+
+        layout = QFormLayout(self)
+        self.name_input = QLineEdit()
+        layout.addRow("Account name:", self.name_input)
+
+        account_type_layout = QHBoxLayout()
+        self.budget_radio = QRadioButton("Budget")
+        self.off_budget_radio = QRadioButton("Off-Budget")
+        self.budget_radio.setChecked(True)
+        account_type_layout.addWidget(self.budget_radio)
+        account_type_layout.addWidget(self.off_budget_radio)
+        layout.addRow("Account type:", account_type_layout)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
 
 
 class MainWindow(QMainWindow):
@@ -163,22 +193,21 @@ class MainWindow(QMainWindow):
         self.reports_page.refresh()
 
     def prompt_for_account(self):
-        name, accepted = QInputDialog.getText(
-            self,
-            "Add Account",
-            "Account name:",
-        )
-        if accepted:
-            self.submit_account_name(name)
+        dialog = AccountDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.submit_account_name(
+                dialog.name_input.text(),
+                dialog.budget_radio.isChecked(),
+            )
 
-    def submit_account_name(self, name):
+    def submit_account_name(self, name, on_budget=True):
         name = name.strip()
         if not name:
             QMessageBox.warning(self, "Add Account", "Enter an account name.")
             return
 
         try:
-            self.add_account(name)
+            self.add_account(name, on_budget)
         except ValueError as exc:
             QMessageBox.warning(self, "Add Account", str(exc))
 

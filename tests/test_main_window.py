@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from db import accounts, categories, database
-from ui.main_window import MainWindow
+from ui.main_window import AccountDialog, MainWindow
 
 
 def test_new_window_leaves_account_table_empty():
@@ -185,6 +185,33 @@ def test_submit_account_name_trims_and_creates_account():
     window.submit_account_name(" Checking ")
 
     assert window.accounts[0].name == "Checking"
+
+
+def test_submit_account_name_preserves_off_budget_choice():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+
+    window.submit_account_name("House Value", on_budget=False)
+
+    assert window.accounts[0].name == "House Value"
+    assert window.accounts[0].on_budget is False
+
+
+def test_account_dialog_shows_name_and_account_type_together():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    dialog = AccountDialog()
+
+    assert dialog.isAncestorOf(dialog.name_input)
+    assert dialog.isAncestorOf(dialog.budget_radio)
+    assert dialog.isAncestorOf(dialog.off_budget_radio)
+    assert dialog.budget_radio.isChecked()
+
+    dialog.off_budget_radio.setChecked(True)
+
+    assert dialog.budget_radio.isChecked() is False
+    assert dialog.off_budget_radio.isChecked()
 
 
 def test_new_window_starts_without_sample_budget_values():
