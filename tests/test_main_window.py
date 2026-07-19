@@ -69,11 +69,21 @@ def test_empty_account_database_shows_account_header():
     _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
-    assert window.nav_names() == ["Budget", "Reports", "Accounts"]
+    assert window.nav_names() == [
+        "Budget",
+        "Reports",
+        "Accounts",
+        "On Budget",
+        "Off Budget",
+    ]
     assert window.accounts_header_item.text() == "Accounts"
     assert window.accounts_header_item.font().pixelSize() == 12
     assert not window.accounts_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert window.accounts_header_item.data(Qt.ItemDataRole.UserRole) is None
+    assert window.on_budget_header_item.text() == "On Budget"
+    assert window.off_budget_header_item.text() == "Off Budget"
+    assert not window.on_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
+    assert not window.off_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
 
 def test_add_account_persists_and_updates_loaded_accounts():
@@ -129,7 +139,14 @@ def test_add_first_account_keeps_account_header():
         window.nav.item(row).text()
         for row in range(window.nav.count() - 1)
     ]
-    assert nav_names == ["Budget", "Reports", "Accounts", "Checking"]
+    assert nav_names == [
+        "Budget",
+        "Reports",
+        "Accounts",
+        "On Budget",
+        "Checking",
+        "Off Budget",
+    ]
     assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
 
@@ -146,7 +163,15 @@ def test_add_later_account_keeps_reports_before_account_pages():
         window.nav.item(row).text()
         for row in range(window.nav.count() - 1)
     ]
-    assert nav_names == ["Budget", "Reports", "Accounts", "Checking", "Savings"]
+    assert nav_names == [
+        "Budget",
+        "Reports",
+        "Accounts",
+        "On Budget",
+        "Checking",
+        "Savings",
+        "Off Budget",
+    ]
     assert window.stack.widget(1) is window.reports_page
     assert window.stack.widget(3) is window.transaction_pages[1]
 
@@ -171,13 +196,16 @@ def test_budget_account_is_inserted_before_off_budget_account():
         "Budget",
         "Reports",
         "Accounts",
+        "On Budget",
         "Checking",
+        "Off Budget",
         "House Value",
     ]
     assert window.transaction_pages[0].account.name == "Checking"
     assert window.transaction_pages[1].account.name == "House Value"
 
-    window.nav.setCurrentRow(4)
+    house_value_row = nav_names.index("House Value")
+    window.nav.setCurrentRow(house_value_row)
 
     assert window.stack.currentWidget().account.name == "House Value"
 

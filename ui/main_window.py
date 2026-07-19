@@ -111,20 +111,30 @@ class MainWindow(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, page_index)
             self.nav.addItem(item)
 
-        self.accounts_header_item = QListWidgetItem("Accounts")
-        header_font = self.accounts_header_item.font()
-        header_font.setPixelSize(12)
-        header_font.setBold(True)
-        self.accounts_header_item.setFont(header_font)
-        self.accounts_header_item.setFlags(
-            self.accounts_header_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
-        )
-        self.nav.addItem(self.accounts_header_item)
+        self.accounts_header_item = self._add_navigation_header("Accounts", 12)
+        self.on_budget_header_item = self._add_navigation_header("On Budget", 11)
 
-        for page_index, account in enumerate(self.accounts, start=2):
+        for account_position, account in enumerate(self.accounts):
+            if not account.on_budget:
+                continue
             item = QListWidgetItem(account.name)
             item.setSizeHint(item.sizeHint())
-            item.setData(Qt.ItemDataRole.UserRole, page_index)
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                account_position + 2,
+            )
+            self.nav.addItem(item)
+
+        self.off_budget_header_item = self._add_navigation_header("Off Budget", 11)
+        for account_position, account in enumerate(self.accounts):
+            if account.on_budget:
+                continue
+            item = QListWidgetItem(account.name)
+            item.setSizeHint(item.sizeHint())
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                account_position + 2,
+            )
             self.nav.addItem(item)
 
         self.add_account_button = QPushButton("+ Add Account")
@@ -174,11 +184,30 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(styles.APP_STYLE)
 
     def nav_names(self):
-        account_names = []
+        on_budget_names = []
+        off_budget_names = []
         for account in self.accounts:
-            account_names.append(account.name)
+            if account.on_budget:
+                on_budget_names.append(account.name)
+            else:
+                off_budget_names.append(account.name)
 
-        return ["Budget", "Reports", "Accounts"] + account_names
+        return (
+            ["Budget", "Reports", "Accounts", "On Budget"]
+            + on_budget_names
+            + ["Off Budget"]
+            + off_budget_names
+        )
+
+    def _add_navigation_header(self, text, pixel_size):
+        item = QListWidgetItem(text)
+        header_font = item.font()
+        header_font.setPixelSize(pixel_size)
+        header_font.setBold(True)
+        item.setFont(header_font)
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+        self.nav.addItem(item)
+        return item
 
     def show_navigation_page(self, row):
         item = self.nav.item(row)
@@ -242,10 +271,20 @@ class MainWindow(QMainWindow):
 
         nav_item = QListWidgetItem(account.name)
         nav_item.setSizeHint(nav_item.sizeHint())
+        nav_row = account_position + 4
+        if not account.on_budget:
+            nav_row += 1
         self.nav.blockSignals(True)
-        self.nav.insertItem(account_position + 3, nav_item)
+        self.nav.insertItem(nav_row, nav_item)
+        budget_account_count = sum(
+            existing_account.on_budget
+            for existing_account in self.accounts
+        )
         for position in range(len(self.accounts)):
-            account_item = self.nav.item(position + 3)
+            account_row = position + 4
+            if position >= budget_account_count:
+                account_row += 1
+            account_item = self.nav.item(account_row)
             account_item.setData(Qt.ItemDataRole.UserRole, position + 2)
         self.nav.blockSignals(False)
 
