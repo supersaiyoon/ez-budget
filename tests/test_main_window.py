@@ -25,13 +25,15 @@ def test_new_window_loads_saved_account_details(tmp_path):
     con = database.connect(db_path)
     database.initialize_database(con)
     saved_account = accounts.create_account(con, "Tracking", on_budget=False)
+    accounts.create_account(con, "Checking")
     con.close()
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
-    loaded_account = window.accounts[0]
+    loaded_account = window.accounts[1]
 
+    assert [account.name for account in window.accounts] == ["Checking", "Tracking"]
     assert loaded_account.name == "Tracking"
     assert loaded_account.database_id == saved_account["id"]
     assert loaded_account.on_budget is False
@@ -147,6 +149,37 @@ def test_add_later_account_keeps_reports_before_account_pages():
     assert nav_names == ["Budget", "Reports", "Accounts", "Checking", "Savings"]
     assert window.stack.widget(1) is window.reports_page
     assert window.stack.widget(3) is window.transaction_pages[1]
+
+
+def test_budget_account_is_inserted_before_off_budget_account():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_account("House Value", on_budget=False)
+
+    window.add_account("Checking")
+
+    nav_names = [
+        window.nav.item(row).text()
+        for row in range(window.nav.count() - 1)
+    ]
+    assert [account.name for account in window.accounts] == [
+        "Checking",
+        "House Value",
+    ]
+    assert nav_names == [
+        "Budget",
+        "Reports",
+        "Accounts",
+        "Checking",
+        "House Value",
+    ]
+    assert window.transaction_pages[0].account.name == "Checking"
+    assert window.transaction_pages[1].account.name == "House Value"
+
+    window.nav.setCurrentRow(4)
+
+    assert window.stack.currentWidget().account.name == "House Value"
 
 
 def test_add_account_button_follows_account_entries():

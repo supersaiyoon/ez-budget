@@ -81,6 +81,7 @@ class MainWindow(QMainWindow):
                 closed=bool(account_row["closed"]),
             )
             self.accounts.append(account)
+        self.accounts.sort(key=lambda account: not account.on_budget)
 
         self.closed_accounts = []
         for account_row in accounts.list_closed_accounts(self.con):
@@ -222,20 +223,31 @@ class MainWindow(QMainWindow):
             on_budget=bool(account_row["on_budget"]),
             closed=bool(account_row["closed"]),
         )
-        self.accounts.append(account)
+        if account.on_budget:
+            account_position = sum(
+                existing_account.on_budget
+                for existing_account in self.accounts
+            )
+        else:
+            account_position = len(self.accounts)
+        self.accounts.insert(account_position, account)
 
-        account_index = len(self.accounts) + 1
+        page_index = account_position + 2
         page = transactions_page.TransactionsPage(
             account,
             self.category_names(),
         )
-        self.transaction_pages.append(page)
-        self.stack.insertWidget(account_index, page)
+        self.transaction_pages.insert(account_position, page)
+        self.stack.insertWidget(page_index, page)
 
         nav_item = QListWidgetItem(account.name)
         nav_item.setSizeHint(nav_item.sizeHint())
-        nav_item.setData(Qt.ItemDataRole.UserRole, account_index)
-        self.nav.insertItem(account_index + 1, nav_item)
+        self.nav.blockSignals(True)
+        self.nav.insertItem(account_position + 3, nav_item)
+        for position in range(len(self.accounts)):
+            account_item = self.nav.item(position + 3)
+            account_item.setData(Qt.ItemDataRole.UserRole, position + 2)
+        self.nav.blockSignals(False)
 
     def add_master_category(self, name):
         if categories.get_master_category_by_name(self.con, name) is not None:
