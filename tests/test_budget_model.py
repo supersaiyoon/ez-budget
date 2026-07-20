@@ -238,6 +238,7 @@ def test_transaction_amounts_from_cents_keeps_zero_in_both_fields():
 def test_transaction_from_database_row_maps_outgoing_transaction():
     transaction_row = {
         "id": 17,
+        "budget_category_id": 23,
         "transaction_date": "2026-07-13",
         "payee_name": "Grocery Store",
         "category_name": "Groceries",
@@ -256,11 +257,13 @@ def test_transaction_from_database_row_maps_outgoing_transaction():
     assert transaction.incoming == Decimal("0.00")
     assert transaction.cleared is True
     assert transaction.database_id == 17
+    assert transaction.category_database_id == 23
 
 
 def test_transaction_from_database_row_maps_incoming_transaction():
     transaction_row = {
         "id": 18,
+        "budget_category_id": 24,
         "transaction_date": "2026-07-14",
         "payee_name": "Online Return",
         "category_name": "Clothing",
@@ -286,3 +289,4 @@ def test_new_transaction_starts_without_database_id():
     )
 
     assert transaction.database_id is None
+    assert transaction.category_database_id is None

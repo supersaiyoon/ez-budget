@@ -50,6 +50,7 @@ def list_transactions(con, account_id):
         SELECT
             transactions.id,
             transactions.account_id,
+            transactions.budget_category_id,
             transactions.transaction_date,
             transactions.notes,
             transactions.amount,

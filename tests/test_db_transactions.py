@@ -122,6 +122,7 @@ def test_list_transactions_returns_payee_and_category_names():
 
     assert transaction_rows[0]["payee_name"] == "Grocery Store"
     assert transaction_rows[0]["category_name"] == "Groceries"
+    assert transaction_rows[0]["budget_category_id"] == category["id"]
 
 
 def test_list_transactions_returns_notes():

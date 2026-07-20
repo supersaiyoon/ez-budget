@@ -96,6 +96,8 @@ class Transaction:
     cleared: bool = False
     # SQLite row identity for future transaction updates
     database_id: int | None = None
+    # Selected budget category identity avoids ambiguous duplicate names
+    category_database_id: int | None = None
 
 
 def transaction_amount_in_cents(transaction):
@@ -128,6 +130,7 @@ def transaction_from_database_row(transaction_row):
         incoming=incoming,
         cleared=bool(transaction_row["cleared"]),
         database_id=transaction_row["id"],
+        category_database_id=transaction_row["budget_category_id"],
     )
 
 
