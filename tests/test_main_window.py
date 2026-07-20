@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
-from db import accounts, categories, database
+from db import accounts, categories, database, payees, transactions
 from ui.main_window import AccountDialog, MainWindow
 
 
@@ -38,6 +38,41 @@ def test_new_window_loads_saved_account_details(tmp_path):
     assert loaded_account.database_id == saved_account["id"]
     assert loaded_account.on_budget is False
     assert loaded_account.closed is False
+
+
+def test_new_window_loads_saved_transactions_into_account(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    checking = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+        "weekly groceries",
+        cleared=True,
+    )
+    con.close()
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+
+    window = MainWindow(db_path)
+    loaded_transaction = window.accounts[0].transactions[0]
+
+    assert loaded_transaction.date == "2026-07-13"
+    assert loaded_transaction.payee == "Grocery Store"
+    assert loaded_transaction.category == "Groceries"
+    assert loaded_transaction.notes == "weekly groceries"
+    assert loaded_transaction.outgoing == Decimal("42.50")
+    assert loaded_transaction.incoming == Decimal("0.00")
+    assert loaded_transaction.cleared is True
+    assert window.transaction_pages[0].table.rowCount() == 2
 
 
 def test_new_window_loads_closed_accounts_separately(tmp_path):

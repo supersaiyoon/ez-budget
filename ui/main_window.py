@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
-from db import accounts, categories, database
+from db import accounts, categories, database, transactions
 from ui import budget_page, reports_page, styles, transactions_page
 
 
@@ -80,6 +80,10 @@ class MainWindow(QMainWindow):
                 on_budget=bool(account_row["on_budget"]),
                 closed=bool(account_row["closed"]),
             )
+            for transaction_row in transactions.list_transactions(self.con, account.database_id):
+                account.transactions.append(
+                    budget_model.transaction_from_database_row(transaction_row)
+                )
             self.accounts.append(account)
         self.accounts.sort(key=lambda account: not account.on_budget)
 
