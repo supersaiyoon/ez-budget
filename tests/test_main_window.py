@@ -48,7 +48,7 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")
     category = categories.add_budget_category(con, master_category["id"], "Groceries")
-    transactions.add_transaction(
+    saved_transaction = transactions.add_transaction(
         con,
         checking["id"],
         payee["id"],
@@ -72,6 +72,7 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert loaded_transaction.outgoing == Decimal("42.50")
     assert loaded_transaction.incoming == Decimal("0.00")
     assert loaded_transaction.cleared is True
+    assert loaded_transaction.database_id == saved_transaction["id"]
     assert window.transaction_pages[0].table.rowCount() == 2
 
 

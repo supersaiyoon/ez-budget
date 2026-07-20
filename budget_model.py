@@ -94,6 +94,8 @@ class Transaction:
     outgoing: Decimal = Decimal("0.00")
     incoming: Decimal = Decimal("0.00")
     cleared: bool = False
+    # SQLite row identity for future transaction updates
+    database_id: int | None = None
 
 
 def transaction_amount_in_cents(transaction):
@@ -125,6 +127,7 @@ def transaction_from_database_row(transaction_row):
         outgoing=outgoing,
         incoming=incoming,
         cleared=bool(transaction_row["cleared"]),
+        database_id=transaction_row["id"],
     )
 
 
