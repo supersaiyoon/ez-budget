@@ -233,3 +233,42 @@ def test_transaction_amounts_from_cents_keeps_zero_in_both_fields():
 
     assert outgoing == Decimal("0.00")
     assert incoming == Decimal("0.00")
+
+
+def test_transaction_from_database_row_maps_outgoing_transaction():
+    transaction_row = {
+        "transaction_date": "2026-07-13",
+        "payee_name": "Grocery Store",
+        "category_name": "Groceries",
+        "notes": "weekly groceries",
+        "amount": -4250,
+        "cleared": 1,
+    }
+
+    transaction = budget_model.transaction_from_database_row(transaction_row)
+
+    assert transaction.date == "2026-07-13"
+    assert transaction.payee == "Grocery Store"
+    assert transaction.category == "Groceries"
+    assert transaction.notes == "weekly groceries"
+    assert transaction.outgoing == Decimal("42.50")
+    assert transaction.incoming == Decimal("0.00")
+    assert transaction.cleared is True
+
+
+def test_transaction_from_database_row_maps_incoming_transaction():
+    transaction_row = {
+        "transaction_date": "2026-07-14",
+        "payee_name": "Online Return",
+        "category_name": "Clothing",
+        "notes": None,
+        "amount": 3499,
+        "cleared": 0,
+    }
+
+    transaction = budget_model.transaction_from_database_row(transaction_row)
+
+    assert transaction.notes == ""
+    assert transaction.outgoing == Decimal("0.00")
+    assert transaction.incoming == Decimal("34.99")
+    assert transaction.cleared is False

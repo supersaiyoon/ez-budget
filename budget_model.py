@@ -115,6 +115,19 @@ def transaction_amounts_from_cents(amount_in_cents):
     return Decimal("0.00"), Decimal("0.00")
 
 
+def transaction_from_database_row(transaction_row):
+    outgoing, incoming = transaction_amounts_from_cents(transaction_row["amount"])
+    return Transaction(
+        date=transaction_row["transaction_date"],
+        payee=transaction_row["payee_name"],
+        category=transaction_row["category_name"],
+        notes=transaction_row["notes"] or "",
+        outgoing=outgoing,
+        incoming=incoming,
+        cleared=bool(transaction_row["cleared"]),
+    )
+
+
 @dataclass
 class Account:
     name: str
