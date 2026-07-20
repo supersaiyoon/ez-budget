@@ -212,3 +212,24 @@ def test_transaction_amount_in_cents_keeps_incoming_positive():
     amount = budget_model.transaction_amount_in_cents(transaction)
 
     assert amount == 3499
+
+
+def test_transaction_amounts_from_cents_makes_negative_amount_outgoing():
+    outgoing, incoming = budget_model.transaction_amounts_from_cents(-12345)
+
+    assert outgoing == Decimal("123.45")
+    assert incoming == Decimal("0.00")
+
+
+def test_transaction_amounts_from_cents_makes_positive_amount_incoming():
+    outgoing, incoming = budget_model.transaction_amounts_from_cents(12345)
+
+    assert outgoing == Decimal("0.00")
+    assert incoming == Decimal("123.45")
+
+
+def test_transaction_amounts_from_cents_keeps_zero_in_both_fields():
+    outgoing, incoming = budget_model.transaction_amounts_from_cents(0)
+
+    assert outgoing == Decimal("0.00")
+    assert incoming == Decimal("0.00")

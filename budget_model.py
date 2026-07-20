@@ -106,6 +106,15 @@ def transaction_amount_in_cents(transaction):
     return int(cents)
 
 
+def transaction_amounts_from_cents(amount_in_cents):
+    amount = Decimal(abs(amount_in_cents)) / Decimal("100")
+    if amount_in_cents < 0:
+        return amount, Decimal("0.00")
+    if amount_in_cents > 0:
+        return Decimal("0.00"), amount
+    return Decimal("0.00"), Decimal("0.00")
+
+
 @dataclass
 class Account:
     name: str
