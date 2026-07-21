@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
         for account in self.accounts:
             page = transactions_page.TransactionsPage(
                 account,
-                self.category_names(),
+                categories.list_transaction_categories(self.con),
             )
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
@@ -268,7 +268,7 @@ class MainWindow(QMainWindow):
         page_index = account_position + 2
         page = transactions_page.TransactionsPage(
             account,
-            self.category_names(),
+            categories.list_transaction_categories(self.con),
         )
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)
@@ -337,11 +337,3 @@ class MainWindow(QMainWindow):
                 break
 
         self.budget_page.refresh()
-
-    def category_names(self):
-        # Transaction categories sourced from budget structure to avoid drift
-        names = ["Income"]
-        for category in self.budgets[0].master_categories:
-            for subcategory in category.subcategories:
-                names.append(subcategory.name)
-        return names

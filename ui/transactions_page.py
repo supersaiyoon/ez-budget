@@ -20,12 +20,12 @@ TRANSACTION_COLUMNS = ["Date", "Payee", "Category", "Notes", "Outgoing", "Incomi
 
 
 class TransactionsPage(QWidget):
-    def __init__(self, account, category_names):
+    def __init__(self, account, category_rows):
         super().__init__()
         # Shared account object so edits update the main window's sample state
         self.account = account
-        # Budget-derived categories keep transaction choices aligned with budget rows
-        self.category_names = category_names
+        # Joined rows retain category ids and their parent display groups
+        self.category_rows = category_rows
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -92,10 +92,11 @@ class TransactionsPage(QWidget):
         self._set_new_transaction_input(row, 1)
 
         category = QComboBox()
-        category.setEditable(True)
-        category.addItems(["", *self.category_names])
+        self._populate_category_input(category)
         # Category alone can be useful for starting an incomplete transaction
-        category.currentTextChanged.connect(lambda value: self.create_transaction(category=value.strip()))
+        category.currentIndexChanged.connect(
+            lambda: self.create_transaction_from_category(category)
+        )
         self.table.setCellWidget(row, 2, category)
 
         self._set_new_transaction_input(row, 3)
@@ -150,13 +151,14 @@ class TransactionsPage(QWidget):
 
         # Missing fields allowed so quick entry can start from any column
         transaction = Transaction(
-            values.get("date", ""),
-            values.get("payee", ""),
-            values.get("category", ""),
-            values.get("notes", ""),
-            values.get("outgoing", parse_money("0")),
-            values.get("incoming", parse_money("0")),
-            values.get("cleared", False),
+            date=values.get("date", ""),
+            payee=values.get("payee", ""),
+            category=values.get("category", ""),
+            notes=values.get("notes", ""),
+            outgoing=values.get("outgoing", parse_money("0")),
+            incoming=values.get("incoming", parse_money("0")),
+            cleared=values.get("cleared", False),
+            category_database_id=values.get("category_database_id"),
         )
         self.account.transactions.append(transaction)
         # Full refresh replaces the blank row and updates balances together
@@ -170,12 +172,61 @@ class TransactionsPage(QWidget):
 
     def _set_category_input(self, row, transaction):
         category = QComboBox()
-        category.setEditable(True)
-        # Editable combo allows new categories without blocking sample workflows
-        category.addItems(self.category_names)
-        category.setCurrentText(transaction.category)
-        category.currentTextChanged.connect(lambda value: setattr(transaction, "category", value.strip()))
+        self._populate_category_input(category)
+        # Stable id restores the correct choice even when names are duplicated
+        for index in range(category.count()):
+            category_option = category.itemData(index)
+            if category_option is None:
+                continue
+            if category_option["database_id"] == transaction.category_database_id:
+                category.setCurrentIndex(index)
+                break
+        category.currentIndexChanged.connect(
+            lambda: self.update_transaction_category(transaction, category)
+        )
         self.table.setCellWidget(row, 2, category)
+
+    def _populate_category_input(self, category):
+        # Blank row supports incomplete entry before a category is selected
+        category.addItem("", None)
+        current_master_name = None
+        for category_row in self.category_rows:
+            master_name = category_row["master_category_name"]
+            if master_name != current_master_name:
+                # Disabled bold rows visually group choices without being selectable
+                category.addItem(master_name, None)
+                header_item = category.model().item(category.count() - 1)
+                header_item.setEnabled(False)
+                header_font = header_item.font()
+                header_font.setBold(True)
+                header_item.setFont(header_font)
+                current_master_name = master_name
+
+            category.addItem(
+                category_row["category_name"],
+                {
+                    "database_id": category_row["id"],
+                    "name": category_row["category_name"],
+                },
+            )
+
+    def create_transaction_from_category(self, category_input):
+        category_option = category_input.currentData()
+        if category_option is None:
+            return
+        self.create_transaction(
+            category=category_option["name"],
+            category_database_id=category_option["database_id"],
+        )
+
+    def update_transaction_category(self, transaction, category_input):
+        category_option = category_input.currentData()
+        if category_option is None:
+            transaction.category = ""
+            transaction.category_database_id = None
+            return
+        transaction.category = category_option["name"]
+        transaction.category_database_id = category_option["database_id"]
 
     def _set_money_input(self, row, column, value, apply_value):
         # Zero shown blank so empty money cells stay quick to scan

@@ -48,6 +48,8 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")
     category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    savings = categories.add_master_category(con, "Savings")
+    categories.add_budget_category(con, savings["id"], "Vacation")
     saved_transaction = transactions.add_transaction(
         con,
         checking["id"],
@@ -74,6 +76,19 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert loaded_transaction.cleared is True
     assert loaded_transaction.database_id == saved_transaction["id"]
     assert window.transaction_pages[0].table.rowCount() == 2
+    category_input = window.transaction_pages[0].table.cellWidget(0, 2)
+    assert [category_input.itemText(index) for index in range(category_input.count())] == [
+        "",
+        "Everyday Expenses",
+        "Groceries",
+        "Savings",
+        "Vacation",
+    ]
+    # Master rows group the list but cannot become a transaction category
+    assert category_input.model().item(1).isEnabled() is False
+    assert category_input.model().item(3).isEnabled() is False
+    assert category_input.currentText() == "Groceries"
+    assert category_input.currentData()["database_id"] == category["id"]
 
 
 def test_new_window_loads_closed_accounts_separately(tmp_path):
