@@ -141,6 +141,52 @@ def test_save_new_transaction_waits_for_required_fields():
     assert transactions.has_transactions(window.con) is False
 
 
+def test_grid_transaction_is_saved_and_reloaded(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    con.close()
+
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    page = window.transaction_pages[0]
+
+    # Blank date editor creates partial transaction without saving it yet
+    date_input = page.table.cellWidget(0, 0)
+    date_input.setText("2026-07-21")
+    date_input.editingFinished.emit()
+    transaction = window.accounts[0].transactions[0]
+    assert transaction.database_id is None
+
+    # Remaining required editors complete transaction and trigger persistence
+    payee_input = page.table.cellWidget(0, 1)
+    payee_input.setText("Grocery Store")
+    payee_input.editingFinished.emit()
+    category_input = page.table.cellWidget(0, 2)
+    category_input.setCurrentIndex(category_input.findText("Groceries"))
+    outgoing_input = page.table.cellWidget(0, 4)
+    outgoing_input.setText("42.50")
+    outgoing_input.editingFinished.emit()
+
+    saved_database_id = transaction.database_id
+    assert saved_database_id is not None
+    window.close()
+    window.con.close()
+
+    # Fresh window must rebuild same transaction and account balance from SQLite
+    reopened_window = MainWindow(db_path)
+    reloaded_transaction = reopened_window.accounts[0].transactions[0]
+
+    assert reloaded_transaction.database_id == saved_database_id
+    assert reloaded_transaction.date == "2026-07-21"
+    assert reloaded_transaction.payee == "Grocery Store"
+    assert reloaded_transaction.category_database_id == category["id"]
+    assert reloaded_transaction.outgoing == Decimal("42.50")
+    assert reopened_window.accounts[0].working_balance == Decimal("-42.50")
+
+
 def test_new_window_loads_closed_accounts_separately(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
