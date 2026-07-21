@@ -71,6 +71,29 @@ def test_list_budget_categories_returns_visible_categories_for_master_in_id_orde
     assert [category["name"] for category in category_rows] == ["Groceries", "Gas"]
 
 
+def test_list_transaction_categories_joins_visible_categories_with_their_masters():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    # Duplicate names verify the parent join while hidden rows verify filtering
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    household = categories.add_master_category(con, "Household")
+    hidden_master = categories.add_master_category(con, "Hidden", hidden=True)
+    expense_category = categories.add_budget_category(con, expenses["id"], "Other")
+    household_category = categories.add_budget_category(con, household["id"], "Other")
+    categories.add_budget_category(con, household["id"], "Hidden Item", hidden=True)
+    categories.add_budget_category(con, hidden_master["id"], "Hidden Master Item")
+
+    category_rows = categories.list_transaction_categories(con)
+
+    assert [
+        (row["id"], row["master_category_name"], row["category_name"])
+        for row in category_rows
+    ] == [
+        (expense_category["id"], "Everyday Expenses", "Other"),
+        (household_category["id"], "Household", "Other"),
+    ]
+
+
 def test_get_budget_category_by_name_returns_matching_category():
     con = database.connect(":memory:")
     database.initialize_database(con)

@@ -61,6 +61,24 @@ def list_budget_categories(con, master_category_id):
     ).fetchall()
 
 
+def list_transaction_categories(con):
+    # Parent names distinguish same-named categories in transaction dropdowns
+    return con.execute(
+        """
+        SELECT
+            budget_categories.id,
+            master_budget_categories.name AS master_category_name,
+            budget_categories.name AS category_name
+        FROM budget_categories
+        JOIN master_budget_categories
+            ON master_budget_categories.id = budget_categories.master_budget_category_id
+        WHERE budget_categories.hidden = FALSE
+          AND master_budget_categories.hidden = FALSE
+        ORDER BY master_budget_categories.id, budget_categories.id
+        """
+    ).fetchall()
+
+
 def get_budget_category_by_name(con, master_category_id, name):
     return con.execute(
         """
