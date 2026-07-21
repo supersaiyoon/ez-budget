@@ -44,6 +44,52 @@ def add_transaction(
     return row
 
 
+def update_transaction(
+    con,
+    transaction_id,
+    payee_id,
+    budget_category_id,
+    transaction_date,
+    amount,
+    notes=None,
+    cleared=False,
+):
+    # Full row update keeps persisted transaction aligned with edited model
+    row = con.execute(
+        """
+        UPDATE transactions
+        SET
+            payee_id = ?,
+            budget_category_id = ?,
+            transaction_date = ?,
+            amount = ?,
+            notes = ?,
+            cleared = ?
+        WHERE id = ?
+        RETURNING
+            id,
+            account_id,
+            payee_id,
+            budget_category_id,
+            transaction_date,
+            amount,
+            notes,
+            cleared
+        """,
+        (
+            payee_id,
+            budget_category_id,
+            transaction_date,
+            amount,
+            notes,
+            cleared,
+            transaction_id,
+        ),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def list_transactions(con, account_id):
     return con.execute(
         """

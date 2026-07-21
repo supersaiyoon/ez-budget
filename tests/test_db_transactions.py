@@ -33,6 +33,46 @@ def test_add_transaction_inserts_transaction_row(con):
     assert transaction["cleared"] == False
 
 
+def test_update_transaction_replaces_editable_fields(con):
+    account, payee, category = _create_transaction_dependencies(con)
+    transaction = transactions.add_transaction(
+        con,
+        account["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+        "weekly groceries",
+    )
+    updated_payee = payees.add_payee(con, "Fuel Stop")
+    updated_master = categories.add_master_category(con, "Transportation")
+    updated_category = categories.add_budget_category(
+        con,
+        updated_master["id"],
+        "Gas",
+    )
+
+    updated_transaction = transactions.update_transaction(
+        con,
+        transaction["id"],
+        updated_payee["id"],
+        updated_category["id"],
+        "2026-07-14",
+        -5899,
+        "fuel purchase",
+        cleared=True,
+    )
+
+    assert updated_transaction["id"] == transaction["id"]
+    assert updated_transaction["account_id"] == account["id"]
+    assert updated_transaction["payee_id"] == updated_payee["id"]
+    assert updated_transaction["budget_category_id"] == updated_category["id"]
+    assert updated_transaction["transaction_date"] == "2026-07-14"
+    assert updated_transaction["amount"] == -5899
+    assert updated_transaction["notes"] == "fuel purchase"
+    assert updated_transaction["cleared"] == True
+
+
 def test_list_transactions_returns_only_account_rows(con):
     checking, payee, category = _create_transaction_dependencies(con)
     credit_card = accounts.create_account(con, "Credit Card")
