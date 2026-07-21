@@ -114,17 +114,19 @@ def list_transactions(con, account_id):
     ).fetchall()
 
 
-def list_category_transaction_totals(con):
-    # Signed totals preserve outgoing and incoming database direction
+def list_category_transaction_totals(con, start_date, end_date):
+    # Signed totals preserve database direction within inclusive date range
     return con.execute(
         """
         SELECT
             budget_category_id,
             SUM(amount) AS total_amount
         FROM transactions
+        WHERE transaction_date BETWEEN ? AND ?
         GROUP BY budget_category_id
         ORDER BY budget_category_id
-        """
+        """,
+        (start_date, end_date),
     ).fetchall()
 
 

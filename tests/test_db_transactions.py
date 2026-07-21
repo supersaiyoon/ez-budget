@@ -170,14 +170,14 @@ def test_list_transactions_returns_notes(con):
     assert transaction_rows[0]["notes"] == "weekly groceries"
 
 
-def test_list_category_transaction_totals_sums_signed_amounts(con):
+def test_list_category_transaction_totals_sums_amounts_within_date_range(con):
     checking, payee, category = _create_transaction_dependencies(con)
     transactions.add_transaction(
         con,
         checking["id"],
         payee["id"],
         category["id"],
-        "2026-07-13",
+        "2026-07-01",
         -4250,
     )
     transactions.add_transaction(
@@ -185,11 +185,23 @@ def test_list_category_transaction_totals_sums_signed_amounts(con):
         checking["id"],
         payee["id"],
         category["id"],
-        "2026-07-14",
+        "2026-07-31",
         1000,
     )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-08-01",
+        -2000,
+    )
 
-    category_totals = transactions.list_category_transaction_totals(con)
+    category_totals = transactions.list_category_transaction_totals(
+        con,
+        "2026-07-01",
+        "2026-07-31",
+    )
 
     assert len(category_totals) == 1
     assert category_totals[0]["budget_category_id"] == category["id"]
