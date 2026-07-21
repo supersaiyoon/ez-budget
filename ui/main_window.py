@@ -173,9 +173,11 @@ class MainWindow(QMainWindow):
 
         self.transaction_pages = []
         for account in self.accounts:
+            # Account pages report edits so controller can persist complete rows
             page = transactions_page.TransactionsPage(
                 account,
                 categories.list_transaction_categories(self.con),
+                self.save_new_transaction,
             )
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
@@ -266,9 +268,11 @@ class MainWindow(QMainWindow):
         self.accounts.insert(account_position, account)
 
         page_index = account_position + 2
+        # Runtime-created pages use same persistence callback as startup pages
         page = transactions_page.TransactionsPage(
             account,
             categories.list_transaction_categories(self.con),
+            self.save_new_transaction,
         )
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)

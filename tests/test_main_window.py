@@ -35,6 +35,10 @@ def test_new_window_loads_saved_account_details(tmp_path):
     assert loaded_account.database_id == saved_account["id"]
     assert loaded_account.on_budget is False
     assert loaded_account.closed is False
+    assert (
+        window.transaction_pages[0].on_transaction_changed
+        == window.save_new_transaction
+    )
 
 
 def test_new_window_loads_saved_transactions_into_account(tmp_path):
@@ -234,6 +238,10 @@ def test_add_first_account_keeps_account_header():
     ]
     assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
+    assert (
+        window.transaction_pages[0].on_transaction_changed
+        == window.save_new_transaction
+    )
 
 
 def test_add_later_account_keeps_reports_before_account_pages():
