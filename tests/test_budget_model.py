@@ -235,6 +235,18 @@ def test_transaction_amounts_from_cents_keeps_zero_in_both_fields():
     assert incoming == Decimal("0.00")
 
 
+def test_transaction_total_to_spending_makes_expense_positive():
+    spending = budget_model.transaction_total_to_spending(-4250)
+
+    assert spending == Decimal("42.50")
+
+
+def test_transaction_total_to_spending_accounts_for_refund():
+    spending = budget_model.transaction_total_to_spending(-3250)
+
+    assert spending == Decimal("32.50")
+
+
 def test_transaction_from_database_row_maps_outgoing_transaction():
     transaction_row = {
         "id": 17,
