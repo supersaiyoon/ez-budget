@@ -74,7 +74,7 @@ def test_list_budget_categories_returns_visible_categories_for_master_in_id_orde
 def test_list_transaction_categories_joins_visible_categories_with_their_masters():
     con = database.connect(":memory:")
     database.initialize_database(con)
-    # Duplicate names verify the parent join while hidden rows verify filtering
+    # Duplicate names verify parent join while hidden rows verify filtering
     expenses = categories.add_master_category(con, "Everyday Expenses")
     household = categories.add_master_category(con, "Household")
     hidden_master = categories.add_master_category(con, "Hidden", hidden=True)
