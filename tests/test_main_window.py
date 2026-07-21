@@ -37,7 +37,7 @@ def test_new_window_loads_saved_account_details(tmp_path):
     assert loaded_account.closed is False
     assert (
         window.transaction_pages[0].on_transaction_changed
-        == window.save_new_transaction
+        == window.save_transaction
     )
 
 
@@ -90,7 +90,7 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert category_input.currentData()["database_id"] == category["id"]
 
 
-def test_save_new_transaction_inserts_once_and_retains_database_id():
+def test_save_transaction_inserts_then_updates_same_database_row():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
     master_category_id = window.budgets[0].master_categories[0].database_id
@@ -108,22 +108,28 @@ def test_save_new_transaction_inserts_once_and_retains_database_id():
         category_database_id=category_id,
     )
 
-    first_save = window.save_new_transaction(window.accounts[0], transaction)
-    second_save = window.save_new_transaction(window.accounts[0], transaction)
+    first_save = window.save_transaction(window.accounts[0], transaction)
+    transaction.payee = "Fuel Stop"
+    transaction.notes = "fuel purchase"
+    transaction.outgoing = Decimal("58.99")
+    transaction.cleared = True
+    second_save = window.save_transaction(window.accounts[0], transaction)
     saved_rows = transactions.list_transactions(
         window.con,
         window.accounts[0].database_id,
     )
 
     assert first_save is True
-    assert second_save is False
+    assert second_save is True
     assert transaction.database_id == saved_rows[0]["id"]
-    assert saved_rows[0]["payee_name"] == "Grocery Store"
-    assert saved_rows[0]["amount"] == -4250
+    assert saved_rows[0]["payee_name"] == "Fuel Stop"
+    assert saved_rows[0]["amount"] == -5899
+    assert saved_rows[0]["notes"] == "fuel purchase"
+    assert saved_rows[0]["cleared"] == True
     assert len(saved_rows) == 1
 
 
-def test_save_new_transaction_waits_for_required_fields():
+def test_save_transaction_waits_for_required_fields():
     window = MainWindow(":memory:")
     window.add_account("Checking")
     transaction = budget_model.Transaction(
@@ -134,7 +140,7 @@ def test_save_new_transaction_waits_for_required_fields():
         outgoing=Decimal("42.50"),
     )
 
-    saved = window.save_new_transaction(window.accounts[0], transaction)
+    saved = window.save_transaction(window.accounts[0], transaction)
 
     assert saved is False
     assert transaction.database_id is None
@@ -286,7 +292,7 @@ def test_add_first_account_keeps_account_header():
     assert window.transaction_pages[0].account is window.accounts[0]
     assert (
         window.transaction_pages[0].on_transaction_changed
-        == window.save_new_transaction
+        == window.save_transaction
     )
 
 

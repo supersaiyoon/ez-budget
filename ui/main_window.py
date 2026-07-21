@@ -177,7 +177,7 @@ class MainWindow(QMainWindow):
             page = transactions_page.TransactionsPage(
                 account,
                 categories.list_transaction_categories(self.con),
-                self.save_new_transaction,
+                self.save_transaction,
             )
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
@@ -272,7 +272,7 @@ class MainWindow(QMainWindow):
         page = transactions_page.TransactionsPage(
             account,
             categories.list_transaction_categories(self.con),
-            self.save_new_transaction,
+            self.save_transaction,
         )
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)
@@ -318,11 +318,7 @@ class MainWindow(QMainWindow):
         for page in self.transaction_pages:
             page.set_category_rows(category_rows)
 
-    def save_new_transaction(self, account, transaction):
-        # A retained row id means this transaction has already been inserted
-        if transaction.database_id is not None:
-            return False
-
+    def save_transaction(self, account, transaction):
         # Partial grid rows remain in memory until every required relationship exists
         transaction.date = transaction.date.strip()
         transaction.payee = transaction.payee.strip()
@@ -334,24 +330,41 @@ class MainWindow(QMainWindow):
         ):
             return False
 
-        # Exactly one money column must supply the signed database amount
+        # Exactly one money column supplies signed database amount
         if (transaction.outgoing == 0) == (transaction.incoming == 0):
             return False
 
-        # Resolve the typed payee before inserting all required relationships
+        # Resolve typed payee before writing required relationships
         payee_row = payees.get_or_create_payee(self.con, transaction.payee)
-        transaction_row = transactions.add_transaction(
+        amount_in_cents = budget_model.transaction_amount_in_cents(transaction)
+
+        if transaction.database_id is None:
+            # Missing row id selects insert path for new transaction
+            transaction_row = transactions.add_transaction(
+                self.con,
+                account.database_id,
+                payee_row["id"],
+                transaction.category_database_id,
+                transaction.date,
+                amount_in_cents,
+                transaction.notes or None,
+                transaction.cleared,
+            )
+            # Retained id sends later cell changes through update path
+            transaction.database_id = transaction_row["id"]
+            return True
+
+        # Existing row id updates editable values without changing owning account
+        transactions.update_transaction(
             self.con,
-            account.database_id,
+            transaction.database_id,
             payee_row["id"],
             transaction.category_database_id,
             transaction.date,
-            budget_model.transaction_amount_in_cents(transaction),
+            amount_in_cents,
             transaction.notes or None,
             transaction.cleared,
         )
-        # Retaining the new id prevents later cell events from inserting duplicates
-        transaction.database_id = transaction_row["id"]
         return True
 
     def add_subcategory(self, master_category_id, name):
