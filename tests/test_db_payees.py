@@ -1,9 +1,7 @@
-from db import database, payees
+from db import payees
 
 
-def test_add_payee_inserts_payee_row():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_add_payee_inserts_payee_row(con):
 
     payee = payees.add_payee(con, "Grocery Store")
 
@@ -11,9 +9,7 @@ def test_add_payee_inserts_payee_row():
     assert payee["name"] == "Grocery Store"
 
 
-def test_get_payee_by_name_returns_matching_payee():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_get_payee_by_name_returns_matching_payee(con):
     payees.add_payee(con, "Grocery Store")
     fuel_stop = payees.add_payee(con, "Fuel Stop")
 
@@ -23,9 +19,7 @@ def test_get_payee_by_name_returns_matching_payee():
     assert payee["name"] == "Fuel Stop"
 
 
-def test_get_or_create_payee_reuses_existing_payee():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_get_or_create_payee_reuses_existing_payee(con):
     existing_payee = payees.add_payee(con, "Grocery Store")
 
     payee = payees.get_or_create_payee(con, "grocery store")
@@ -34,9 +28,7 @@ def test_get_or_create_payee_reuses_existing_payee():
     assert con.execute("SELECT COUNT(*) FROM payees").fetchone()[0] == 1
 
 
-def test_get_or_create_payee_adds_missing_payee():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_get_or_create_payee_adds_missing_payee(con):
 
     payee = payees.get_or_create_payee(con, "Fuel Stop")
 

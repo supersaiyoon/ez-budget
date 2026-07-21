@@ -1,9 +1,7 @@
-from db import accounts, categories, database, payees, transactions
+from db import accounts, categories, payees, transactions
 
 
-def test_add_transaction_inserts_transaction_row():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_add_transaction_inserts_transaction_row(con):
     account = accounts.create_account(con, "Checking")
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")
@@ -29,9 +27,7 @@ def test_add_transaction_inserts_transaction_row():
     assert transaction["cleared"] == False
 
 
-def test_list_transactions_returns_only_account_rows():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_list_transactions_returns_only_account_rows(con):
     checking = accounts.create_account(con, "Checking")
     credit_card = accounts.create_account(con, "Credit Card")
     payee = payees.add_payee(con, "Grocery Store")
@@ -68,9 +64,7 @@ def test_list_transactions_returns_only_account_rows():
     assert len(transaction_rows) == 2
 
 
-def test_list_transactions_returns_rows_in_date_order():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_list_transactions_returns_rows_in_date_order(con):
     checking = accounts.create_account(con, "Checking")
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")
@@ -99,9 +93,7 @@ def test_list_transactions_returns_rows_in_date_order():
     assert transaction_rows[1]["transaction_date"] == "2026-07-13"
 
 
-def test_list_transactions_returns_payee_and_category_names():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_list_transactions_returns_payee_and_category_names(con):
 
     # Set up db with transaction that has payee and category
     checking = accounts.create_account(con, "Checking")
@@ -125,9 +117,7 @@ def test_list_transactions_returns_payee_and_category_names():
     assert transaction_rows[0]["budget_category_id"] == category["id"]
 
 
-def test_list_transactions_returns_notes():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_list_transactions_returns_notes(con):
     checking = accounts.create_account(con, "Checking")
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")
@@ -148,9 +138,7 @@ def test_list_transactions_returns_notes():
     assert transaction_rows[0]["notes"] == "weekly groceries"
 
 
-def test_has_transactions_reports_whether_transactions_exist():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_has_transactions_reports_whether_transactions_exist(con):
 
     assert transactions.has_transactions(con) == False
 

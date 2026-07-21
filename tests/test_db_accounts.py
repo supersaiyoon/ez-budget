@@ -1,10 +1,7 @@
-from db import accounts, database
+from db import accounts
 
 
-def test_create_account_inserts_account_row():
-    # In-memory db
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_create_account_inserts_account_row(con):
 
     account_name = "Checking"
 
@@ -18,9 +15,7 @@ def test_create_account_inserts_account_row():
     assert account["closed"] == False
 
 
-def test_list_accounts_excludes_closed_accounts():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_list_accounts_excludes_closed_accounts(con):
 
     checking = accounts.create_account(con, "Checking")
     accounts.create_account(con, "Credit Card")
@@ -32,9 +27,7 @@ def test_list_accounts_excludes_closed_accounts():
     assert [account["name"] for account in account_rows] == ["Credit Card"]
 
 
-def test_list_closed_accounts_excludes_open_accounts():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_list_closed_accounts_excludes_open_accounts(con):
 
     checking = accounts.create_account(con, "Checking")
     accounts.create_account(con, "Credit Card")
@@ -47,9 +40,7 @@ def test_list_closed_accounts_excludes_open_accounts():
     assert account_rows[0]["closed"] == True
 
 
-def test_get_account_by_name_returns_matching_account():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_get_account_by_name_returns_matching_account(con):
     accounts.create_account(con, "Checking")
     credit_card = accounts.create_account(con, "Credit Card")
 
@@ -59,9 +50,7 @@ def test_get_account_by_name_returns_matching_account():
     assert account["name"] == "Credit Card"
 
 
-def test_has_accounts_reports_whether_accounts_exist():
-    con = database.connect(":memory:")
-    database.initialize_database(con)
+def test_has_accounts_reports_whether_accounts_exist(con):
 
     assert accounts.has_accounts(con) is False
 
