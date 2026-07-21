@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QCheckBox
 
 import budget_model
 from db import accounts, categories, database, payees, transactions
@@ -178,6 +179,13 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
 
     saved_database_id = transaction.database_id
     assert saved_database_id is not None
+
+    # Post-save checkbox change must update existing database row
+    cleared_container = page.table.cellWidget(0, 6)
+    cleared_input = cleared_container.findChild(QCheckBox)
+    cleared_input.setChecked(True)
+    assert transaction.cleared is True
+
     window.close()
     window.con.close()
 
@@ -190,7 +198,9 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     assert reloaded_transaction.payee == "Grocery Store"
     assert reloaded_transaction.category_database_id == category["id"]
     assert reloaded_transaction.outgoing == Decimal("42.50")
+    assert reloaded_transaction.cleared is True
     assert reopened_window.accounts[0].working_balance == Decimal("-42.50")
+    assert reopened_window.accounts[0].cleared_balance == Decimal("-42.50")
 
 
 def test_new_window_loads_closed_accounts_separately(tmp_path):
