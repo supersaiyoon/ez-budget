@@ -114,6 +114,20 @@ def list_transactions(con, account_id):
     ).fetchall()
 
 
+def list_category_transaction_totals(con):
+    # Signed totals preserve outgoing and incoming database direction
+    return con.execute(
+        """
+        SELECT
+            budget_category_id,
+            SUM(amount) AS total_amount
+        FROM transactions
+        GROUP BY budget_category_id
+        ORDER BY budget_category_id
+        """
+    ).fetchall()
+
+
 def has_transactions(con):
     row = con.execute("SELECT COUNT(*) FROM transactions").fetchone()
     return row[0] > 0
