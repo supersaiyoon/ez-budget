@@ -407,6 +407,8 @@ def test_add_subcategory_persists_and_updates_loaded_budgets():
     # Qt requires QApplication instance to create widgets
     _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
+    # Account-first setup verifies its existing page receives the later category
+    window.add_account("Checking")
     window.add_master_category("Everyday Expenses")
     master_category_id = window.budgets[0].master_categories[0].database_id
 
@@ -424,6 +426,12 @@ def test_add_subcategory_persists_and_updates_loaded_budgets():
     assert saved_subcategory["name"] == "Groceries"
     assert loaded_names == ["Groceries"] * len(window.budgets)
     assert loaded_ids == [saved_subcategory["id"]] * len(window.budgets)
+    category_input = window.transaction_pages[0].table.cellWidget(0, 2)
+    assert [category_input.itemText(index) for index in range(category_input.count())] == [
+        "",
+        "Everyday Expenses",
+        "Groceries",
+    ]
 
 
 def test_add_subcategory_rejects_duplicate_name_within_master():

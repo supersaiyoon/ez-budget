@@ -75,6 +75,11 @@ class TransactionsPage(QWidget):
             self._set_transaction_row(row, transaction)
         self._set_blank_row(len(self.account.transactions))
 
+    def set_category_rows(self, category_rows):
+        # Rebuild dropdowns when persistent category choices change at runtime
+        self.category_rows = category_rows
+        self.refresh()
+
     def _set_transaction_row(self, row, transaction):
         # Editors bind directly to transaction fields for immediate lightweight edits
         self._set_text_input(row, 0, transaction.date, lambda value: setattr(transaction, "date", value))
@@ -187,6 +192,7 @@ class TransactionsPage(QWidget):
         self.table.setCellWidget(row, 2, category)
 
     def _populate_category_input(self, category):
+        # Build one grouped list shared by saved rows and the blank entry row
         # Blank row supports incomplete entry before a category is selected
         category.addItem("", None)
         current_master_name = None
@@ -211,6 +217,7 @@ class TransactionsPage(QWidget):
             )
 
     def create_transaction_from_category(self, category_input):
+        # A blank-row selection starts a partial transaction with a stable category id
         category_option = category_input.currentData()
         if category_option is None:
             return
@@ -220,6 +227,7 @@ class TransactionsPage(QWidget):
         )
 
     def update_transaction_category(self, transaction, category_input):
+        # Keep the display name and database relationship synchronized after selection
         category_option = category_input.currentData()
         if category_option is None:
             transaction.category = ""

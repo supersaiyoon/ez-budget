@@ -308,6 +308,12 @@ class MainWindow(QMainWindow):
 
         self.budget_page.refresh()
 
+    def refresh_transaction_categories(self):
+        # Query once so every existing account page receives the same current choices
+        category_rows = categories.list_transaction_categories(self.con)
+        for page in self.transaction_pages:
+            page.set_category_rows(category_rows)
+
     def add_subcategory(self, master_category_id, name):
         existing_subcategory = categories.get_budget_category_by_name(
             self.con,
@@ -337,3 +343,4 @@ class MainWindow(QMainWindow):
                 break
 
         self.budget_page.refresh()
+        self.refresh_transaction_categories()
