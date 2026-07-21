@@ -1,16 +1,18 @@
-import os
 from decimal import Decimal
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+import pytest
 
-from PyQt6.QtWidgets import QApplication, QPushButton
+from PyQt6.QtWidgets import QPushButton
 
 from budget_model import Subcategory, create_sample_budgets
 from ui.budget_page import BudgetPage
 
 
-def test_next_month_arrow_can_generate_future_months():
-    app = QApplication.instance() or QApplication([])
+# Every test in this module creates Qt widgets and requires the shared application
+pytestmark = pytest.mark.usefixtures("qapp")
+
+
+def test_next_month_arrow_can_generate_future_months(qapp):
     budgets = create_sample_budgets()
     change_count = 0
 
@@ -27,7 +29,7 @@ def test_next_month_arrow_can_generate_future_months():
 
     for _ in range(10):
         page.month_scroller.next_button.click()
-        app.processEvents()
+        qapp.processEvents()
 
     assert page.active_index == 10
     assert page.month_scroller.active_index == 10
@@ -36,7 +38,6 @@ def test_next_month_arrow_can_generate_future_months():
 
 
 def test_master_category_name_is_sent_to_callback():
-    _app = QApplication.instance() or QApplication([])
     added_names = []
     page = BudgetPage(
         create_sample_budgets(),
@@ -52,8 +53,6 @@ def test_master_category_name_is_sent_to_callback():
 
 
 def test_master_category_error_is_shown_in_status():
-    _app = QApplication.instance() or QApplication([])
-
     def reject_duplicate(name):
         raise ValueError("Master category already exists.")
 
@@ -70,7 +69,6 @@ def test_master_category_error_is_shown_in_status():
 
 
 def test_subcategory_error_is_shown_in_status():
-    _app = QApplication.instance() or QApplication([])
     submitted_categories = []
 
     def reject_duplicate(master_category_id, name):
@@ -91,7 +89,6 @@ def test_subcategory_error_is_shown_in_status():
 
 
 def test_master_category_row_has_subcategory_button_with_database_id():
-    _app = QApplication.instance() or QApplication([])
     budgets = create_sample_budgets()
     budgets[0].master_categories[0].database_id = 12
     page = BudgetPage(
@@ -111,7 +108,6 @@ def test_master_category_row_has_subcategory_button_with_database_id():
 
 
 def test_refresh_removes_stale_master_widget_from_new_subcategory_row():
-    _app = QApplication.instance() or QApplication([])
     budgets = create_sample_budgets()
     page = BudgetPage(
         budgets,

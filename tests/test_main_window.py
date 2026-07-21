@@ -1,21 +1,19 @@
-import os
 from decimal import Decimal
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication
 
 import budget_model
 from db import accounts, categories, database, payees, transactions
 from ui.main_window import AccountDialog, MainWindow
 
 
+# Every test in this module creates Qt widgets and requires the shared application
+pytestmark = pytest.mark.usefixtures("qapp")
+
+
 def test_new_window_leaves_account_table_empty():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     assert accounts.has_accounts(window.con) == False
@@ -28,8 +26,6 @@ def test_new_window_loads_saved_account_details(tmp_path):
     saved_account = accounts.create_account(con, "Tracking", on_budget=False)
     accounts.create_account(con, "Checking")
     con.close()
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
     loaded_account = window.accounts[1]
@@ -62,8 +58,6 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
         cleared=True,
     )
     con.close()
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
     loaded_transaction = window.accounts[0].transactions[0]
@@ -93,8 +87,6 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
 
 
 def test_save_new_transaction_inserts_once_and_retains_database_id():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
     master_category_id = window.budgets[0].master_categories[0].database_id
@@ -128,8 +120,6 @@ def test_save_new_transaction_inserts_once_and_retains_database_id():
 
 
 def test_save_new_transaction_waits_for_required_fields():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_account("Checking")
     transaction = budget_model.Transaction(
@@ -158,8 +148,6 @@ def test_new_window_loads_closed_accounts_separately(tmp_path):
     )
     con.commit()
     con.close()
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
     loaded_account = window.closed_accounts[0]
@@ -172,8 +160,6 @@ def test_new_window_loads_closed_accounts_separately(tmp_path):
 
 
 def test_empty_account_database_shows_account_header():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     assert window.nav_names() == [
@@ -194,8 +180,6 @@ def test_empty_account_database_shows_account_header():
 
 
 def test_add_account_persists_and_updates_loaded_accounts():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     window.add_account("Checking")
@@ -210,8 +194,6 @@ def test_add_account_persists_and_updates_loaded_accounts():
 
 
 def test_add_account_preserves_off_budget_state():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     window.add_account("House Value", on_budget=False)
@@ -222,8 +204,6 @@ def test_add_account_preserves_off_budget_state():
 
 
 def test_add_account_rejects_duplicate_name():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_account("Checking")
 
@@ -236,8 +216,6 @@ def test_add_account_rejects_duplicate_name():
 
 
 def test_add_first_account_keeps_account_header():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     window.add_account("Checking")
@@ -259,8 +237,6 @@ def test_add_first_account_keeps_account_header():
 
 
 def test_add_later_account_keeps_reports_before_account_pages():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_account("Checking")
 
@@ -284,8 +260,6 @@ def test_add_later_account_keeps_reports_before_account_pages():
 
 
 def test_budget_account_is_inserted_before_off_budget_account():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_account("House Value", on_budget=False)
 
@@ -317,13 +291,11 @@ def test_budget_account_is_inserted_before_off_budget_account():
     assert window.stack.currentWidget().account.name == "House Value"
 
 
-def test_add_account_button_follows_account_entries():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
+def test_add_account_button_follows_account_entries(qapp):
     window = MainWindow(":memory:")
     window.add_account("Checking")
     window.show()
-    _app.processEvents()
+    qapp.processEvents()
 
     button_item = window.nav.item(window.nav.count() - 1)
 
@@ -334,8 +306,6 @@ def test_add_account_button_follows_account_entries():
 
 
 def test_navigation_ignores_rows_without_a_page():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.stack.setCurrentIndex(1)
     button_row = window.nav.count() - 1
@@ -346,8 +316,6 @@ def test_navigation_ignores_rows_without_a_page():
 
 
 def test_submit_account_name_trims_and_creates_account():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     window.submit_account_name(" Checking ")
@@ -356,8 +324,6 @@ def test_submit_account_name_trims_and_creates_account():
 
 
 def test_submit_account_name_preserves_off_budget_choice():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     window.submit_account_name("House Value", on_budget=False)
@@ -367,8 +333,6 @@ def test_submit_account_name_preserves_off_budget_choice():
 
 
 def test_account_dialog_shows_name_and_account_type_together():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     dialog = AccountDialog()
 
     assert dialog.isAncestorOf(dialog.name_input)
@@ -383,8 +347,6 @@ def test_account_dialog_shows_name_and_account_type_together():
 
 
 def test_new_window_starts_without_sample_budget_values():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     assert window.budgets[0].monthly_income == Decimal("0.00")
@@ -399,8 +361,6 @@ def test_new_window_loads_saved_master_categories(tmp_path):
     database.initialize_database(con)
     master_category = categories.add_master_category(con, "Monthly Bills")
     con.close()
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
     loaded_master = window.budgets[0].master_categories[0]
@@ -420,8 +380,6 @@ def test_new_window_loads_saved_budget_categories_under_their_master(tmp_path):
         "Groceries",
     )
     con.close()
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
 
     window = MainWindow(db_path)
     loaded_master = window.budgets[0].master_categories[0]
@@ -432,8 +390,6 @@ def test_new_window_loads_saved_budget_categories_under_their_master(tmp_path):
 
 
 def test_add_master_category_persists_and_updates_loaded_budgets():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
 
     window.add_master_category("Savings")
@@ -447,8 +403,6 @@ def test_add_master_category_persists_and_updates_loaded_budgets():
 
 
 def test_add_master_category_rejects_duplicate_name():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_master_category("Savings")
 
@@ -460,8 +414,6 @@ def test_add_master_category_rejects_duplicate_name():
 
 
 def test_add_subcategory_persists_and_updates_loaded_budgets():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     # Account-first setup verifies its existing page receives the later category
     window.add_account("Checking")
@@ -491,8 +443,6 @@ def test_add_subcategory_persists_and_updates_loaded_budgets():
 
 
 def test_add_subcategory_rejects_duplicate_name_within_master():
-    # Qt requires QApplication instance to create widgets
-    _app = QApplication.instance() or QApplication([])
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
     master_category_id = window.budgets[0].master_categories[0].database_id
