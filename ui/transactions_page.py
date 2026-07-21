@@ -20,12 +20,14 @@ TRANSACTION_COLUMNS = ["Date", "Payee", "Category", "Notes", "Outgoing", "Incomi
 
 
 class TransactionsPage(QWidget):
-    def __init__(self, account, category_rows):
+    def __init__(self, account, category_rows, on_transaction_changed=None):
         super().__init__()
         # Shared account object so edits update the main window's sample state
         self.account = account
         # Joined rows retain category ids and their parent display groups
         self.category_rows = category_rows
+        # Optional callback keeps persistence outside this UI-only page
+        self.on_transaction_changed = on_transaction_changed
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -82,12 +84,37 @@ class TransactionsPage(QWidget):
 
     def _set_transaction_row(self, row, transaction):
         # Editors bind directly to transaction fields for immediate lightweight edits
-        self._set_text_input(row, 0, transaction.date, lambda value: setattr(transaction, "date", value))
-        self._set_text_input(row, 1, transaction.payee, lambda value: setattr(transaction, "payee", value))
+        self._set_text_input(
+            row,
+            0,
+            transaction.date,
+            lambda value: self._update_transaction_field(transaction, "date", value),
+        )
+        self._set_text_input(
+            row,
+            1,
+            transaction.payee,
+            lambda value: self._update_transaction_field(transaction, "payee", value),
+        )
         self._set_category_input(row, transaction)
-        self._set_text_input(row, 3, transaction.notes, lambda value: setattr(transaction, "notes", value))
-        self._set_money_input(row, 4, transaction.outgoing, lambda value: setattr(transaction, "outgoing", value))
-        self._set_money_input(row, 5, transaction.incoming, lambda value: setattr(transaction, "incoming", value))
+        self._set_text_input(
+            row,
+            3,
+            transaction.notes,
+            lambda value: self._update_transaction_field(transaction, "notes", value),
+        )
+        self._set_money_input(
+            row,
+            4,
+            transaction.outgoing,
+            lambda value: self._update_transaction_field(transaction, "outgoing", value),
+        )
+        self._set_money_input(
+            row,
+            5,
+            transaction.incoming,
+            lambda value: self._update_transaction_field(transaction, "incoming", value),
+        )
         self._set_cleared_input(row, transaction)
         self.table.setRowHeight(row, 36)
 
@@ -166,8 +193,19 @@ class TransactionsPage(QWidget):
             category_database_id=values.get("category_database_id"),
         )
         self.account.transactions.append(transaction)
+        self._notify_transaction_changed(transaction)
         # Full refresh replaces the blank row and updates balances together
         self.refresh()
+
+    def _update_transaction_field(self, transaction, field, value):
+        # Central update path ensures every editor reports the same model change
+        setattr(transaction, field, value)
+        self._notify_transaction_changed(transaction)
+
+    def _notify_transaction_changed(self, transaction):
+        # Tests and MainWindow can react without TransactionsPage knowing why
+        if self.on_transaction_changed is not None:
+            self.on_transaction_changed(self.account, transaction)
 
     def _set_text_input(self, row, column, value, apply_value):
         input_field = QLineEdit(value)
@@ -232,9 +270,11 @@ class TransactionsPage(QWidget):
         if category_option is None:
             transaction.category = ""
             transaction.category_database_id = None
+            self._notify_transaction_changed(transaction)
             return
         transaction.category = category_option["name"]
         transaction.category_database_id = category_option["database_id"]
+        self._notify_transaction_changed(transaction)
 
     def _set_money_input(self, row, column, value, apply_value):
         # Zero shown blank so empty money cells stay quick to scan
@@ -277,4 +317,5 @@ class TransactionsPage(QWidget):
     def update_cleared(self, transaction, state):
         # Qt state converted once so model stays plain Python bool
         transaction.cleared = state == Qt.CheckState.Checked.value
+        self._notify_transaction_changed(transaction)
         self.refresh()
