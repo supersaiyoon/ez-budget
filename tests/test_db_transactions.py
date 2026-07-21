@@ -1,11 +1,17 @@
 from db import accounts, categories, payees, transactions
 
 
-def test_add_transaction_inserts_transaction_row(con):
+def _create_transaction_dependencies(con):
+    # Every persisted transaction requires these related database rows
     account = accounts.create_account(con, "Checking")
     payee = payees.add_payee(con, "Grocery Store")
     master_category = categories.add_master_category(con, "Everyday Expenses")
     category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    return account, payee, category
+
+
+def test_add_transaction_inserts_transaction_row(con):
+    account, payee, category = _create_transaction_dependencies(con)
 
     transaction = transactions.add_transaction(
         con,
@@ -28,11 +34,8 @@ def test_add_transaction_inserts_transaction_row(con):
 
 
 def test_list_transactions_returns_only_account_rows(con):
-    checking = accounts.create_account(con, "Checking")
+    checking, payee, category = _create_transaction_dependencies(con)
     credit_card = accounts.create_account(con, "Credit Card")
-    payee = payees.add_payee(con, "Grocery Store")
-    master_category = categories.add_master_category(con, "Everyday Expenses")
-    category = categories.add_budget_category(con, master_category["id"], "Groceries")
 
     transactions.add_transaction(
         con,
@@ -65,10 +68,7 @@ def test_list_transactions_returns_only_account_rows(con):
 
 
 def test_list_transactions_returns_rows_in_date_order(con):
-    checking = accounts.create_account(con, "Checking")
-    payee = payees.add_payee(con, "Grocery Store")
-    master_category = categories.add_master_category(con, "Everyday Expenses")
-    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    checking, payee, category = _create_transaction_dependencies(con)
 
     transactions.add_transaction(
         con,
@@ -94,12 +94,7 @@ def test_list_transactions_returns_rows_in_date_order(con):
 
 
 def test_list_transactions_returns_payee_and_category_names(con):
-
-    # Set up db with transaction that has payee and category
-    checking = accounts.create_account(con, "Checking")
-    payee = payees.add_payee(con, "Grocery Store")
-    master_category = categories.add_master_category(con, "Everyday Expenses")
-    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    checking, payee, category = _create_transaction_dependencies(con)
 
     transactions.add_transaction(
         con,
@@ -118,10 +113,7 @@ def test_list_transactions_returns_payee_and_category_names(con):
 
 
 def test_list_transactions_returns_notes(con):
-    checking = accounts.create_account(con, "Checking")
-    payee = payees.add_payee(con, "Grocery Store")
-    master_category = categories.add_master_category(con, "Everyday Expenses")
-    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    checking, payee, category = _create_transaction_dependencies(con)
 
     transactions.add_transaction(
         con,
@@ -139,13 +131,9 @@ def test_list_transactions_returns_notes(con):
 
 
 def test_has_transactions_reports_whether_transactions_exist(con):
-
     assert transactions.has_transactions(con) == False
 
-    checking = accounts.create_account(con, "Checking")
-    payee = payees.add_payee(con, "Grocery Store")
-    master_category = categories.add_master_category(con, "Everyday Expenses")
-    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    checking, payee, category = _create_transaction_dependencies(con)
     transactions.add_transaction(
         con,
         checking["id"],
