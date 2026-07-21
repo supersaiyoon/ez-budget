@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
+import budget_model
 from db import accounts, categories, database, payees, transactions
 from ui.main_window import AccountDialog, MainWindow
 
@@ -89,6 +90,61 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert category_input.model().item(3).isEnabled() is False
     assert category_input.currentText() == "Groceries"
     assert category_input.currentData()["database_id"] == category["id"]
+
+
+def test_save_new_transaction_inserts_once_and_retains_database_id():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    category_id = (
+        window.budgets[0].master_categories[0].subcategories[0].database_id
+    )
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="weekly groceries",
+        outgoing=Decimal("42.50"),
+        category_database_id=category_id,
+    )
+
+    first_save = window.save_new_transaction(window.accounts[0], transaction)
+    second_save = window.save_new_transaction(window.accounts[0], transaction)
+    saved_rows = transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )
+
+    assert first_save is True
+    assert second_save is False
+    assert transaction.database_id == saved_rows[0]["id"]
+    assert saved_rows[0]["payee_name"] == "Grocery Store"
+    assert saved_rows[0]["amount"] == -4250
+    assert len(saved_rows) == 1
+
+
+def test_save_new_transaction_waits_for_required_fields():
+    # Qt requires QApplication instance to create widgets
+    _app = QApplication.instance() or QApplication([])
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+
+    saved = window.save_new_transaction(window.accounts[0], transaction)
+
+    assert saved is False
+    assert transaction.database_id is None
+    assert transactions.has_transactions(window.con) is False
 
 
 def test_new_window_loads_closed_accounts_separately(tmp_path):

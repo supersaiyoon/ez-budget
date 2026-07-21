@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
-from db import accounts, categories, database, transactions
+from db import accounts, categories, database, payees, transactions
 from ui import budget_page, reports_page, styles, transactions_page
 
 
@@ -313,6 +313,42 @@ class MainWindow(QMainWindow):
         category_rows = categories.list_transaction_categories(self.con)
         for page in self.transaction_pages:
             page.set_category_rows(category_rows)
+
+    def save_new_transaction(self, account, transaction):
+        # A retained row id means this transaction has already been inserted
+        if transaction.database_id is not None:
+            return False
+
+        # Partial grid rows remain in memory until every required relationship exists
+        transaction.date = transaction.date.strip()
+        transaction.payee = transaction.payee.strip()
+        if (
+            account.database_id is None
+            or not transaction.date
+            or not transaction.payee
+            or transaction.category_database_id is None
+        ):
+            return False
+
+        # Exactly one money column must supply the signed database amount
+        if (transaction.outgoing == 0) == (transaction.incoming == 0):
+            return False
+
+        # Resolve the typed payee before inserting all required relationships
+        payee_row = payees.get_or_create_payee(self.con, transaction.payee)
+        transaction_row = transactions.add_transaction(
+            self.con,
+            account.database_id,
+            payee_row["id"],
+            transaction.category_database_id,
+            transaction.date,
+            budget_model.transaction_amount_in_cents(transaction),
+            transaction.notes or None,
+            transaction.cleared,
+        )
+        # Retaining the new id prevents later cell events from inserting duplicates
+        transaction.database_id = transaction_row["id"]
+        return True
 
     def add_subcategory(self, master_category_id, name):
         existing_subcategory = categories.get_budget_category_by_name(
