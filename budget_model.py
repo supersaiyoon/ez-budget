@@ -67,6 +67,15 @@ class Budget:
     def total_remaining(self):
         return self.total_budgeted - self.total_spent
 
+    def set_category_spending(self, category_database_id, amount):
+        # Database ID links transaction total to matching budget row
+        for master_category in self.master_categories:
+            for subcategory in master_category.subcategories:
+                if subcategory.database_id == category_database_id:
+                    subcategory.spent = amount
+                    return
+        raise KeyError(f"Unknown category ID: {category_database_id}")
+
     def apply_adjustment(self, master_name, subcategory_name, raw_value):
         # Raw text parsed here so UI and tests share one validation rule
         amount = parse_money(raw_value)

@@ -57,6 +57,21 @@ def test_remaining_amount_equals_budgeted_minus_spent():
     assert groceries.remaining == groceries.budgeted - groceries.spent
 
 
+def test_set_category_spending_replaces_matching_subcategory_amount():
+    budget = create_sample_budget()
+    groceries = budget.get_subcategory("Everyday Spending", "Groceries")
+    water = budget.get_subcategory("Monthly Bills", "Water")
+    groceries.database_id = 23
+    water.database_id = 24
+    starting_water_spent = water.spent
+
+    budget.set_category_spending(23, Decimal("42.50"))
+    budget.set_category_spending(23, Decimal("32.50"))
+
+    assert groceries.spent == Decimal("32.50")
+    assert water.spent == starting_water_spent
+
+
 def test_invalid_input_is_rejected_without_changing_state():
     budget = create_sample_budget()
     starting_budgeted = budget.total_budgeted
