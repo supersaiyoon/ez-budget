@@ -51,6 +51,27 @@ def test_budget_month_requires_unique_date_and_defaults_income_to_zero():
         )
 
 
+def test_budget_allocations_require_month_and_category_relationships():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    # Schema metadata verifies relationships without creating dependency rows
+    columns = {
+        column["name"]: column
+        for column in con.execute("PRAGMA table_info(budget_allocations)")
+    }
+    foreign_keys = {
+        foreign_key["from"]: foreign_key
+        for foreign_key in con.execute("PRAGMA foreign_key_list(budget_allocations)")
+    }
+
+    assert columns["budget_month_id"]["notnull"] == True
+    assert columns["budget_category_id"]["notnull"] == True
+    assert foreign_keys["budget_month_id"]["table"] == "budget_months"
+    assert foreign_keys["budget_month_id"]["to"] == "id"
+    assert foreign_keys["budget_category_id"]["table"] == "budget_categories"
+    assert foreign_keys["budget_category_id"]["to"] == "id"
+
+
 def test_transaction_relationship_columns_are_required():
     con = database.connect(":memory:")
     database.initialize_database(con)
