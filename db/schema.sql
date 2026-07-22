@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS budget_allocations (
     amount              INT NOT NULL DEFAULT 0
 );
 
+-- Each category has one editable assignment per month
+CREATE UNIQUE INDEX IF NOT EXISTS budget_allocations_month_category
+ON budget_allocations (budget_month_id, budget_category_id);
+
 -- Amount stored as integer to avoid floating point drift
 CREATE TABLE IF NOT EXISTS transactions (
     id                  INTEGER PRIMARY KEY,

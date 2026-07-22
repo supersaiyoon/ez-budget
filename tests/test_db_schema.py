@@ -72,6 +72,45 @@ def test_budget_allocations_require_month_and_category_relationships():
     assert foreign_keys["budget_category_id"]["to"] == "id"
 
 
+def test_budget_allocations_reject_duplicate_month_and_category():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    budget_month_id = con.execute(
+        "INSERT INTO budget_months (month_date) VALUES (?) RETURNING id",
+        ("2026-07-01",),
+    ).fetchone()["id"]
+    master_category_id = con.execute(
+        "INSERT INTO master_budget_categories (name) VALUES (?) RETURNING id",
+        ("Everyday Expenses",),
+    ).fetchone()["id"]
+    budget_category_id = con.execute(
+        """
+        INSERT INTO budget_categories (master_budget_category_id, name)
+        VALUES (?, ?)
+        RETURNING id
+        """,
+        (master_category_id, "Groceries"),
+    ).fetchone()["id"]
+    allocation_values = (budget_month_id, budget_category_id, 42500)
+
+    con.execute(
+        """
+        INSERT INTO budget_allocations (budget_month_id, budget_category_id, amount)
+        VALUES (?, ?, ?)
+        """,
+        allocation_values,
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        con.execute(
+            """
+            INSERT INTO budget_allocations (budget_month_id, budget_category_id, amount)
+            VALUES (?, ?, ?)
+            """,
+            allocation_values,
+        )
+
+
 def test_transaction_relationship_columns_are_required():
     con = database.connect(":memory:")
     database.initialize_database(con)
