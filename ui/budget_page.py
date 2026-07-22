@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from budget_model import create_next_month_budget, format_money
+from budget_model import create_next_month_budget, format_money, parse_money
 from ui.helpers import get_category, money_item
 from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
@@ -266,8 +266,12 @@ class BudgetPage(QWidget):
             column = 1 + (month_index * 3)
 
             input_field = QLineEdit()
-            input_field.setPlaceholderText("+100 or -25")
+            # Current assignment stays visible while cell remains editable
+            if subcategory.budgeted != 0:
+                input_field.setText(format(subcategory.budgeted, ".2f"))
+            input_field.setPlaceholderText("0.00")
             input_field.setFixedWidth(116)
+            input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
             input_field.editingFinished.connect(
                 partial(self.apply_adjustment, budget, category_name, subcategory_name, input_field)
             )
@@ -283,16 +287,21 @@ class BudgetPage(QWidget):
             return
 
         try:
-            amount = budget.apply_adjustment(category_name, subcategory_name, raw_value)
+            new_budgeted = parse_money(raw_value)
         except ValueError as exc:
             # Keep bad input in place so user can fix it without retyping
             self.status.setText(str(exc))
             return
 
-        # Clear after success so repeated adjustments are intentional
-        input_field.clear()
+        subcategory = budget.get_subcategory(category_name, subcategory_name)
+        if new_budgeted == subcategory.budgeted:
+            return
+
+        # Displayed value is target total, so model receives only difference
+        adjustment = new_budgeted - subcategory.budgeted
+        budget.apply_adjustment(category_name, subcategory_name, str(adjustment))
         self.status.setText(
-            f"{budget.month_name}: applied {format_money(amount)} to {subcategory_name}. "
+            f"{budget.month_name}: budgeted {format_money(new_budgeted)} for {subcategory_name}. "
             f"Available: {format_money(budget.available_to_budget)}"
         )
 

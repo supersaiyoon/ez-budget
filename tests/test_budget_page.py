@@ -2,6 +2,7 @@ from decimal import Decimal
 
 import pytest
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QPushButton
 
 from budget_model import Subcategory, create_sample_budgets, format_money
@@ -126,6 +127,40 @@ def test_spending_values_display_as_negative_on_budget_page():
     assert f"Spent: {format_money(-budget.total_spent)}" in page.table.item(0, 1).text()
     assert page.table.item(master_row, 2).text() == format_money(-master_category.spent)
     assert page.table.item(subcategory_row, 2).text() == format_money(-subcategory.spent)
+
+
+def test_budgeted_cell_displays_current_subcategory_amount():
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    subcategory = budgets[0].master_categories[0].subcategories[0]
+    row = page.rows.index(("Monthly Bills", subcategory.name)) + 2
+    budgeted_input = page.table.cellWidget(row, 1)
+
+    assert budgeted_input.text() == format(subcategory.budgeted, ".2f")
+    assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
+
+
+def test_editing_budgeted_cell_replaces_current_amount():
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    subcategory = budgets[0].master_categories[0].subcategories[0]
+    row = page.rows.index(("Monthly Bills", subcategory.name)) + 2
+    budgeted_input = page.table.cellWidget(row, 1)
+
+    budgeted_input.setText("2000.00")
+    budgeted_input.editingFinished.emit()
+
+    assert subcategory.budgeted == Decimal("2000.00")
 
 
 def test_refresh_removes_stale_master_widget_from_new_subcategory_row():
