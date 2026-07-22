@@ -18,3 +18,15 @@ def test_get_budget_month_by_date_returns_matching_month(con):
     assert budget_month["id"] == august["id"]
     assert budget_month["monthly_income"] == 540000
     assert budgets.get_budget_month_by_date(con, "2026-09-01") is None
+
+
+def test_get_or_create_budget_month_reuses_existing_and_adds_missing(con):
+    existing = budgets.add_budget_month(con, "2026-07-01", 520000)
+
+    reused = budgets.get_or_create_budget_month(con, "2026-07-01")
+    created = budgets.get_or_create_budget_month(con, "2026-08-01")
+
+    assert reused["id"] == existing["id"]
+    assert created["month_date"] == "2026-08-01"
+    assert created["monthly_income"] == 0
+    assert con.execute("SELECT COUNT(*) FROM budget_months").fetchone()[0] == 2

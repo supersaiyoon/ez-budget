@@ -22,3 +22,11 @@ def get_budget_month_by_date(con, month_date):
         """,
         (month_date,),
     ).fetchone()
+
+
+def get_or_create_budget_month(con, month_date):
+    # Startup can resolve one month row without duplicating lookup logic
+    budget_month = get_budget_month_by_date(con, month_date)
+    if budget_month is not None:
+        return budget_month
+    return add_budget_month(con, month_date)
