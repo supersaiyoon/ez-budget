@@ -72,6 +72,9 @@ class MainWindow(QMainWindow):
                 category.subcategories.append(subcategory)
             self.budgets[0].master_categories.append(category)
 
+        # Current month spending derives from saved Budget-account activity
+        self.load_budget_spending(self.budgets[0])
+
         self.accounts = []
         for account_row in accounts.list_accounts(self.con):
             account = budget_model.Account(

@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -89,6 +90,30 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert category_input.model().item(3).isEnabled() is False
     assert category_input.currentText() == "Groceries"
     assert category_input.currentData()["database_id"] == category["id"]
+
+
+def test_new_window_loads_current_month_transaction_spending(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    checking = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    category = categories.add_budget_category(con, master_category["id"], "Groceries")
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        date.today().replace(day=1).isoformat(),
+        -4250,
+    )
+    con.close()
+
+    window = MainWindow(db_path)
+    groceries = window.budgets[0].master_categories[0].subcategories[0]
+
+    assert groceries.spent == Decimal("42.50")
 
 
 def test_save_transaction_inserts_then_updates_same_database_row():
