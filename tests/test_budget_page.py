@@ -4,7 +4,7 @@ import pytest
 
 from PyQt6.QtWidgets import QPushButton
 
-from budget_model import Subcategory, create_sample_budgets
+from budget_model import Subcategory, create_sample_budgets, format_money
 from ui.budget_page import BudgetPage
 
 
@@ -105,6 +105,27 @@ def test_master_category_row_has_subcategory_button_with_database_id():
 
     assert add_button.text() == "+"
     assert add_button.isEnabled() == True
+
+
+def test_spending_values_display_as_negative_on_budget_page():
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    budget = budgets[0]
+    master_category = budget.master_categories[0]
+    subcategory = master_category.subcategories[0]
+    master_row = page.rows.index((master_category.name, None)) + 2
+    subcategory_row = page.rows.index(
+        (master_category.name, subcategory.name)
+    ) + 2
+
+    assert f"Spent: {format_money(-budget.total_spent)}" in page.table.item(0, 1).text()
+    assert page.table.item(master_row, 2).text() == format_money(-master_category.spent)
+    assert page.table.item(subcategory_row, 2).text() == format_money(-subcategory.spent)
 
 
 def test_refresh_removes_stale_master_widget_from_new_subcategory_row():

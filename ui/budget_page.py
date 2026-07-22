@@ -158,7 +158,8 @@ class BudgetPage(QWidget):
                 f"Income: {format_money(budget.monthly_income)}\n"
                 f"Available: {format_money(budget.available_to_budget)}\n"
                 f"Budgeted: {format_money(budget.total_budgeted)}\n"
-                f"Spent: {format_money(budget.total_spent)}"
+                # Negative display shows money leaving budget without changing model math
+                f"Spent: {format_money(-budget.total_spent)}"
             )
             month.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
             month.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -253,7 +254,7 @@ class BudgetPage(QWidget):
             column = 1 + (month_index * 3)
 
             self.table.setItem(row, column, QTableWidgetItem(""))
-            self.table.setItem(row, column + 1, money_item(category.spent, bold=True))
+            self.table.setItem(row, column + 1, money_item(-category.spent, bold=True))
             self.table.setItem(row, column + 2, money_item(category.remaining, bold=True))
         self.table.setRowHeight(row, 34)
 
@@ -272,7 +273,7 @@ class BudgetPage(QWidget):
             )
 
             self.table.setCellWidget(row, column, input_field)
-            self.table.setItem(row, column + 1, money_item(subcategory.spent))
+            self.table.setItem(row, column + 1, money_item(-subcategory.spent))
             self.table.setItem(row, column + 2, money_item(subcategory.remaining))
         self.table.setRowHeight(row, 38)
 
