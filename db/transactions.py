@@ -115,16 +115,18 @@ def list_transactions(con, account_id):
 
 
 def list_category_transaction_totals(con, start_date, end_date):
-    # Signed totals preserve database direction within inclusive date range
+    # Only Budget accounts contribute signed totals within inclusive date range
     return con.execute(
         """
         SELECT
-            budget_category_id,
-            SUM(amount) AS total_amount
+            transactions.budget_category_id,
+            SUM(transactions.amount) AS total_amount
         FROM transactions
-        WHERE transaction_date BETWEEN ? AND ?
-        GROUP BY budget_category_id
-        ORDER BY budget_category_id
+        JOIN accounts ON accounts.id = transactions.account_id
+        WHERE transactions.transaction_date BETWEEN ? AND ?
+          AND accounts.on_budget = TRUE
+        GROUP BY transactions.budget_category_id
+        ORDER BY transactions.budget_category_id
         """,
         (start_date, end_date),
     ).fetchall()

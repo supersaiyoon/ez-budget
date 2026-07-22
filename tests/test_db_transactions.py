@@ -208,6 +208,35 @@ def test_list_category_transaction_totals_sums_amounts_within_date_range(con):
     assert category_totals[0]["total_amount"] == -3250
 
 
+def test_list_category_transaction_totals_excludes_off_budget_accounts(con):
+    checking, payee, category = _create_transaction_dependencies(con)
+    tracking = accounts.create_account(con, "Tracking", on_budget=False)
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+    )
+    transactions.add_transaction(
+        con,
+        tracking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-14",
+        -2000,
+    )
+
+    category_totals = transactions.list_category_transaction_totals(
+        con,
+        "2026-07-01",
+        "2026-07-31",
+    )
+
+    assert category_totals[0]["total_amount"] == -4250
+
+
 def test_has_transactions_reports_whether_transactions_exist(con):
     assert transactions.has_transactions(con) == False
 
