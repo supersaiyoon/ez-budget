@@ -69,6 +69,16 @@ def test_remaining_amount_equals_budgeted_minus_spent():
     assert groceries.remaining == groceries.budgeted - groceries.spent
 
 
+def test_reset_spending_clears_every_subcategory():
+    budget = create_sample_budget()
+
+    budget.reset_spending()
+
+    for master_category in budget.master_categories:
+        for subcategory in master_category.subcategories:
+            assert subcategory.spent == Decimal("0.00")
+
+
 def test_set_category_spending_replaces_matching_subcategory_amount():
     budget = create_sample_budget()
     groceries = budget.get_subcategory("Everyday Spending", "Groceries")

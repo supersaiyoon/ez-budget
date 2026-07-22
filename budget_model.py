@@ -74,6 +74,12 @@ class Budget:
         end_date = next_month(start_date) - timedelta(days=1)
         return start_date, end_date
 
+    def reset_spending(self):
+        # Clear prior totals before current transaction totals apply
+        for master_category in self.master_categories:
+            for subcategory in master_category.subcategories:
+                subcategory.spent = Decimal("0.00")
+
     def set_category_spending(self, category_database_id, amount):
         # Database ID links transaction total to matching budget row
         for master_category in self.master_categories:
