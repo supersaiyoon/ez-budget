@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS budget_categories (
     UNIQUE (master_budget_category_id, name)
 );
 
+-- Monthly rows store user-assigned cents for each budget category
+CREATE TABLE IF NOT EXISTS budget_allocations (
+    id                  INTEGER PRIMARY KEY,
+    budget_month_id     INT NOT NULL REFERENCES budget_months(id),
+    budget_category_id  INT NOT NULL REFERENCES budget_categories(id),
+    amount              INT NOT NULL DEFAULT 0
+);
+
 -- Amount stored as integer to avoid floating point drift
 CREATE TABLE IF NOT EXISTS transactions (
     id                  INTEGER PRIMARY KEY,
