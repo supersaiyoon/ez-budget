@@ -225,6 +225,9 @@ class MainWindow(QMainWindow):
 
         page_index = item.data(Qt.ItemDataRole.UserRole)
         if page_index is not None:
+            if page_index == 0:
+                # Deferred repaint avoids rebuilding Budget table while hidden
+                self.budget_page.refresh()
             self.stack.setCurrentIndex(page_index)
 
     def refresh_reports(self):
@@ -344,8 +347,6 @@ class MainWindow(QMainWindow):
         # Every generated month may gain or lose spending after transaction edit
         for budget in self.budgets:
             self.load_budget_spending(budget)
-        # Repaint after model refresh so Budget page never shows stale totals
-        self.budget_page.refresh()
 
     def save_transaction(self, account, transaction):
         # Partial grid rows remain in memory until every required relationship exists

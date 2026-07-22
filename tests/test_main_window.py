@@ -196,7 +196,7 @@ def test_load_budget_spending_applies_month_transaction_totals():
     assert groceries.spent == Decimal("42.50")
 
 
-def test_save_transaction_refreshes_budget_spending_and_page():
+def test_budget_navigation_refreshes_transaction_spending():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
     master_category = window.budgets[0].master_categories[0]
@@ -217,11 +217,17 @@ def test_save_transaction_refreshes_budget_spending_and_page():
 
     window.save_transaction(window.accounts[0], transaction)
     assert groceries.spent == Decimal("42.50")
+    assert window.budget_page.table.item(groceries_row, 2).text() == "$0.00"
+
+    window.show_navigation_page(0)
     assert window.budget_page.table.item(groceries_row, 2).text() == "-$42.50"
 
     transaction.outgoing = Decimal("58.99")
     window.save_transaction(window.accounts[0], transaction)
     assert groceries.spent == Decimal("58.99")
+    assert window.budget_page.table.item(groceries_row, 2).text() == "-$42.50"
+
+    window.show_navigation_page(0)
     assert window.budget_page.table.item(groceries_row, 2).text() == "-$58.99"
 
 
