@@ -340,6 +340,11 @@ class MainWindow(QMainWindow):
                 spending,
             )
 
+    def refresh_budget_spending(self):
+        # Every generated month may gain or lose spending after transaction edit
+        for budget in self.budgets:
+            self.load_budget_spending(budget)
+
     def save_transaction(self, account, transaction):
         # Partial grid rows remain in memory until every required relationship exists
         transaction.date = transaction.date.strip()
@@ -374,6 +379,7 @@ class MainWindow(QMainWindow):
             )
             # Retained id sends later cell changes through update path
             transaction.database_id = transaction_row["id"]
+            self.refresh_budget_spending()
             return True
 
         # Existing row id updates editable values without changing owning account
@@ -387,6 +393,7 @@ class MainWindow(QMainWindow):
             transaction.notes or None,
             transaction.cleared,
         )
+        self.refresh_budget_spending()
         return True
 
     def add_subcategory(self, master_category_id, name):
