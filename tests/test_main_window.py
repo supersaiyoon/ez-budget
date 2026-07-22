@@ -148,6 +148,29 @@ def test_save_transaction_waits_for_required_fields():
     assert transactions.has_transactions(window.con) is False
 
 
+def test_load_budget_spending_applies_month_transaction_totals():
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    groceries = master_category.subcategories[0]
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date=window.budgets[0].month_date.isoformat(),
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=groceries.database_id,
+    )
+    window.save_transaction(window.accounts[0], transaction)
+    groceries.spent = Decimal("99.00")
+
+    window.load_budget_spending(window.budgets[0])
+
+    assert groceries.spent == Decimal("42.50")
+
+
 def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)

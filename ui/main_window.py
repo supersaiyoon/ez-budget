@@ -318,6 +318,25 @@ class MainWindow(QMainWindow):
         for page in self.transaction_pages:
             page.set_category_rows(category_rows)
 
+    def load_budget_spending(self, budget):
+        # Reset removes categories absent from latest aggregate results
+        budget.reset_spending()
+        start_date, end_date = budget.month_date_range
+        category_totals = transactions.list_category_transaction_totals(
+            self.con,
+            start_date.isoformat(),
+            end_date.isoformat(),
+        )
+        for category_total in category_totals:
+            # Stable category ID applies total without relying on display name
+            spending = budget_model.transaction_total_to_spending(
+                category_total["total_amount"]
+            )
+            budget.set_category_spending(
+                category_total["budget_category_id"],
+                spending,
+            )
+
     def save_transaction(self, account, transaction):
         # Partial grid rows remain in memory until every required relationship exists
         transaction.date = transaction.date.strip()
