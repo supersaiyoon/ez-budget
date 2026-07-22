@@ -19,11 +19,35 @@ def test_initialize_database_creates_core_tables():
 
     assert {
         "accounts",
+        "budget_months",
         "payees",
         "master_budget_categories",
         "budget_categories",
         "transactions",
     }.issubset(table_names)
+
+
+def test_budget_month_requires_unique_date_and_defaults_income_to_zero():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+    columns = {
+        column["name"]: column
+        for column in con.execute("PRAGMA table_info(budget_months)")
+    }
+
+    budget_month = con.execute(
+        "INSERT INTO budget_months (month_date) VALUES (?) RETURNING *",
+        ("2026-07-01",),
+    ).fetchone()
+
+    assert columns["month_date"]["notnull"] == True
+    assert columns["monthly_income"]["notnull"] == True
+    assert budget_month["monthly_income"] == 0
+    with pytest.raises(sqlite3.IntegrityError):
+        con.execute(
+            "INSERT INTO budget_months (month_date) VALUES (?)",
+            ("2026-07-01",),
+        )
 
 
 def test_transaction_relationship_columns_are_required():
