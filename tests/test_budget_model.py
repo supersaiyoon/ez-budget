@@ -26,6 +26,18 @@ def test_empty_budget_starts_current_month_with_zero_values():
     assert budget.total_spent == Decimal("0.00")
 
 
+def test_budget_month_date_range_includes_first_and_last_day():
+    budget = budget_model.Budget(date(2026, 7, 1), "July 2026", Decimal("0.00"), [])
+
+    assert budget.month_date_range == (date(2026, 7, 1), date(2026, 7, 31))
+
+
+def test_budget_month_date_range_handles_leap_february():
+    budget = budget_model.Budget(date(2024, 2, 1), "February 2024", Decimal("0.00"), [])
+
+    assert budget.month_date_range == (date(2024, 2, 1), date(2024, 2, 29))
+
+
 def test_positive_adjustment_increases_budget_and_reduces_available():
     budget = create_sample_budget()
     starting_budgeted = budget.total_budgeted

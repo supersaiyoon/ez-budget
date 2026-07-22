@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 
 @dataclass
@@ -66,6 +66,13 @@ class Budget:
     @property
     def total_remaining(self):
         return self.total_budgeted - self.total_spent
+
+    @property
+    def month_date_range(self):
+        # Adjacent month start provides calendar-safe inclusive end date
+        start_date = self.month_date.replace(day=1)
+        end_date = next_month(start_date) - timedelta(days=1)
+        return start_date, end_date
 
     def set_category_spending(self, category_database_id, amount):
         # Database ID links transaction total to matching budget row
