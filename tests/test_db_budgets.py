@@ -1,4 +1,4 @@
-from db import budgets
+from db import budgets, categories
 
 
 def test_add_budget_month_inserts_month_row(con):
@@ -30,3 +30,25 @@ def test_get_or_create_budget_month_reuses_existing_and_adds_missing(con):
     assert created["month_date"] == "2026-08-01"
     assert created["monthly_income"] == 0
     assert con.execute("SELECT COUNT(*) FROM budget_months").fetchone()[0] == 2
+
+
+def test_add_budget_allocation_inserts_category_amount(con):
+    budget_month = budgets.add_budget_month(con, "2026-07-01")
+    master_category = categories.add_master_category(con, "Monthly Bills")
+    budget_category = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Rent",
+    )
+
+    allocation = budgets.add_budget_allocation(
+        con,
+        budget_month["id"],
+        budget_category["id"],
+        185000,
+    )
+
+    assert allocation["id"] == 1
+    assert allocation["budget_month_id"] == budget_month["id"]
+    assert allocation["budget_category_id"] == budget_category["id"]
+    assert allocation["amount"] == 185000

@@ -30,3 +30,26 @@ def get_or_create_budget_month(con, month_date):
     if budget_month is not None:
         return budget_month
     return add_budget_month(con, month_date)
+
+
+def add_budget_allocation(
+    con,
+    budget_month_id,
+    budget_category_id,
+    amount,
+):
+    # Integer cents keep allocations exact across months
+    row = con.execute(
+        """
+        INSERT INTO budget_allocations (
+            budget_month_id,
+            budget_category_id,
+            amount
+        )
+        VALUES (?, ?, ?)
+        RETURNING id, budget_month_id, budget_category_id, amount
+        """,
+        (budget_month_id, budget_category_id, amount),
+    ).fetchone()
+    con.commit()
+    return row
