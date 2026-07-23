@@ -52,3 +52,52 @@ def test_add_budget_allocation_inserts_category_amount(con):
     assert allocation["budget_month_id"] == budget_month["id"]
     assert allocation["budget_category_id"] == budget_category["id"]
     assert allocation["amount"] == 185000
+
+
+def test_list_budget_allocations_returns_only_requested_month(con):
+    july = budgets.add_budget_month(con, "2026-07-01")
+    august = budgets.add_budget_month(con, "2026-08-01")
+    master_category = categories.add_master_category(con, "Monthly Bills")
+    rent = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Rent",
+    )
+    utilities = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Utilities",
+    )
+    july_rent = budgets.add_budget_allocation(
+        con,
+        july["id"],
+        rent["id"],
+        185000,
+    )
+    july_utilities = budgets.add_budget_allocation(
+        con,
+        july["id"],
+        utilities["id"],
+        25000,
+    )
+    budgets.add_budget_allocation(
+        con,
+        august["id"],
+        rent["id"],
+        190000,
+    )
+
+    allocations = budgets.list_budget_allocations(con, july["id"])
+
+    assert [allocation["id"] for allocation in allocations] == [
+        july_rent["id"],
+        july_utilities["id"],
+    ]
+    assert [allocation["budget_category_id"] for allocation in allocations] == [
+        rent["id"],
+        utilities["id"],
+    ]
+    assert [allocation["amount"] for allocation in allocations] == [
+        185000,
+        25000,
+    ]

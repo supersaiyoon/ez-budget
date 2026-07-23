@@ -53,3 +53,16 @@ def add_budget_allocation(
     ).fetchone()
     con.commit()
     return row
+
+
+def list_budget_allocations(con, budget_month_id):
+    # Month scope keeps allocations separate across planning periods
+    return con.execute(
+        """
+        SELECT id, budget_month_id, budget_category_id, amount
+        FROM budget_allocations
+        WHERE budget_month_id = ?
+        ORDER BY id
+        """,
+        (budget_month_id,),
+    ).fetchall()
