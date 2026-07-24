@@ -101,3 +101,45 @@ def test_list_budget_allocations_returns_only_requested_month(con):
         185000,
         25000,
     ]
+
+
+def test_update_budget_allocation_replaces_only_matching_amount(con):
+    budget_month = budgets.add_budget_month(con, "2026-07-01")
+    master_category = categories.add_master_category(con, "Monthly Bills")
+    rent = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Rent",
+    )
+    utilities = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Utilities",
+    )
+    rent_allocation = budgets.add_budget_allocation(
+        con,
+        budget_month["id"],
+        rent["id"],
+        185000,
+    )
+    budgets.add_budget_allocation(
+        con,
+        budget_month["id"],
+        utilities["id"],
+        25000,
+    )
+
+    updated = budgets.update_budget_allocation(
+        con,
+        budget_month["id"],
+        rent["id"],
+        190000,
+    )
+    allocations = budgets.list_budget_allocations(con, budget_month["id"])
+
+    assert updated["id"] == rent_allocation["id"]
+    assert updated["amount"] == 190000
+    assert [allocation["amount"] for allocation in allocations] == [
+        190000,
+        25000,
+    ]

@@ -66,3 +66,24 @@ def list_budget_allocations(con, budget_month_id):
         """,
         (budget_month_id,),
     ).fetchall()
+
+
+def update_budget_allocation(
+    con,
+    budget_month_id,
+    budget_category_id,
+    amount,
+):
+    # Month and category pair identifies one existing allocation
+    row = con.execute(
+        """
+        UPDATE budget_allocations
+        SET amount = ?
+        WHERE budget_month_id = ?
+          AND budget_category_id = ?
+        RETURNING id, budget_month_id, budget_category_id, amount
+        """,
+        (amount, budget_month_id, budget_category_id),
+    ).fetchone()
+    con.commit()
+    return row
