@@ -122,6 +122,16 @@ class Transaction:
     category_database_id: int | None = None
 
 
+def money_to_cents(amount):
+    # Direction-neutral conversion for income and budget allocations
+    return int(amount * 100)
+
+
+def money_from_cents(amount_in_cents):
+    # Integer cents convert exactly without rounding
+    return Decimal(amount_in_cents) / Decimal("100")
+
+
 def transaction_amount_in_cents(transaction):
     # Outgoing and incoming are mutually exclusive so one is always zero
     if transaction.outgoing != 0:

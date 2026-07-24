@@ -251,6 +251,20 @@ def test_transaction_amount_in_cents_keeps_incoming_positive():
     assert amount == 3499
 
 
+def test_money_conversion_preserves_exact_cents():
+    amount_in_cents = budget_model.money_to_cents(Decimal("1850.25"))
+
+    assert amount_in_cents == 185025
+    assert budget_model.money_from_cents(amount_in_cents) == Decimal("1850.25")
+
+
+def test_money_conversion_preserves_negative_sign():
+    amount_in_cents = budget_model.money_to_cents(Decimal("-25.00"))
+
+    assert amount_in_cents == -2500
+    assert budget_model.money_from_cents(amount_in_cents) == Decimal("-25.00")
+
+
 def test_transaction_amounts_from_cents_makes_negative_amount_outgoing():
     outgoing, incoming = budget_model.transaction_amounts_from_cents(-12345)
 
