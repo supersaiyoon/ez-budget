@@ -94,6 +94,21 @@ def test_set_category_spending_replaces_matching_subcategory_amount():
     assert water.spent == starting_water_spent
 
 
+def test_set_category_budgeted_replaces_matching_subcategory_amount():
+    budget = create_sample_budget()
+    groceries = budget.get_subcategory("Everyday Spending", "Groceries")
+    water = budget.get_subcategory("Monthly Bills", "Water")
+    groceries.database_id = 23
+    water.database_id = 24
+    starting_water_budgeted = water.budgeted
+
+    budget.set_category_budgeted(23, Decimal("650.00"))
+    budget.set_category_budgeted(23, Decimal("700.00"))
+
+    assert groceries.budgeted == Decimal("700.00")
+    assert water.budgeted == starting_water_budgeted
+
+
 def test_invalid_input_is_rejected_without_changing_state():
     budget = create_sample_budget()
     starting_budgeted = budget.total_budgeted
