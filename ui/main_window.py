@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
-from db import accounts, categories, database, payees, transactions
+from db import accounts, budgets as budget_records, categories, database, payees, transactions
 from ui import budget_page, reports_page, styles, transactions_page
 
 
@@ -55,6 +55,15 @@ class MainWindow(QMainWindow):
         self.budgets = [budget_model.create_empty_budget()]
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
+
+        # Current date resolves persisted income for initial budget month
+        budget_month = budget_records.get_or_create_budget_month(
+            self.con,
+            self.budgets[0].month_date.isoformat(),
+        )
+        self.budgets[0].monthly_income = budget_model.money_from_cents(
+            budget_month["monthly_income"]
+        )
 
         # Load master categories from db into budget
         for category_row in categories.list_master_categories(self.con):

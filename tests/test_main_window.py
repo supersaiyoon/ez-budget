@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QCheckBox
 
 import budget_model
-from db import accounts, categories, database, payees, transactions
+from db import accounts, budgets, categories, database, payees, transactions
 from ui.main_window import AccountDialog, MainWindow
 
 
@@ -506,6 +506,22 @@ def test_new_window_starts_without_sample_budget_values():
     assert window.budgets[0].master_categories == []
     assert window.budgets[0].total_budgeted == Decimal("0.00")
     assert window.budgets[0].total_spent == Decimal("0.00")
+
+
+def test_new_window_loads_saved_monthly_income(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    budgets.add_budget_month(
+        con,
+        date.today().replace(day=1).isoformat(),
+        520000,
+    )
+    con.close()
+
+    window = MainWindow(db_path)
+
+    assert window.budgets[0].monthly_income == Decimal("5200.00")
 
 
 def test_new_window_loads_saved_master_categories(tmp_path):
