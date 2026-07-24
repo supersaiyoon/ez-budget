@@ -87,3 +87,26 @@ def update_budget_allocation(
     ).fetchone()
     con.commit()
     return row
+
+
+def set_budget_allocation(
+    con,
+    budget_month_id,
+    budget_category_id,
+    amount,
+):
+    # Existing row keeps stable identity across budget edits
+    allocation = update_budget_allocation(
+        con,
+        budget_month_id,
+        budget_category_id,
+        amount,
+    )
+    if allocation is not None:
+        return allocation
+    return add_budget_allocation(
+        con,
+        budget_month_id,
+        budget_category_id,
+        amount,
+    )

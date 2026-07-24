@@ -143,3 +143,43 @@ def test_update_budget_allocation_replaces_only_matching_amount(con):
         190000,
         25000,
     ]
+
+
+def test_set_budget_allocation_updates_existing_and_inserts_missing(con):
+    budget_month = budgets.add_budget_month(con, "2026-07-01")
+    master_category = categories.add_master_category(con, "Monthly Bills")
+    rent = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Rent",
+    )
+    utilities = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Utilities",
+    )
+    existing = budgets.add_budget_allocation(
+        con,
+        budget_month["id"],
+        rent["id"],
+        185000,
+    )
+
+    updated = budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        rent["id"],
+        190000,
+    )
+    created = budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        utilities["id"],
+        25000,
+    )
+
+    assert updated["id"] == existing["id"]
+    assert updated["amount"] == 190000
+    assert created["budget_category_id"] == utilities["id"]
+    assert created["amount"] == 25000
+    assert con.execute("SELECT COUNT(*) FROM budget_allocations").fetchone()[0] == 2
