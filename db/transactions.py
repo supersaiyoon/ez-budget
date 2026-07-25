@@ -7,24 +7,28 @@ def add_transaction(
     amount,
     notes=None,
     cleared=False,
+    income_month_date=None,
 ):
+    # Optional target month leaves ordinary spending inserts unchanged
     row = con.execute(
         """
         INSERT INTO transactions (
             account_id,
             payee_id,
             budget_category_id,
+            income_month_date,
             transaction_date,
             amount,
             notes,
             cleared
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING
             id,
             account_id,
             payee_id,
             budget_category_id,
+            income_month_date,
             transaction_date,
             amount,
             notes,
@@ -34,6 +38,7 @@ def add_transaction(
             account_id,
             payee_id,
             budget_category_id,
+            income_month_date,
             transaction_date,
             amount,
             notes,

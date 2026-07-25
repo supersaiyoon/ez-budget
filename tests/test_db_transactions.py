@@ -33,6 +33,26 @@ def test_add_transaction_inserts_transaction_row(con):
     assert transaction["cleared"] == False
 
 
+def test_add_transaction_stores_income_target_month(con):
+    account = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Employer")
+    income_category = categories.get_or_create_income_category(con)
+
+    # Hidden category and target month keep income on normal transaction row
+    transaction = transactions.add_transaction(
+        con,
+        account["id"],
+        payee["id"],
+        income_category["id"],
+        "2026-07-25",
+        200000,
+        income_month_date="2026-08-01",
+    )
+
+    assert transaction["budget_category_id"] == income_category["id"]
+    assert transaction["income_month_date"] == "2026-08-01"
+
+
 def test_update_transaction_replaces_editable_fields(con):
     account, payee, category = _create_transaction_dependencies(con)
     transaction = transactions.add_transaction(
