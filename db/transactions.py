@@ -133,6 +133,22 @@ def list_category_transaction_totals(con, start_date, end_date):
     ).fetchall()
 
 
+def get_monthly_income_total(con, start_date, end_date):
+    # Positive Budget-account amounts supply monthly income
+    row = con.execute(
+        """
+        SELECT COALESCE(SUM(transactions.amount), 0) AS total_income
+        FROM transactions
+        JOIN accounts ON accounts.id = transactions.account_id
+        WHERE transactions.transaction_date BETWEEN ? AND ?
+          AND accounts.on_budget = TRUE
+          AND transactions.amount > 0
+        """,
+        (start_date, end_date),
+    ).fetchone()
+    return row["total_income"]
+
+
 def has_transactions(con):
     row = con.execute("SELECT COUNT(*) FROM transactions").fetchone()
     return row[0] > 0

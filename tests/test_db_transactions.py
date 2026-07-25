@@ -237,6 +237,60 @@ def test_list_category_transaction_totals_excludes_incoming_amounts(con):
     assert category_totals[0]["total_amount"] == -4250
 
 
+def test_get_monthly_income_total_sums_only_eligible_incoming_amounts(con):
+    checking, payee, category = _create_transaction_dependencies(con)
+    tracking = accounts.create_account(con, "Tracking", on_budget=False)
+
+    # Current-month Budget-account income
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        100000,
+    )
+    # Outgoing, off-budget, and later-month amounts excluded
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-14",
+        -4250,
+    )
+    transactions.add_transaction(
+        con,
+        tracking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-15",
+        50000,
+    )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-08-01",
+        25000,
+    )
+
+    july_income = transactions.get_monthly_income_total(
+        con,
+        "2026-07-01",
+        "2026-07-31",
+    )
+    september_income = transactions.get_monthly_income_total(
+        con,
+        "2026-09-01",
+        "2026-09-30",
+    )
+
+    assert july_income == 100000
+    assert september_income == 0
+
+
 def test_list_category_transaction_totals_excludes_off_budget_accounts(con):
     checking, payee, category = _create_transaction_dependencies(con)
     tracking = accounts.create_account(con, "Tracking", on_budget=False)
