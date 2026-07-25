@@ -32,6 +32,21 @@ def test_get_or_create_budget_month_reuses_existing_and_adds_missing(con):
     assert con.execute("SELECT COUNT(*) FROM budget_months").fetchone()[0] == 2
 
 
+def test_update_budget_month_income_replaces_matching_month_value(con):
+    july = budgets.add_budget_month(con, "2026-07-01", 520000)
+    august = budgets.add_budget_month(con, "2026-08-01", 540000)
+
+    # Matching month changes without affecting neighboring month
+    updated = budgets.update_budget_month_income(con, july["id"], 550000)
+
+    assert updated["id"] == july["id"]
+    assert updated["monthly_income"] == 550000
+    assert budgets.get_budget_month_by_date(
+        con,
+        "2026-08-01",
+    )["monthly_income"] == august["monthly_income"]
+
+
 def test_add_budget_allocation_inserts_category_amount(con):
     budget_month = budgets.add_budget_month(con, "2026-07-01")
     master_category = categories.add_master_category(con, "Monthly Bills")

@@ -32,6 +32,21 @@ def get_or_create_budget_month(con, month_date):
     return add_budget_month(con, month_date)
 
 
+def update_budget_month_income(con, budget_month_id, monthly_income):
+    # Month ID limits income change to one planning period
+    row = con.execute(
+        """
+        UPDATE budget_months
+        SET monthly_income = ?
+        WHERE id = ?
+        RETURNING id, month_date, monthly_income
+        """,
+        (monthly_income, budget_month_id),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def add_budget_allocation(
     con,
     budget_month_id,
