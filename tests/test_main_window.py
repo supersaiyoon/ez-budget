@@ -576,6 +576,28 @@ def test_budget_allocation_changed_saves_category_amount():
     assert saved_allocation["amount"] == 185000
 
 
+def test_budgeted_cell_edit_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_master_category("Monthly Bills")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Rent")
+
+    # UI edit exercises callback and persistence path
+    row = window.budget_page.rows.index(("Monthly Bills", "Rent")) + 2
+    budgeted_input = window.budget_page.table.cellWidget(row, 1)
+    budgeted_input.setText("1850.00")
+    budgeted_input.editingFinished.emit()
+    window.close()
+    window.con.close()
+
+    # Fresh window rebuilds allocation from same SQLite file
+    reopened_window = MainWindow(db_path)
+    reloaded_rent = reopened_window.budgets[0].master_categories[0].subcategories[0]
+
+    assert reloaded_rent.budgeted == Decimal("1850.00")
+
+
 def test_new_window_loads_saved_master_categories(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
