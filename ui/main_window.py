@@ -188,6 +188,7 @@ class MainWindow(QMainWindow):
             self.refresh_reports,
             self.add_master_category,
             self.add_subcategory,
+            self.budget_allocation_changed,
         )
         self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
@@ -252,6 +253,10 @@ class MainWindow(QMainWindow):
     def refresh_reports(self):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
+
+    def budget_allocation_changed(self, budget, subcategory):
+        # Persistence added separately after callback wiring
+        self.refresh_reports()
 
     def prompt_for_account(self):
         dialog = AccountDialog(self)

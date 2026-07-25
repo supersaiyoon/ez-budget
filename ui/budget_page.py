@@ -27,6 +27,7 @@ class BudgetPage(QWidget):
         on_budget_changed,
         on_master_category_added,
         on_subcategory_added,
+        on_allocation_changed=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -36,6 +37,7 @@ class BudgetPage(QWidget):
         self.on_budget_changed = on_budget_changed
         self.on_master_category_added = on_master_category_added
         self.on_subcategory_added = on_subcategory_added
+        self.on_allocation_changed = on_allocation_changed
         self.active_index = 0
 
         # For matching visual rows back to category names
@@ -306,4 +308,5 @@ class BudgetPage(QWidget):
         )
 
         self.refresh()
-        self.on_budget_changed()
+        if self.on_allocation_changed is not None:
+            self.on_allocation_changed(budget, subcategory)
