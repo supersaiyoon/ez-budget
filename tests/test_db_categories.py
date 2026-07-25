@@ -93,3 +93,15 @@ def test_get_budget_category_by_name_returns_matching_category(con):
     assert category["id"] == expense_category["id"]
     assert category["master_budget_category_id"] == expenses["id"]
     assert category["name"] == "Other"
+
+
+def test_get_or_create_income_category_reuses_hidden_category(con):
+    # Repeated lookup preserves one stable transaction category ID
+    created = categories.get_or_create_income_category(con)
+    reused = categories.get_or_create_income_category(con)
+
+    assert reused["id"] == created["id"]
+    assert created["name"] == "Income"
+    assert created["hidden"] == True
+    assert categories.list_master_categories(con) == []
+    assert categories.list_transaction_categories(con) == []

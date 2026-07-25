@@ -91,3 +91,25 @@ def get_budget_category_by_name(con, master_category_id, name):
         """,
         (master_category_id, name),
     ).fetchone()
+
+
+def get_or_create_income_category(con):
+    # Reserved hidden parent avoids user-category name collisions
+    master_category = get_master_category_by_name(con, "__System__")
+    if master_category is None:
+        master_category = add_master_category(con, "__System__", hidden=True)
+
+    # Stable category ID keeps income on normal transaction rows
+    income_category = get_budget_category_by_name(
+        con,
+        master_category["id"],
+        "Income",
+    )
+    if income_category is not None:
+        return income_category
+    return add_budget_category(
+        con,
+        master_category["id"],
+        "Income",
+        hidden=True,
+    )
