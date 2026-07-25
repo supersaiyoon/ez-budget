@@ -186,7 +186,7 @@ def test_list_category_transaction_totals_sums_amounts_within_date_range(con):
         payee["id"],
         category["id"],
         "2026-07-31",
-        1000,
+        -1000,
     )
     transactions.add_transaction(
         con,
@@ -205,7 +205,36 @@ def test_list_category_transaction_totals_sums_amounts_within_date_range(con):
 
     assert len(category_totals) == 1
     assert category_totals[0]["budget_category_id"] == category["id"]
-    assert category_totals[0]["total_amount"] == -3250
+    assert category_totals[0]["total_amount"] == -5250
+
+
+def test_list_category_transaction_totals_excludes_incoming_amounts(con):
+    checking, payee, category = _create_transaction_dependencies(con)
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+    )
+    # Incoming amount reserved for separate monthly income total
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-14",
+        100000,
+    )
+
+    category_totals = transactions.list_category_transaction_totals(
+        con,
+        "2026-07-01",
+        "2026-07-31",
+    )
+
+    assert category_totals[0]["total_amount"] == -4250
 
 
 def test_list_category_transaction_totals_excludes_off_budget_accounts(con):

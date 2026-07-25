@@ -115,7 +115,7 @@ def list_transactions(con, account_id):
 
 
 def list_category_transaction_totals(con, start_date, end_date):
-    # Only Budget accounts contribute signed totals within inclusive date range
+    # Only Budget-account outgoing transactions count as category spending
     return con.execute(
         """
         SELECT
@@ -125,6 +125,7 @@ def list_category_transaction_totals(con, start_date, end_date):
         JOIN accounts ON accounts.id = transactions.account_id
         WHERE transactions.transaction_date BETWEEN ? AND ?
           AND accounts.on_budget = TRUE
+          AND transactions.amount < 0
         GROUP BY transactions.budget_category_id
         ORDER BY transactions.budget_category_id
         """,
