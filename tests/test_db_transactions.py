@@ -93,6 +93,35 @@ def test_update_transaction_replaces_editable_fields(con):
     assert updated_transaction["cleared"] == True
 
 
+def test_update_transaction_replaces_income_target_month(con):
+    account = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Employer")
+    income_category = categories.get_or_create_income_category(con)
+    transaction = transactions.add_transaction(
+        con,
+        account["id"],
+        payee["id"],
+        income_category["id"],
+        "2026-07-25",
+        200000,
+        income_month_date="2026-07-01",
+    )
+
+    # Later budget assignment keeps original transaction identity
+    updated = transactions.update_transaction(
+        con,
+        transaction["id"],
+        payee["id"],
+        income_category["id"],
+        "2026-07-25",
+        200000,
+        income_month_date="2026-08-01",
+    )
+
+    assert updated["id"] == transaction["id"]
+    assert updated["income_month_date"] == "2026-08-01"
+
+
 def test_list_transactions_returns_only_account_rows(con):
     checking, payee, category = _create_transaction_dependencies(con)
     credit_card = accounts.create_account(con, "Credit Card")

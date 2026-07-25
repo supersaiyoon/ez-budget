@@ -58,14 +58,16 @@ def update_transaction(
     amount,
     notes=None,
     cleared=False,
+    income_month_date=None,
 ):
-    # Full row update keeps persisted transaction aligned with edited model
+    # Optional income target stays aligned with other editable values
     row = con.execute(
         """
         UPDATE transactions
         SET
             payee_id = ?,
             budget_category_id = ?,
+            income_month_date = ?,
             transaction_date = ?,
             amount = ?,
             notes = ?,
@@ -76,6 +78,7 @@ def update_transaction(
             account_id,
             payee_id,
             budget_category_id,
+            income_month_date,
             transaction_date,
             amount,
             notes,
@@ -84,6 +87,7 @@ def update_transaction(
         (
             payee_id,
             budget_category_id,
+            income_month_date,
             transaction_date,
             amount,
             notes,
