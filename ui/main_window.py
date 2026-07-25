@@ -81,6 +81,16 @@ class MainWindow(QMainWindow):
                 category.subcategories.append(subcategory)
             self.budgets[0].master_categories.append(category)
 
+        # Saved allocations replace zeroed startup category amounts
+        for allocation_row in budget_records.list_budget_allocations(
+            self.con,
+            budget_month["id"],
+        ):
+            self.budgets[0].set_category_budgeted(
+                allocation_row["budget_category_id"],
+                budget_model.money_from_cents(allocation_row["amount"]),
+            )
+
         # Current month spending derives from saved Budget-account activity
         self.load_budget_spending(self.budgets[0])
 

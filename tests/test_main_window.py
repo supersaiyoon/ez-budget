@@ -524,6 +524,35 @@ def test_new_window_loads_saved_monthly_income(tmp_path):
     assert window.budgets[0].monthly_income == Decimal("5200.00")
 
 
+def test_new_window_loads_saved_category_allocation(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    budget_month = budgets.add_budget_month(
+        con,
+        date.today().replace(day=1).isoformat(),
+    )
+    master_category = categories.add_master_category(con, "Monthly Bills")
+    rent = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Rent",
+    )
+    budgets.add_budget_allocation(
+        con,
+        budget_month["id"],
+        rent["id"],
+        185000,
+    )
+    con.close()
+
+    window = MainWindow(db_path)
+    loaded_rent = window.budgets[0].master_categories[0].subcategories[0]
+
+    assert loaded_rent.database_id == rent["id"]
+    assert loaded_rent.budgeted == Decimal("1850.00")
+
+
 def test_new_window_loads_saved_master_categories(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
