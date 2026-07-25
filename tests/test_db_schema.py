@@ -129,6 +129,20 @@ def test_transaction_relationship_columns_are_required():
     assert budget_category_required == True
 
 
+def test_transaction_income_month_date_is_optional_text():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+
+    # Ordinary spending transactions leave income target empty
+    columns = {
+        column["name"]: column
+        for column in con.execute("PRAGMA table_info(transactions)")
+    }
+
+    assert columns["income_month_date"]["type"] == "TEXT"
+    assert columns["income_month_date"]["notnull"] == False
+
+
 def test_budget_category_names_are_unique_within_each_master():
     con = database.connect(":memory:")
     database.initialize_database(con)
