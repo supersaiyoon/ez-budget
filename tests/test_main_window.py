@@ -553,6 +553,29 @@ def test_new_window_loads_saved_category_allocation(tmp_path):
     assert loaded_rent.budgeted == Decimal("1850.00")
 
 
+def test_budget_allocation_changed_saves_category_amount():
+    window = MainWindow(":memory:")
+    window.add_master_category("Monthly Bills")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Rent")
+    budget = window.budgets[0]
+    rent = budget.master_categories[0].subcategories[0]
+    rent.budgeted = Decimal("1850.00")
+
+    window.budget_allocation_changed(budget, rent)
+
+    budget_month = budgets.get_budget_month_by_date(
+        window.con,
+        budget.month_date.isoformat(),
+    )
+    saved_allocation = budgets.list_budget_allocations(
+        window.con,
+        budget_month["id"],
+    )[0]
+    assert saved_allocation["budget_category_id"] == rent.database_id
+    assert saved_allocation["amount"] == 185000
+
+
 def test_new_window_loads_saved_master_categories(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)

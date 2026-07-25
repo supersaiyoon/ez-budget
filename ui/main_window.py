@@ -255,7 +255,17 @@ class MainWindow(QMainWindow):
         self.reports_page.refresh()
 
     def budget_allocation_changed(self, budget, subcategory):
-        # Persistence added separately after callback wiring
+        # Month date and category ID identify one saved allocation
+        budget_month = budget_records.get_or_create_budget_month(
+            self.con,
+            budget.month_date.isoformat(),
+        )
+        budget_records.set_budget_allocation(
+            self.con,
+            budget_month["id"],
+            subcategory.database_id,
+            budget_model.money_to_cents(subcategory.budgeted),
+        )
         self.refresh_reports()
 
     def prompt_for_account(self):
