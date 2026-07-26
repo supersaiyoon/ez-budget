@@ -385,3 +385,10 @@ def test_transaction_retains_income_target_month():
     )
 
     assert transaction.income_month_date == "2026-08-01"
+
+
+def test_income_target_month_dates_returns_current_and_following_month():
+    # July transaction supports July or August budget assignment
+    target_dates = budget_model.income_target_month_dates("2026-07-25")
+
+    assert target_dates == ("2026-07-01", "2026-08-01")

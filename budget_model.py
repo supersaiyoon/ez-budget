@@ -431,6 +431,13 @@ def next_month(month_date):
     return date(month_date.year, month_date.month + 1, 1)
 
 
+def income_target_month_dates(transaction_date):
+    # Relative dropdown choices resolve to stable first-day dates
+    this_month = date.fromisoformat(transaction_date).replace(day=1)
+    following_month = next_month(this_month)
+    return this_month.isoformat(), following_month.isoformat()
+
+
 def format_month_name(month_date):
     # Display label generated from date so stored month values stay consistent
     return month_date.strftime("%B %Y")
