@@ -417,6 +417,15 @@ def test_add_account_preserves_off_budget_state():
     assert window.accounts[0].on_budget is False
 
 
+def test_new_account_page_receives_hidden_income_category_id():
+    window = MainWindow(":memory:")
+
+    # Runtime page receives controller-owned system category relationship
+    window.add_account("Checking")
+
+    assert window.transaction_pages[0].income_category_id == window.income_category_id
+
+
 def test_add_account_rejects_duplicate_name():
     window = MainWindow(":memory:")
     window.add_account("Checking")

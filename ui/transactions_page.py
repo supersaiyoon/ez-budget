@@ -20,7 +20,13 @@ TRANSACTION_COLUMNS = ["Date", "Payee", "Category", "Notes", "Outgoing", "Incomi
 
 
 class TransactionsPage(QWidget):
-    def __init__(self, account, category_rows, on_transaction_changed=None):
+    def __init__(
+        self,
+        account,
+        category_rows,
+        on_transaction_changed=None,
+        income_category_id=None,
+    ):
         super().__init__()
         # Shared account object so edits update the main window's sample state
         self.account = account
@@ -28,6 +34,8 @@ class TransactionsPage(QWidget):
         self.category_rows = category_rows
         # Optional callback keeps persistence outside this UI-only page
         self.on_transaction_changed = on_transaction_changed
+        # Hidden category ID backs virtual income choices
+        self.income_category_id = income_category_id
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
