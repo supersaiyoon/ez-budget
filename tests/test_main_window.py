@@ -191,6 +191,35 @@ def test_save_transaction_inserts_income_target_month():
     assert saved_row["income_month_date"] == "2026-08-01"
 
 
+def test_save_transaction_updates_income_target_month():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date="2026-07-25",
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date="2026-07-01",
+    )
+    window.save_transaction(window.accounts[0], transaction)
+    saved_database_id = transaction.database_id
+
+    # Updated assignment keeps original transaction row
+    transaction.category = "Income for next month"
+    transaction.income_month_date = "2026-08-01"
+    window.save_transaction(window.accounts[0], transaction)
+    saved_rows = transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )
+
+    assert len(saved_rows) == 1
+    assert saved_rows[0]["id"] == saved_database_id
+    assert saved_rows[0]["income_month_date"] == "2026-08-01"
+
+
 def test_save_transaction_waits_for_required_fields():
     window = MainWindow(":memory:")
     window.add_account("Checking")

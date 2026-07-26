@@ -435,6 +435,7 @@ class MainWindow(QMainWindow):
             amount_in_cents,
             transaction.notes or None,
             transaction.cleared,
+            income_month_date=transaction.income_month_date,
         )
         self.refresh_budget_spending()
         return True
