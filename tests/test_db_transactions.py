@@ -308,56 +308,60 @@ def test_list_category_transaction_totals_excludes_incoming_amounts(con):
 
 
 def test_get_monthly_income_total_sums_only_eligible_incoming_amounts(con):
-    checking, payee, category = _create_transaction_dependencies(con)
+    checking = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Employer")
     tracking = accounts.create_account(con, "Tracking", on_budget=False)
+    income_category = categories.get_or_create_income_category(con)
 
-    # Current-month Budget-account income
+    # July transaction assigned to August budget
     transactions.add_transaction(
         con,
         checking["id"],
         payee["id"],
-        category["id"],
-        "2026-07-13",
+        income_category["id"],
+        "2026-07-25",
         100000,
+        income_month_date="2026-08-01",
     )
-    # Outgoing, off-budget, and later-month amounts excluded
+    # Outgoing, off-budget, and differently assigned amounts excluded
     transactions.add_transaction(
         con,
         checking["id"],
         payee["id"],
-        category["id"],
-        "2026-07-14",
+        income_category["id"],
+        "2026-07-26",
         -4250,
+        income_month_date="2026-08-01",
     )
     transactions.add_transaction(
         con,
         tracking["id"],
         payee["id"],
-        category["id"],
-        "2026-07-15",
+        income_category["id"],
+        "2026-07-27",
         50000,
+        income_month_date="2026-08-01",
     )
     transactions.add_transaction(
         con,
         checking["id"],
         payee["id"],
-        category["id"],
-        "2026-08-01",
+        income_category["id"],
+        "2026-07-28",
         25000,
+        income_month_date="2026-07-01",
     )
 
-    july_income = transactions.get_monthly_income_total(
+    august_income = transactions.get_monthly_income_total(
         con,
-        "2026-07-01",
-        "2026-07-31",
+        "2026-08-01",
     )
     september_income = transactions.get_monthly_income_total(
         con,
         "2026-09-01",
-        "2026-09-30",
     )
 
-    assert july_income == 100000
+    assert august_income == 100000
     assert september_income == 0
 
 
