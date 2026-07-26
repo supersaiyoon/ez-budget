@@ -100,12 +100,14 @@ def update_transaction(
 
 
 def list_transactions(con, account_id):
+    # Account rows retain category relationship and optional income assignment
     return con.execute(
         """
         SELECT
             transactions.id,
             transactions.account_id,
             transactions.budget_category_id,
+            transactions.income_month_date,
             transactions.transaction_date,
             transactions.notes,
             transactions.amount,

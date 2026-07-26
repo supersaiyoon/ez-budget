@@ -156,6 +156,27 @@ def test_list_transactions_returns_only_account_rows(con):
     assert len(transaction_rows) == 2
 
 
+def test_list_transactions_returns_income_target_month(con):
+    checking = accounts.create_account(con, "Checking")
+    employer = payees.add_payee(con, "Employer")
+    income_category = categories.get_or_create_income_category(con)
+
+    # Saved target month remains available for model reconstruction
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        employer["id"],
+        income_category["id"],
+        "2026-07-25",
+        200000,
+        income_month_date="2026-08-01",
+    )
+
+    transaction_row = transactions.list_transactions(con, checking["id"])[0]
+
+    assert transaction_row["income_month_date"] == "2026-08-01"
+
+
 def test_list_transactions_returns_rows_in_date_order(con):
     checking, payee, category = _create_transaction_dependencies(con)
 
