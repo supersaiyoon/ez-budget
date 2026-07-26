@@ -56,6 +56,11 @@ class MainWindow(QMainWindow):
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
 
+        # Hidden category ID backs virtual income choices without Budget rows
+        self.income_category_id = categories.get_or_create_income_category(
+            self.con,
+        )["id"]
+
         # Current date resolves persisted income for initial budget month
         budget_month = budget_records.get_or_create_budget_month(
             self.con,

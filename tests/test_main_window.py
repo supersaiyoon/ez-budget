@@ -21,6 +21,17 @@ def test_new_window_leaves_account_table_empty():
     assert accounts.has_accounts(window.con) == False
 
 
+def test_new_window_initializes_hidden_income_category():
+    window = MainWindow(":memory:")
+
+    # Controller retains ID while visible Budget category list stays empty
+    income_category = categories.get_or_create_income_category(window.con)
+
+    assert window.income_category_id == income_category["id"]
+    assert categories.list_master_categories(window.con) == []
+    assert window.budgets[0].master_categories == []
+
+
 def test_new_window_loads_saved_account_details(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
