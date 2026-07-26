@@ -36,3 +36,29 @@ def test_transaction_editors_report_new_and_changed_transactions():
     ]
     assert transaction.date == "2026-07-21"
     assert transaction.payee == "Grocery Store"
+
+
+def test_income_category_options_use_transaction_months():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[],
+        income_category_id=42,
+    )
+
+    # Relative labels carry stable July and August target dates
+    options = page.income_category_options("2026-07-25")
+
+    assert options == [
+        {
+            "database_id": 42,
+            "name": "Income for this month",
+            "income_month_date": "2026-07-01",
+        },
+        {
+            "database_id": 42,
+            "name": "Income for next month",
+            "income_month_date": "2026-08-01",
+        },
+    ]
+    assert page.income_category_options("") == []
+    assert page.income_category_options("not-a-date") == []

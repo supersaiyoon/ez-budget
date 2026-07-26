@@ -13,7 +13,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from budget_model import Transaction, format_money, parse_money
+from budget_model import (
+    Transaction,
+    format_money,
+    income_target_month_dates,
+    parse_money,
+)
 
 
 TRANSACTION_COLUMNS = ["Date", "Payee", "Category", "Notes", "Outgoing", "Incoming", "Cleared"]
@@ -89,6 +94,29 @@ class TransactionsPage(QWidget):
         # Rebuild dropdowns when persistent category choices change at runtime
         self.category_rows = category_rows
         self.refresh()
+
+    def income_category_options(self, transaction_date):
+        # Missing system ID or usable date leaves special choices unavailable
+        if self.income_category_id is None or not transaction_date:
+            return []
+        try:
+            this_month, following_month = income_target_month_dates(transaction_date)
+        except ValueError:
+            return []
+
+        # Friendly labels retain concrete month assignments in option data
+        return [
+            {
+                "database_id": self.income_category_id,
+                "name": "Income for this month",
+                "income_month_date": this_month,
+            },
+            {
+                "database_id": self.income_category_id,
+                "name": "Income for next month",
+                "income_month_date": following_month,
+            },
+        ]
 
     def _set_transaction_row(self, row, transaction):
         # Editors bind directly to transaction fields for immediate lightweight edits
