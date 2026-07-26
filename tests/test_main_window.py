@@ -89,16 +89,19 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert loaded_transaction.database_id == saved_transaction["id"]
     assert window.transaction_pages[0].table.rowCount() == 2
     category_input = window.transaction_pages[0].table.cellWidget(0, 2)
+    # Dated rows prepend virtual income choices before normal categories
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
         "",
+        "Income for this month",
+        "Income for next month",
         "Everyday Expenses",
         "Groceries",
         "Savings",
         "Vacation",
     ]
     # Master rows group the list but cannot become a transaction category
-    assert category_input.model().item(1).isEnabled() is False
     assert category_input.model().item(3).isEnabled() is False
+    assert category_input.model().item(5).isEnabled() is False
     assert category_input.currentText() == "Groceries"
     assert category_input.currentData()["database_id"] == category["id"]
 

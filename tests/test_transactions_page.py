@@ -1,6 +1,8 @@
 import pytest
 
-from budget_model import Account
+from decimal import Decimal
+
+from budget_model import Account, Transaction
 from ui.transactions_page import TransactionsPage
 
 
@@ -62,3 +64,39 @@ def test_income_category_options_use_transaction_months():
     ]
     assert page.income_category_options("") == []
     assert page.income_category_options("not-a-date") == []
+
+
+def test_dated_transaction_row_selects_income_target_month():
+    transaction = Transaction(
+        date="2026-07-25",
+        payee="Employer",
+        category="Income",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=42,
+        income_month_date="2026-08-01",
+    )
+    account = Account("Checking", transactions=[transaction])
+    page = TransactionsPage(
+        account,
+        category_rows=[
+            {
+                "id": 7,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+        income_category_id=42,
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    # Saved August target restores next-month label
+    assert category_input.currentText() == "Income for next month"
+
+    category_input.setCurrentText("Income for this month")
+    assert transaction.category_database_id == 42
+    assert transaction.income_month_date == "2026-07-01"
+
+    category_input.setCurrentText("Groceries")
+    assert transaction.category_database_id == 7
+    assert transaction.income_month_date is None

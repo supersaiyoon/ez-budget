@@ -251,24 +251,31 @@ class TransactionsPage(QWidget):
 
     def _set_category_input(self, row, transaction):
         category = QComboBox()
-        self._populate_category_input(category)
-        # Stable id restores the correct choice even when names are duplicated
+        self._populate_category_input(category, transaction.date)
+        # Stable id and target month distinguish both virtual Income choices
         for index in range(category.count()):
             category_option = category.itemData(index)
             if category_option is None:
                 continue
-            if category_option["database_id"] == transaction.category_database_id:
-                category.setCurrentIndex(index)
-                break
+            if category_option["database_id"] != transaction.category_database_id:
+                continue
+            if category_option.get("income_month_date") != transaction.income_month_date:
+                continue
+            category.setCurrentIndex(index)
+            break
         category.currentIndexChanged.connect(
             lambda: self.update_transaction_category(transaction, category)
         )
         self.table.setCellWidget(row, 2, category)
 
-    def _populate_category_input(self, category):
+    def _populate_category_input(self, category, transaction_date=None):
         # Build one grouped list shared by saved rows and the blank entry row
         # Blank row supports incomplete entry before a category is selected
         category.addItem("", None)
+        # Dated rows receive virtual choices before normal Budget categories
+        for income_option in self.income_category_options(transaction_date):
+            category.addItem(income_option["name"], income_option)
+
         current_master_name = None
         for category_row in self.category_rows:
             master_name = category_row["master_category_name"]
@@ -306,10 +313,12 @@ class TransactionsPage(QWidget):
         if category_option is None:
             transaction.category = ""
             transaction.category_database_id = None
+            transaction.income_month_date = None
             self._notify_transaction_changed(transaction)
             return
         transaction.category = category_option["name"]
         transaction.category_database_id = category_option["database_id"]
+        transaction.income_month_date = category_option.get("income_month_date")
         self._notify_transaction_changed(transaction)
 
     def _set_money_input(self, row, column, value, apply_value):
