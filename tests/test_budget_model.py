@@ -368,3 +368,17 @@ def test_new_transaction_starts_without_database_id():
 
     assert transaction.database_id is None
     assert transaction.category_database_id is None
+
+
+def test_transaction_retains_income_target_month():
+    # Concrete month remains stable after relative dropdown selection
+    transaction = budget_model.Transaction(
+        date="2026-07-25",
+        payee="Employer",
+        category="Income for next month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        income_month_date="2026-08-01",
+    )
+
+    assert transaction.income_month_date == "2026-08-01"

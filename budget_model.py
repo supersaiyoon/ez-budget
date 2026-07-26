@@ -129,6 +129,8 @@ class Transaction:
     database_id: int | None = None
     # Selected budget category identity avoids ambiguous duplicate names
     category_database_id: int | None = None
+    # First day of budget month receiving income
+    income_month_date: str | None = None
 
 
 def money_to_cents(amount):
