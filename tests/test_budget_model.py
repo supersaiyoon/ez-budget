@@ -317,6 +317,7 @@ def test_transaction_from_database_row_maps_outgoing_transaction():
     transaction_row = {
         "id": 17,
         "budget_category_id": 23,
+        "income_month_date": None,
         "transaction_date": "2026-07-13",
         "payee_name": "Grocery Store",
         "category_name": "Groceries",
@@ -342,6 +343,7 @@ def test_transaction_from_database_row_maps_incoming_transaction():
     transaction_row = {
         "id": 18,
         "budget_category_id": 24,
+        "income_month_date": "2026-08-01",
         "transaction_date": "2026-07-14",
         "payee_name": "Online Return",
         "category_name": "Clothing",
@@ -356,6 +358,7 @@ def test_transaction_from_database_row_maps_incoming_transaction():
     assert transaction.outgoing == Decimal("0.00")
     assert transaction.incoming == Decimal("34.99")
     assert transaction.cleared is False
+    assert transaction.income_month_date == "2026-08-01"
 
 
 def test_new_transaction_starts_without_database_id():

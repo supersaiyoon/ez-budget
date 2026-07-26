@@ -180,6 +180,8 @@ def transaction_from_database_row(transaction_row):
         cleared=bool(transaction_row["cleared"]),
         database_id=transaction_row["id"],
         category_database_id=transaction_row["budget_category_id"],
+        # Persisted target restores income assignment after restart
+        income_month_date=transaction_row["income_month_date"],
     )
 
 
