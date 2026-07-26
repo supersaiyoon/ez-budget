@@ -418,6 +418,7 @@ class MainWindow(QMainWindow):
                 amount_in_cents,
                 transaction.notes or None,
                 transaction.cleared,
+                income_month_date=transaction.income_month_date,
             )
             # Retained id sends later cell changes through update path
             transaction.database_id = transaction_row["id"]

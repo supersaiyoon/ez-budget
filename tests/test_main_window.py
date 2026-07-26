@@ -166,6 +166,31 @@ def test_save_transaction_inserts_then_updates_same_database_row():
     assert len(saved_rows) == 1
 
 
+def test_save_transaction_inserts_income_target_month():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date="2026-07-25",
+        payee="Employer",
+        category="Income for next month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date="2026-08-01",
+    )
+
+    # Insert branch preserves hidden category and concrete target month
+    saved = window.save_transaction(window.accounts[0], transaction)
+    saved_row = transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )[0]
+
+    assert saved is True
+    assert saved_row["budget_category_id"] == window.income_category_id
+    assert saved_row["income_month_date"] == "2026-08-01"
+
+
 def test_save_transaction_waits_for_required_fields():
     window = MainWindow(":memory:")
     window.add_account("Checking")
