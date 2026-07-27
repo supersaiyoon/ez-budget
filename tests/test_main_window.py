@@ -817,6 +817,14 @@ def test_new_window_loads_closed_accounts_separately(tmp_path):
     assert loaded_account.closed is True
     assert loaded_account.transactions[0].database_id == saved_transaction["id"]
     assert loaded_account.transactions[0].outgoing == Decimal("42.50")
+    assert window.closed_accounts_button.text() == "▼ Closed"
+    assert window.closed_account_items[0].text() == "Old Checking"
+    assert window.closed_account_items[0].isHidden() is False
+
+    window.closed_accounts_button.click()
+
+    assert window.closed_accounts_button.text() == "▶ Closed"
+    assert window.closed_account_items[0].isHidden() is True
 
 
 def test_empty_account_database_shows_account_header():
@@ -828,6 +836,7 @@ def test_empty_account_database_shows_account_header():
         "Accounts",
         "On Budget",
         "Off Budget",
+        "Closed",
     ]
     assert window.accounts_header_item.text() == "Accounts"
     assert window.accounts_header_item.font().pixelSize() == 12
@@ -835,6 +844,9 @@ def test_empty_account_database_shows_account_header():
     assert window.accounts_header_item.data(Qt.ItemDataRole.UserRole) is None
     assert window.on_budget_header_item.text() == "On Budget"
     assert window.off_budget_header_item.text() == "Off Budget"
+    assert window.closed_accounts_button.text() == "▼ Closed"
+    assert window.closed_accounts_button.font().pixelSize() == 11
+    assert window.closed_accounts_button.font().bold() is True
     assert not window.on_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert not window.off_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
@@ -933,6 +945,7 @@ def test_add_first_account_keeps_account_header():
         "On Budget",
         "Checking",
         "Off Budget",
+        "Closed",
     ]
     assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
@@ -960,6 +973,7 @@ def test_add_later_account_keeps_reports_before_account_pages():
         "Checking",
         "Savings",
         "Off Budget",
+        "Closed",
     ]
     assert window.stack.widget(1) is window.reports_page
     assert window.stack.widget(3) is window.transaction_pages[1]
@@ -987,6 +1001,7 @@ def test_budget_account_is_inserted_before_off_budget_account():
         "Checking",
         "Off Budget",
         "House Value",
+        "Closed",
     ]
     assert window.transaction_pages[0].account.name == "Checking"
     assert window.transaction_pages[1].account.name == "House Value"

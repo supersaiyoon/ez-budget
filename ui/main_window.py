@@ -128,6 +128,8 @@ class MainWindow(QMainWindow):
         self.nav = QListWidget()
         self.nav.setObjectName("navList")
         self.nav.setFixedWidth(170)
+        # Closed section starts open so archived accounts stay discoverable
+        self.closed_accounts_expanded = True
         for page_index, name in enumerate(["Budget", "Reports"]):
             item = QListWidgetItem(name)
             item.setSizeHint(item.sizeHint())
@@ -184,6 +186,7 @@ class MainWindow(QMainWindow):
             + on_budget_names
             + ["Off Budget"]
             + off_budget_names
+            + ["Closed"]
         )
 
     def _add_navigation_header(self, text, pixel_size):
@@ -198,6 +201,7 @@ class MainWindow(QMainWindow):
 
     def rebuild_account_navigation(self):
         # Rows below permanent Accounts header rebuild from active model order
+        # Current page identity survives rebuild when matching row still exists
         selected_item = self.nav.currentItem()
         selected_page_index = (
             selected_item.data(Qt.ItemDataRole.UserRole)
@@ -205,6 +209,7 @@ class MainWindow(QMainWindow):
             else None
         )
         self.nav.blockSignals(True)
+        # Generated rows and embedded controls clear before fresh ordering
         while self.nav.count() > 3:
             item = self.nav.item(3)
             item_widget = self.nav.itemWidget(item)
@@ -213,6 +218,7 @@ class MainWindow(QMainWindow):
                 item_widget.deleteLater()
             self.nav.takeItem(3)
 
+        # Account positions stay aligned with transaction page positions
         self.on_budget_header_item = self._add_navigation_header("On Budget", 11)
         for account_position, account in enumerate(self.accounts):
             if not account.on_budget:
@@ -231,6 +237,45 @@ class MainWindow(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, account_position + 2)
             self.nav.addItem(item)
 
+        self.closed_account_items = []
+        # Embedded Closed header stays visible even before first account closes
+        self.closed_accounts_button = QPushButton()
+        self.closed_accounts_button.setObjectName("closedAccountsButton")
+        closed_header_font = self.closed_accounts_button.font()
+        closed_header_font.setPixelSize(11)
+        closed_header_font.setBold(True)
+        self.closed_accounts_button.setFont(closed_header_font)
+        self.closed_accounts_button.setStyleSheet("text-align: left;")
+        self.closed_accounts_button.clicked.connect(
+            self.toggle_closed_accounts
+        )
+        closed_header_item = QListWidgetItem("Closed")
+        closed_header_item.setSizeHint(
+            QSize(
+                self.nav.width(),
+                self.closed_accounts_button.sizeHint().height() + 12,
+            )
+        )
+        closed_header_item.setFlags(
+            closed_header_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+        )
+        self.nav.addItem(closed_header_item)
+        self.nav.setItemWidget(
+            closed_header_item,
+            self.closed_accounts_button,
+        )
+
+        # Closed names remain display-only until reopen action is connected
+        for account in self.closed_accounts:
+            item = QListWidgetItem(account.name)
+            item.setFlags(
+                item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+            )
+            self.nav.addItem(item)
+            self.closed_account_items.append(item)
+        self.update_closed_accounts_visibility()
+
+        # Add action stays below every account group
         self.add_account_button = QPushButton("+ Add Account")
         self.add_account_button.setObjectName("addAccountButton")
         self.add_account_button.clicked.connect(self.prompt_for_account)
@@ -248,6 +293,7 @@ class MainWindow(QMainWindow):
         self.nav.addItem(add_account_item)
         self.nav.setItemWidget(add_account_item, self.add_account_button)
 
+        # Selection restoration avoids unexpected page jumps after rebuild
         if selected_page_index is not None:
             for row in range(self.nav.count()):
                 if (
@@ -257,6 +303,22 @@ class MainWindow(QMainWindow):
                     self.nav.setCurrentRow(row)
                     break
         self.nav.blockSignals(False)
+
+    def toggle_closed_accounts(self):
+        # Header button controls archived account visibility without page changes
+        if not self.closed_accounts:
+            self.closed_accounts_expanded = True
+            self.update_closed_accounts_visibility()
+            return
+        self.closed_accounts_expanded = not self.closed_accounts_expanded
+        self.update_closed_accounts_visibility()
+
+    def update_closed_accounts_visibility(self):
+        # Arrow and hidden state reflect one shared expansion flag
+        arrow = "▼" if self.closed_accounts_expanded else "▶"
+        self.closed_accounts_button.setText(f"{arrow} Closed")
+        for item in self.closed_account_items:
+            item.setHidden(not self.closed_accounts_expanded)
 
     def create_transaction_page(self, account):
         # Shared setup keeps loaded, new, and reopened account pages consistent
