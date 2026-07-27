@@ -493,6 +493,33 @@ def test_assigned_income_survives_restart(tmp_path):
     assert reloaded_transaction.income_month_date == month_date
 
 
+def test_next_month_assigned_income_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    current_budget = window.budgets[0]
+    next_budget = window.budgets[1]
+    transaction = budget_model.Transaction(
+        date=current_budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for next month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=next_budget.month_date.isoformat(),
+    )
+    window.save_transaction(window.accounts[0], transaction)
+
+    window.close()
+    window.con.close()
+
+    # Startup-generated next month reloads its assigned total instead of copying
+    reopened_window = MainWindow(db_path)
+
+    assert reopened_window.budgets[0].monthly_income == Decimal("0.00")
+    assert reopened_window.budgets[1].monthly_income == Decimal("2000.00")
+
+
 def test_new_window_loads_closed_accounts_separately(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)

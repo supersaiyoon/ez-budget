@@ -193,6 +193,9 @@ class MainWindow(QMainWindow):
             self.add_subcategory,
             self.budget_allocation_changed,
         )
+        # Generated visible months replace inherited income with assigned totals
+        self.refresh_budget_income()
+        self.budget_page.refresh()
         self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
         self.stack.addWidget(self.reports_page)
