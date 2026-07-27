@@ -194,6 +194,27 @@ def test_save_transaction_inserts_income_target_month():
     assert saved_row["income_month_date"] == "2026-08-01"
 
 
+def test_save_transaction_refreshes_income_after_insert():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    current_budget = window.budgets[0]
+    next_budget = window.budgets[1]
+    transaction = budget_model.Transaction(
+        date=current_budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for next month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=next_budget.month_date.isoformat(),
+    )
+
+    window.save_transaction(window.accounts[0], transaction)
+
+    assert current_budget.monthly_income == Decimal("0.00")
+    assert next_budget.monthly_income == Decimal("2000.00")
+
+
 def test_save_transaction_updates_income_target_month():
     window = MainWindow(":memory:")
     window.add_account("Checking")

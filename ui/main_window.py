@@ -433,9 +433,13 @@ class MainWindow(QMainWindow):
                 transaction.cleared,
                 income_month_date=transaction.income_month_date,
             )
+
             # Retained id sends later cell changes through update path
             transaction.database_id = transaction_row["id"]
             self.refresh_budget_spending()
+
+            # New assigned income may affect any generated Budget month
+            self.refresh_budget_income()
             return True
 
         # Existing row id updates editable values without changing owning account
