@@ -814,11 +814,7 @@ def test_new_window_loads_assigned_transaction_income(tmp_path):
     con = database.connect(db_path)
     database.initialize_database(con)
     month_date = date.today().replace(day=1).isoformat()
-    budgets.add_budget_month(
-        con,
-        month_date,
-        100000,
-    )
+    budgets.add_budget_month(con, month_date)
     checking = accounts.create_account(con, "Checking")
     employer = payees.add_payee(con, "Employer")
     income_category = categories.get_or_create_income_category(con)

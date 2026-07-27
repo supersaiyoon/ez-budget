@@ -6,11 +6,10 @@ CREATE TABLE IF NOT EXISTS accounts (
     closed              BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- One row per calendar month keeps income separate from category allocations
+-- One row per calendar month scopes category allocations
 CREATE TABLE IF NOT EXISTS budget_months (
     id                  INTEGER PRIMARY KEY,
-    month_date          TEXT NOT NULL UNIQUE,
-    monthly_income      INT NOT NULL DEFAULT 0
+    month_date          TEXT NOT NULL UNIQUE
 );
 
 -- Normalize payees

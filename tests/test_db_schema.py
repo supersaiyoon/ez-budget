@@ -28,7 +28,7 @@ def test_initialize_database_creates_core_tables():
     }.issubset(table_names)
 
 
-def test_budget_month_requires_unique_date_and_defaults_income_to_zero():
+def test_budget_month_requires_unique_date():
     con = database.connect(":memory:")
     database.initialize_database(con)
     columns = {
@@ -42,8 +42,8 @@ def test_budget_month_requires_unique_date_and_defaults_income_to_zero():
     ).fetchone()
 
     assert columns["month_date"]["notnull"] == True
-    assert columns["monthly_income"]["notnull"] == True
-    assert budget_month["monthly_income"] == 0
+    assert "monthly_income" not in columns
+    assert budget_month["month_date"] == "2026-07-01"
     with pytest.raises(sqlite3.IntegrityError):
         con.execute(
             "INSERT INTO budget_months (month_date) VALUES (?)",
