@@ -282,29 +282,34 @@ class MainWindow(QMainWindow):
         self.closed_accounts_button.clicked.connect(
             self.toggle_closed_accounts
         )
-        closed_header_item = QListWidgetItem("Closed")
-        closed_header_item.setSizeHint(
+
+        self.closed_accounts_header_item = QListWidgetItem("Closed")
+
+        # Full nav padding prevents embedded button from collapsing into a bar
+        self.closed_accounts_header_item.setSizeHint(
             QSize(
                 self.nav.width(),
-                self.closed_accounts_button.sizeHint().height() + 12,
+                56,
             )
         )
-        closed_header_item.setFlags(
-            closed_header_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+
+        self.closed_accounts_header_item.setFlags(
+            self.closed_accounts_header_item.flags()
+            & ~Qt.ItemFlag.ItemIsSelectable
         )
-        self.nav.addItem(closed_header_item)
+
+        self.nav.addItem(self.closed_accounts_header_item)
         self.nav.setItemWidget(
-            closed_header_item,
+            self.closed_accounts_header_item,
             self.closed_accounts_button,
         )
 
         self.closed_account_reopen_buttons = []
+
         # Closed rows pair archived name with explicit non-destructive action
         for account in self.closed_accounts:
             item = QListWidgetItem(account.name)
-            item.setFlags(
-                item.flags() & ~Qt.ItemFlag.ItemIsSelectable
-            )
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(8, 0, 4, 0)
@@ -329,6 +334,7 @@ class MainWindow(QMainWindow):
         self.add_account_button.setObjectName("addAccountButton")
         self.add_account_button.clicked.connect(self.prompt_for_account)
         add_account_item = QListWidgetItem()
+
         # Extra height offsets nav item padding around embedded button
         add_account_item.setSizeHint(
             QSize(
@@ -367,7 +373,7 @@ class MainWindow(QMainWindow):
 
     def update_closed_accounts_visibility(self):
         # Arrow and hidden state reflect one shared expansion flag
-        arrow = "▼" if self.closed_accounts_expanded else "▶"
+        arrow = "\u25bc" if self.closed_accounts_expanded else "\u25b6"
         self.closed_accounts_button.setText(f"{arrow} Closed")
         for item in self.closed_account_items:
             item.setHidden(not self.closed_accounts_expanded)

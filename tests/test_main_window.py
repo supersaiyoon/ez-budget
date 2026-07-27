@@ -847,6 +847,7 @@ def test_empty_account_database_shows_account_header():
     assert window.closed_accounts_button.text() == "▼ Closed"
     assert window.closed_accounts_button.font().pixelSize() == 11
     assert window.closed_accounts_button.font().bold() is True
+    assert window.closed_accounts_header_item.sizeHint().height() == 56
     assert not window.on_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert not window.off_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
