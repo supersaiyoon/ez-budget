@@ -2,6 +2,7 @@ from datetime import date
 from functools import partial
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -153,12 +154,23 @@ class TransactionsPage(QWidget):
     def _set_transaction_row(self, row, transaction):
         # Editors bind directly to transaction fields for immediate lightweight edits
         self._set_date_input(row, transaction)
-        self._set_text_input(
+        payee_input = self._set_text_input(
             row,
             1,
             transaction.payee,
             lambda value: self._update_transaction_field(transaction, "payee", value),
         )
+        if transaction.payee == INCOME_PAYEE_PLACEHOLDER:
+            # Muted italic treatment distinguishes automatic value from real payee
+            placeholder_font = payee_input.font()
+            placeholder_font.setItalic(True)
+            payee_input.setFont(placeholder_font)
+            placeholder_palette = payee_input.palette()
+            placeholder_palette.setColor(
+                QPalette.ColorRole.Text,
+                QColor("#7a8794"),
+            )
+            payee_input.setPalette(placeholder_palette)
         self._set_category_input(row, transaction)
         self._set_text_input(
             row,
@@ -287,6 +299,7 @@ class TransactionsPage(QWidget):
         # Stored values trimmed to avoid accidental spaces in reports and filters
         input_field.editingFinished.connect(lambda: apply_value(input_field.text().strip()))
         self.table.setCellWidget(row, column, input_field)
+        return input_field
 
     def _set_date_input(self, row, transaction):
         try:

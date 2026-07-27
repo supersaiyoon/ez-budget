@@ -230,10 +230,17 @@ def test_income_category_autofills_and_clears_placeholder_payee():
     category_input.setCurrentText("Income for this month")
 
     assert transaction.payee == "Not needed for income"
-    assert page.table.cellWidget(0, 1).text() == "Not needed for income"
+    payee_input = page.table.cellWidget(0, 1)
+    assert payee_input.text() == "Not needed for income"
+    assert payee_input.font().italic() is True
+    assert payee_input.palette().color(payee_input.foregroundRole()).name() == (
+        "#7a8794"
+    )
 
     category_input = page.table.cellWidget(0, 2)
     category_input.setCurrentText("Groceries")
 
     assert transaction.payee == ""
-    assert page.table.cellWidget(0, 1).text() == ""
+    payee_input = page.table.cellWidget(0, 1)
+    assert payee_input.text() == ""
+    assert payee_input.font().italic() is False
