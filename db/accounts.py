@@ -65,6 +65,21 @@ def delete_account(con, account_id):
     return row
 
 
+def set_account_closed(con, account_id, closed):
+    # Closed flag preserves account history while changing active navigation state
+    row = con.execute(
+        """
+        UPDATE accounts
+        SET closed = ?
+        WHERE id = ?
+        RETURNING id, name, on_budget, closed
+        """,
+        (closed, account_id),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def has_accounts(con):
     row = con.execute("SELECT COUNT(*) FROM accounts").fetchone()
     return row[0] > 0

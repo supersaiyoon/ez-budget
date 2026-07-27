@@ -90,6 +90,46 @@ def test_delete_account_keeps_account_with_transactions(con):
     assert accounts.get_account_by_name(con, "Checking")["id"] == checking["id"]
 
 
+def test_set_account_closed_preserves_transactions_and_supports_reopen(con):
+    checking = accounts.create_account(con, "Checking")
+    grocery_store = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(
+        con,
+        "Everyday Expenses",
+    )
+    groceries = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Groceries",
+    )
+    transaction = transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_store["id"],
+        groceries["id"],
+        "2026-07-21",
+        -4250,
+    )
+
+    closed = accounts.set_account_closed(con, checking["id"], True)
+
+    assert closed["closed"] == True
+    assert accounts.list_accounts(con) == []
+    assert accounts.list_closed_accounts(con)[0]["id"] == checking["id"]
+    assert transactions.list_transactions(con, checking["id"])[0]["id"] == (
+        transaction["id"]
+    )
+
+    reopened = accounts.set_account_closed(con, checking["id"], False)
+
+    assert reopened["closed"] == False
+    assert accounts.list_accounts(con)[0]["id"] == checking["id"]
+    assert accounts.list_closed_accounts(con) == []
+    assert transactions.list_transactions(con, checking["id"])[0]["id"] == (
+        transaction["id"]
+    )
+
+
 def test_has_accounts_reports_whether_accounts_exist(con):
 
     assert accounts.has_accounts(con) is False
