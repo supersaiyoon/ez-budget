@@ -521,6 +521,18 @@ class MainWindow(QMainWindow):
         if account.database_id is None:
             return False
 
+        source_accounts = self.accounts if closed else self.closed_accounts
+        account_index = next(
+            (
+                index
+                for index, existing_account in enumerate(source_accounts)
+                if existing_account is account
+            ),
+            None,
+        )
+        if account_index is None:
+            return False
+
         account_row = accounts.set_account_closed(
             self.con,
             account.database_id,
@@ -531,6 +543,26 @@ class MainWindow(QMainWindow):
 
         # Database result keeps model state aligned with persisted value
         account.closed = bool(account_row["closed"])
+        if closed:
+            self.accounts.pop(account_index)
+            page = self.transaction_pages.pop(account_index)
+            self.stack.removeWidget(page)
+            page.deleteLater()
+            self.closed_accounts.append(account)
+            return True
+
+        self.closed_accounts.pop(account_index)
+        if account.on_budget:
+            active_position = sum(
+                existing_account.on_budget
+                for existing_account in self.accounts
+            )
+        else:
+            active_position = len(self.accounts)
+        self.accounts.insert(active_position, account)
+        page = self.create_transaction_page(account)
+        self.transaction_pages.insert(active_position, page)
+        self.stack.insertWidget(active_position + 2, page)
         return True
 
     def add_subcategory(self, master_category_id, name):
