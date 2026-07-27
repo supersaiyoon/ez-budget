@@ -138,6 +138,44 @@ def test_delete_button_cancel_keeps_transaction(monkeypatch):
     assert account.transactions == [transaction]
 
 
+def test_close_account_button_reports_confirmed_account(monkeypatch):
+    account = Account("Checking")
+    close_requests = []
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_account_close_requested=close_requests.append,
+    )
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+
+    page.close_account_button.click()
+
+    assert close_requests == [account]
+
+
+def test_close_account_button_cancel_keeps_account_active(monkeypatch):
+    account = Account("Checking")
+    close_requests = []
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_account_close_requested=close_requests.append,
+    )
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.No,
+    )
+
+    page.close_account_button.click()
+
+    assert close_requests == []
+
+
 def test_income_category_options_use_current_planning_month():
     page = TransactionsPage(
         Account("Checking"),

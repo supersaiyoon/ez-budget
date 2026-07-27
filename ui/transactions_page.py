@@ -49,6 +49,7 @@ class TransactionsPage(QWidget):
         income_category_id=None,
         on_transaction_delete_requested=None,
         income_reference_date=None,
+        on_account_close_requested=None,
     ):
         super().__init__()
 
@@ -66,10 +67,14 @@ class TransactionsPage(QWidget):
 
         # Controller owns persistence and decides whether deletion succeeded
         self.on_transaction_delete_requested = on_transaction_delete_requested
+
         # Current planning month keeps income labels stable across transaction dates
         self.income_reference_date = (
             income_reference_date or date.today().replace(day=1).isoformat()
         )
+
+        # Controller owns account collection and navigation changes
+        self.on_account_close_requested = on_account_close_requested
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -78,6 +83,15 @@ class TransactionsPage(QWidget):
         heading = QLabel(account.name)
         heading.setObjectName("pageTitle")
         layout.addWidget(heading)
+
+        # Account action stays separate from transaction-row actions
+        account_actions = QHBoxLayout()
+        account_actions.addStretch()
+        self.close_account_button = QPushButton("Close Account")
+        self.close_account_button.setObjectName("closeAccountButton")
+        self.close_account_button.clicked.connect(self.request_account_close)
+        account_actions.addWidget(self.close_account_button)
+        layout.addLayout(account_actions)
 
         self.summary = QLabel()
         self.summary.setObjectName("statusText")
@@ -484,3 +498,20 @@ class TransactionsPage(QWidget):
         if deleted:
             # Rebuild rows and balances after controller removes transaction
             self.refresh()
+
+    def request_account_close(self):
+        if self.on_account_close_requested is None:
+            return
+
+        # Closing preserves history but still removes account from active workflow
+        choice = QMessageBox.question(
+            self,
+            "Close Account",
+            "Close this account? Transaction history will be preserved.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if choice != QMessageBox.StandardButton.Yes:
+            return
+
+        self.on_account_close_requested(self.account)
