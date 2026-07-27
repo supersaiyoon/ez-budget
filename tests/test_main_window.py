@@ -543,6 +543,41 @@ def test_next_month_assigned_income_survives_restart(tmp_path):
     assert reopened_window.budgets[1].monthly_income == Decimal("2000.00")
 
 
+def test_next_month_spending_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    window.add_account("Checking")
+    next_budget = window.budgets[1]
+    next_groceries = next_budget.master_categories[0].subcategories[0]
+    transaction = budget_model.Transaction(
+        date=next_budget.month_date.isoformat(),
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=next_groceries.database_id,
+    )
+    window.save_transaction(window.accounts[0], transaction)
+
+    window.close()
+    window.con.close()
+
+    # Startup-generated next month rebuilds spending from saved transactions
+    reopened_window = MainWindow(db_path)
+    reopened_current_groceries = (
+        reopened_window.budgets[0].master_categories[0].subcategories[0]
+    )
+    reopened_next_groceries = (
+        reopened_window.budgets[1].master_categories[0].subcategories[0]
+    )
+
+    assert reopened_current_groceries.spent == Decimal("0.00")
+    assert reopened_next_groceries.spent == Decimal("42.50")
+
+
 def test_new_window_loads_closed_accounts_separately(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)

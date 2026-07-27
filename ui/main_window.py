@@ -183,6 +183,7 @@ class MainWindow(QMainWindow):
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
         self.refresh_budget_income()
+        self.refresh_budget_spending()
         self.budget_page.refresh()
         self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
