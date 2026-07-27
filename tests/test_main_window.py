@@ -939,6 +939,36 @@ def test_next_month_budgeted_cell_edit_survives_restart(tmp_path):
     assert reopened_next_rent.budgeted == Decimal("1900.00")
 
 
+def test_budget_navigation_loads_saved_future_month_allocation():
+    window = MainWindow(":memory:")
+    window.add_master_category("Monthly Bills")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Rent")
+    initial_month_count = len(window.budgets)
+    future_month_date = budget_model.next_month(
+        window.budgets[-1].month_date
+    )
+    future_budget_month = budgets.get_or_create_budget_month(
+        window.con,
+        future_month_date.isoformat(),
+    )
+    rent_id = window.budgets[0].master_categories[0].subcategories[0].database_id
+    budgets.set_budget_allocation(
+        window.con,
+        future_budget_month["id"],
+        rent_id,
+        195000,
+    )
+
+    # Moving existing window edge forward generates and reloads later months
+    window.budget_page.set_active_month(initial_month_count - 1)
+
+    future_budget = window.budgets[initial_month_count]
+    future_rent = future_budget.master_categories[0].subcategories[0]
+    assert future_budget.month_date == future_month_date
+    assert future_rent.budgeted == Decimal("1950.00")
+
+
 def test_new_window_loads_saved_master_categories(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)

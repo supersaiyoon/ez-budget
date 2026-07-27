@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.budget_page = budget_page.BudgetPage(
             self.budgets,
-            self.refresh_reports,
+            self.budget_months_changed,
             self.add_master_category,
             self.add_subcategory,
             self.budget_allocation_changed,
@@ -249,6 +249,14 @@ class MainWindow(QMainWindow):
     def refresh_reports(self):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
+
+    def budget_months_changed(self):
+        # Newly generated months reload saved data before pages recalculate
+        self.refresh_budget_allocations()
+        self.refresh_budget_income()
+        self.refresh_budget_spending()
+        self.budget_page.refresh()
+        self.refresh_reports()
 
     def budget_allocation_changed(self, budget, subcategory):
         # Month date and category ID identify one saved allocation
