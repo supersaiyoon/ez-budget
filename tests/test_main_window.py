@@ -218,21 +218,23 @@ def test_save_transaction_refreshes_income_after_insert():
 def test_save_transaction_updates_income_target_month():
     window = MainWindow(":memory:")
     window.add_account("Checking")
+    current_budget = window.budgets[0]
+    next_budget = window.budgets[1]
     transaction = budget_model.Transaction(
-        date="2026-07-25",
+        date=current_budget.month_date.isoformat(),
         payee="Employer",
         category="Income for this month",
         notes="",
         incoming=Decimal("2000.00"),
         category_database_id=window.income_category_id,
-        income_month_date="2026-07-01",
+        income_month_date=current_budget.month_date.isoformat(),
     )
     window.save_transaction(window.accounts[0], transaction)
     saved_database_id = transaction.database_id
 
     # Updated assignment keeps original transaction row
     transaction.category = "Income for next month"
-    transaction.income_month_date = "2026-08-01"
+    transaction.income_month_date = next_budget.month_date.isoformat()
     window.save_transaction(window.accounts[0], transaction)
     saved_rows = transactions.list_transactions(
         window.con,
@@ -241,7 +243,9 @@ def test_save_transaction_updates_income_target_month():
 
     assert len(saved_rows) == 1
     assert saved_rows[0]["id"] == saved_database_id
-    assert saved_rows[0]["income_month_date"] == "2026-08-01"
+    assert saved_rows[0]["income_month_date"] == next_budget.month_date.isoformat()
+    assert current_budget.monthly_income == Decimal("0.00")
+    assert next_budget.monthly_income == Decimal("2000.00")
 
 
 def test_save_transaction_waits_for_required_fields():

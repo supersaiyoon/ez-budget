@@ -455,6 +455,9 @@ class MainWindow(QMainWindow):
             income_month_date=transaction.income_month_date,
         )
         self.refresh_budget_spending()
+
+        # Updated assignment may remove income from old month and add it elsewhere
+        self.refresh_budget_income()
         return True
 
     def add_subcategory(self, master_category_id, name):
