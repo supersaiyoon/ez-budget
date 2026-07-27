@@ -51,6 +51,7 @@ class TransactionsPage(QWidget):
         income_reference_date=None,
         on_account_close_requested=None,
         on_account_delete_requested=None,
+        allow_new_transactions=True,
     ):
         super().__init__()
 
@@ -79,6 +80,9 @@ class TransactionsPage(QWidget):
 
         # Controller checks history before allowing permanent account deletion
         self.on_account_delete_requested = on_account_delete_requested
+
+        # Closed account pages keep history visible without blank entry row
+        self.allow_new_transactions = allow_new_transactions
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -135,12 +139,16 @@ class TransactionsPage(QWidget):
             f"Working balance: {format_money(self.account.working_balance)}    "
             f"Cleared balance: {format_money(self.account.cleared_balance)}"
         )
-        # Extra row stays available for quick entry without an add button
-        self.table.setRowCount(len(self.account.transactions) + 1)
+        # Active pages reserve one extra row for quick transaction entry
+        extra_row_count = 1 if self.allow_new_transactions else 0
+        self.table.setRowCount(
+            len(self.account.transactions) + extra_row_count
+        )
 
         for row, transaction in enumerate(self.account.transactions):
             self._set_transaction_row(row, transaction)
-        self._set_blank_row(len(self.account.transactions))
+        if self.allow_new_transactions:
+            self._set_blank_row(len(self.account.transactions))
 
     def set_category_rows(self, category_rows):
         # Rebuild dropdowns when persistent category choices change at runtime

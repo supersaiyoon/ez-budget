@@ -67,6 +67,30 @@ def test_transaction_page_reports_pending_and_saved_states():
     assert page.status.text() == "Transaction saved."
 
 
+def test_closed_account_page_omits_blank_transaction_row():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    account = Account(
+        "Checking",
+        transactions=[transaction],
+        closed=True,
+    )
+
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        allow_new_transactions=False,
+    )
+
+    assert page.table.rowCount() == 1
+    assert page.table.cellWidget(0, 1).text() == "Grocery Store"
+
+
 def test_short_date_input_stores_iso_and_displays_full_year():
     account = Account("Checking")
     page = TransactionsPage(account, category_rows=[])
