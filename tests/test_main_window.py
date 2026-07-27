@@ -402,6 +402,30 @@ def test_budget_navigation_refreshes_transaction_spending():
     assert window.budget_page.table.item(groceries_row, 2).text() == "-$58.99"
 
 
+def test_report_navigation_refreshes_transaction_spending():
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    groceries = master_category.subcategories[0]
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date=window.budgets[0].month_date.isoformat(),
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=groceries.database_id,
+    )
+
+    window.save_transaction(window.accounts[0], transaction)
+    assert window.reports_page.table.item(0, 3).text() == "$0.00"
+
+    window.show_navigation_page(1)
+
+    assert window.reports_page.table.item(0, 3).text() == "$42.50"
+
+
 def test_budget_navigation_displays_refreshed_income():
     window = MainWindow(":memory:")
     window.add_account("Checking")

@@ -244,6 +244,9 @@ class MainWindow(QMainWindow):
             if page_index == 0:
                 # Deferred repaint avoids rebuilding Budget table while hidden
                 self.budget_page.refresh()
+            elif page_index == 1:
+                # Deferred report refresh uses latest shared budget totals
+                self.reports_page.refresh()
             self.stack.setCurrentIndex(page_index)
 
     def refresh_reports(self):
