@@ -43,6 +43,30 @@ def test_transaction_editors_report_new_and_changed_transactions():
     assert transaction.payee == "Grocery Store"
 
 
+def test_transaction_page_reports_pending_and_saved_states():
+    account = Account("Checking")
+    save_results = iter([False, True])
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_transaction_changed=lambda *args: next(save_results),
+    )
+
+    date_input = page.table.cellWidget(0, 0)
+    date_input.setText("2026-07-21")
+    date_input.editingFinished.emit()
+
+    assert page.status.text() == (
+        "Not saved yet: enter date, payee, category, and one amount."
+    )
+
+    payee_input = page.table.cellWidget(0, 1)
+    payee_input.setText("Grocery Store")
+    payee_input.editingFinished.emit()
+
+    assert page.status.text() == "Transaction saved."
+
+
 def test_short_date_input_stores_iso_and_displays_full_year():
     account = Account("Checking")
     page = TransactionsPage(account, category_rows=[])

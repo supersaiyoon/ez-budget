@@ -313,8 +313,18 @@ class TransactionsPage(QWidget):
 
     def _notify_transaction_changed(self, transaction):
         # Tests and MainWindow can react without TransactionsPage knowing why
-        if self.on_transaction_changed is not None:
-            self.on_transaction_changed(self.account, transaction)
+        if self.on_transaction_changed is None:
+            return
+
+        saved = self.on_transaction_changed(self.account, transaction)
+        if saved:
+            self.status.setText("Transaction saved.")
+            return
+
+        # Partial row remains editable while status makes pending state explicit
+        self.status.setText(
+            "Not saved yet: enter date, payee, category, and one amount."
+        )
 
     def _set_text_input(self, row, column, value, apply_value):
         input_field = QLineEdit(value)
