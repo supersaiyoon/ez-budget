@@ -135,47 +135,7 @@ class MainWindow(QMainWindow):
             self.nav.addItem(item)
 
         self.accounts_header_item = self._add_navigation_header("Accounts", 12)
-        self.on_budget_header_item = self._add_navigation_header("On Budget", 11)
-
-        for account_position, account in enumerate(self.accounts):
-            if not account.on_budget:
-                continue
-            item = QListWidgetItem(account.name)
-            item.setSizeHint(item.sizeHint())
-            item.setData(
-                Qt.ItemDataRole.UserRole,
-                account_position + 2,
-            )
-            self.nav.addItem(item)
-
-        self.off_budget_header_item = self._add_navigation_header("Off Budget", 11)
-        for account_position, account in enumerate(self.accounts):
-            if account.on_budget:
-                continue
-            item = QListWidgetItem(account.name)
-            item.setSizeHint(item.sizeHint())
-            item.setData(
-                Qt.ItemDataRole.UserRole,
-                account_position + 2,
-            )
-            self.nav.addItem(item)
-
-        self.add_account_button = QPushButton("+ Add Account")
-        self.add_account_button.setObjectName("addAccountButton")
-        self.add_account_button.clicked.connect(self.prompt_for_account)
-        add_account_item = QListWidgetItem()
-        # Extra height offsets nav item padding around embedded button
-        add_account_item.setSizeHint(
-            QSize(
-                self.nav.width(),
-                self.add_account_button.sizeHint().height() + 28,
-            )
-        )
-        add_account_item.setFlags(
-            add_account_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
-        )
-        self.nav.addItem(add_account_item)
-        self.nav.setItemWidget(add_account_item, self.add_account_button)
+        self.rebuild_account_navigation()
         shell_layout.addWidget(self.nav)
 
         # Stack lets navigation swap full workflows without rebuilding windows
@@ -235,6 +195,68 @@ class MainWindow(QMainWindow):
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         self.nav.addItem(item)
         return item
+
+    def rebuild_account_navigation(self):
+        # Rows below permanent Accounts header rebuild from active model order
+        selected_item = self.nav.currentItem()
+        selected_page_index = (
+            selected_item.data(Qt.ItemDataRole.UserRole)
+            if selected_item is not None
+            else None
+        )
+        self.nav.blockSignals(True)
+        while self.nav.count() > 3:
+            item = self.nav.item(3)
+            item_widget = self.nav.itemWidget(item)
+            if item_widget is not None:
+                self.nav.removeItemWidget(item)
+                item_widget.deleteLater()
+            self.nav.takeItem(3)
+
+        self.on_budget_header_item = self._add_navigation_header("On Budget", 11)
+        for account_position, account in enumerate(self.accounts):
+            if not account.on_budget:
+                continue
+            item = QListWidgetItem(account.name)
+            item.setSizeHint(item.sizeHint())
+            item.setData(Qt.ItemDataRole.UserRole, account_position + 2)
+            self.nav.addItem(item)
+
+        self.off_budget_header_item = self._add_navigation_header("Off Budget", 11)
+        for account_position, account in enumerate(self.accounts):
+            if account.on_budget:
+                continue
+            item = QListWidgetItem(account.name)
+            item.setSizeHint(item.sizeHint())
+            item.setData(Qt.ItemDataRole.UserRole, account_position + 2)
+            self.nav.addItem(item)
+
+        self.add_account_button = QPushButton("+ Add Account")
+        self.add_account_button.setObjectName("addAccountButton")
+        self.add_account_button.clicked.connect(self.prompt_for_account)
+        add_account_item = QListWidgetItem()
+        # Extra height offsets nav item padding around embedded button
+        add_account_item.setSizeHint(
+            QSize(
+                self.nav.width(),
+                self.add_account_button.sizeHint().height() + 28,
+            )
+        )
+        add_account_item.setFlags(
+            add_account_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+        )
+        self.nav.addItem(add_account_item)
+        self.nav.setItemWidget(add_account_item, self.add_account_button)
+
+        if selected_page_index is not None:
+            for row in range(self.nav.count()):
+                if (
+                    self.nav.item(row).data(Qt.ItemDataRole.UserRole)
+                    == selected_page_index
+                ):
+                    self.nav.setCurrentRow(row)
+                    break
+        self.nav.blockSignals(False)
 
     def create_transaction_page(self, account):
         # Shared setup keeps loaded, new, and reopened account pages consistent
@@ -332,25 +354,7 @@ class MainWindow(QMainWindow):
         page = self.create_transaction_page(account)
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)
-
-        nav_item = QListWidgetItem(account.name)
-        nav_item.setSizeHint(nav_item.sizeHint())
-        nav_row = account_position + 4
-        if not account.on_budget:
-            nav_row += 1
-        self.nav.blockSignals(True)
-        self.nav.insertItem(nav_row, nav_item)
-        budget_account_count = sum(
-            existing_account.on_budget
-            for existing_account in self.accounts
-        )
-        for position in range(len(self.accounts)):
-            account_row = position + 4
-            if position >= budget_account_count:
-                account_row += 1
-            account_item = self.nav.item(account_row)
-            account_item.setData(Qt.ItemDataRole.UserRole, position + 2)
-        self.nav.blockSignals(False)
+        self.rebuild_account_navigation()
 
     def add_master_category(self, name):
         if categories.get_master_category_by_name(self.con, name) is not None:
