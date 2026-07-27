@@ -520,6 +520,22 @@ class MainWindow(QMainWindow):
         self.refresh_budget_income()
         return True
 
+    def set_account_closed(self, account, closed):
+        if account.database_id is None:
+            return False
+
+        account_row = accounts.set_account_closed(
+            self.con,
+            account.database_id,
+            closed,
+        )
+        if account_row is None:
+            return False
+
+        # Database result keeps model state aligned with persisted value
+        account.closed = bool(account_row["closed"])
+        return True
+
     def add_subcategory(self, master_category_id, name):
         existing_subcategory = categories.get_budget_category_by_name(
             self.con,

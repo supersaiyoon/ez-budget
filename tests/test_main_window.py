@@ -863,6 +863,26 @@ def test_add_account_preserves_off_budget_state():
     assert window.accounts[0].on_budget is False
 
 
+def test_set_account_closed_updates_model_and_database():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    account = window.accounts[0]
+
+    closed = window.set_account_closed(account, True)
+    closed_row = accounts.get_account_by_name(window.con, "Checking")
+
+    assert closed is True
+    assert account.closed is True
+    assert closed_row["closed"] == True
+
+    reopened = window.set_account_closed(account, False)
+    reopened_row = accounts.get_account_by_name(window.con, "Checking")
+
+    assert reopened is True
+    assert account.closed is False
+    assert reopened_row["closed"] == False
+
+
 def test_new_account_page_receives_hidden_income_category_id():
     window = MainWindow(":memory:")
 
