@@ -180,7 +180,8 @@ class MainWindow(QMainWindow):
             self.add_subcategory,
             self.budget_allocation_changed,
         )
-        # Generated visible months replace inherited income with assigned totals
+        # Generated visible months load saved planning data for their own dates
+        self.refresh_budget_allocations()
         self.refresh_budget_income()
         self.budget_page.refresh()
         self.reports_page = reports_page.ReportsPage(self.budgets)
@@ -367,6 +368,11 @@ class MainWindow(QMainWindow):
                 allocation_row["budget_category_id"],
                 budget_model.money_from_cents(allocation_row["amount"]),
             )
+
+    def refresh_budget_allocations(self):
+        # Every generated month receives only allocations saved for its date
+        for budget in self.budgets:
+            self.load_budget_allocations(budget)
 
     def load_budget_income(self, budget):
         # Assigned month controls budget timing independently from transaction date

@@ -877,6 +877,33 @@ def test_budgeted_cell_edit_survives_restart(tmp_path):
     assert reloaded_rent.budgeted == Decimal("1850.00")
 
 
+def test_next_month_budgeted_cell_edit_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_master_category("Monthly Bills")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Rent")
+    next_budget = window.budgets[1]
+    next_rent = next_budget.master_categories[0].subcategories[0]
+    next_rent.budgeted = Decimal("1900.00")
+    window.budget_allocation_changed(next_budget, next_rent)
+
+    window.close()
+    window.con.close()
+
+    # Startup-generated next month reloads allocation saved for its date
+    reopened_window = MainWindow(db_path)
+    reopened_current_rent = (
+        reopened_window.budgets[0].master_categories[0].subcategories[0]
+    )
+    reopened_next_rent = (
+        reopened_window.budgets[1].master_categories[0].subcategories[0]
+    )
+
+    assert reopened_current_rent.budgeted == Decimal("0.00")
+    assert reopened_next_rent.budgeted == Decimal("1900.00")
+
+
 def test_new_window_loads_saved_master_categories(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
