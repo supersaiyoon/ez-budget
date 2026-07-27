@@ -16,8 +16,10 @@ from PyQt6.QtWidgets import (
 from budget_model import (
     Transaction,
     format_money,
+    format_transaction_date,
     income_target_month_dates,
     parse_money,
+    parse_transaction_date,
 )
 
 
@@ -120,12 +122,7 @@ class TransactionsPage(QWidget):
 
     def _set_transaction_row(self, row, transaction):
         # Editors bind directly to transaction fields for immediate lightweight edits
-        self._set_text_input(
-            row,
-            0,
-            transaction.date,
-            lambda value: self._update_transaction_field(transaction, "date", value),
-        )
+        self._set_date_input(row, transaction)
         self._set_text_input(
             row,
             1,
@@ -204,6 +201,14 @@ class TransactionsPage(QWidget):
             self.create_transaction(**{money_column: amount})
             return
 
+        if column == 0:
+            try:
+                value = parse_transaction_date(value)
+            except ValueError as exc:
+                # Invalid date stays visible in blank row for direct correction
+                self.status.setText(str(exc))
+                return
+
         fields = {
             0: "date",
             1: "payee",
@@ -248,6 +253,31 @@ class TransactionsPage(QWidget):
         # Stored values trimmed to avoid accidental spaces in reports and filters
         input_field.editingFinished.connect(lambda: apply_value(input_field.text().strip()))
         self.table.setCellWidget(row, column, input_field)
+
+    def _set_date_input(self, row, transaction):
+        try:
+            display_date = format_transaction_date(transaction.date)
+        except ValueError:
+            # Legacy non-ISO values remain editable instead of blocking page load
+            display_date = transaction.date
+
+        input_field = QLineEdit(display_date)
+        input_field.editingFinished.connect(
+            lambda: self.apply_transaction_date(input_field, transaction)
+        )
+        self.table.setCellWidget(row, 0, input_field)
+
+    def apply_transaction_date(self, input_field, transaction):
+        try:
+            stored_date = parse_transaction_date(input_field.text())
+        except ValueError as exc:
+            # Invalid edit stays visible without replacing last valid model value
+            self.status.setText(str(exc))
+            return
+
+        self._update_transaction_field(transaction, "date", stored_date)
+        # Refresh shows normalized date and rebuilds date-based category choices
+        self.refresh()
 
     def _set_category_input(self, row, transaction):
         category = QComboBox()

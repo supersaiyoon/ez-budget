@@ -1,5 +1,6 @@
 import pytest
 
+from datetime import date
 from decimal import Decimal
 
 from budget_model import Account, Transaction
@@ -38,6 +39,39 @@ def test_transaction_editors_report_new_and_changed_transactions():
     ]
     assert transaction.date == "2026-07-21"
     assert transaction.payee == "Grocery Store"
+
+
+def test_short_date_input_stores_iso_and_displays_full_year():
+    account = Account("Checking")
+    page = TransactionsPage(account, category_rows=[])
+    current_year = date.today().year
+    date_input = page.table.cellWidget(0, 0)
+
+    date_input.setText("7/21")
+    date_input.editingFinished.emit()
+
+    assert account.transactions[0].date == f"{current_year}-07-21"
+    assert page.table.cellWidget(0, 0).text() == f"7/21/{current_year}"
+
+
+def test_existing_transaction_date_edit_normalizes_storage_and_display():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="",
+        notes="",
+    )
+    account = Account("Checking", transactions=[transaction])
+    page = TransactionsPage(account, category_rows=[])
+    date_input = page.table.cellWidget(0, 0)
+
+    assert date_input.text() == "7/21/2026"
+
+    date_input.setText("8/5/2027")
+    date_input.editingFinished.emit()
+
+    assert transaction.date == "2027-08-05"
+    assert page.table.cellWidget(0, 0).text() == "8/5/2027"
 
 
 def test_income_category_options_use_transaction_months():
