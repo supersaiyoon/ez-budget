@@ -350,6 +350,7 @@ class MainWindow(QMainWindow):
             income_category_id=self.income_category_id,
             on_transaction_delete_requested=self.delete_transaction,
             income_reference_date=self.budgets[0].month_date.isoformat(),
+            on_account_close_requested=self.close_account,
         )
 
     def show_navigation_page(self, row):
@@ -658,6 +659,10 @@ class MainWindow(QMainWindow):
         self.stack.insertWidget(active_position + 2, page)
         self.rebuild_account_navigation()
         return True
+
+    def close_account(self, account):
+        # Page callback exposes only close action while shared method supports reopen
+        return self.set_account_closed(account, True)
 
     def add_subcategory(self, master_category_id, name):
         existing_subcategory = categories.get_budget_category_by_name(
