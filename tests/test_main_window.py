@@ -241,6 +241,27 @@ def test_save_transaction_waits_for_required_fields():
     assert transactions.has_transactions(window.con) is False
 
 
+def test_load_budget_income_applies_assigned_transaction_total():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    budget = window.budgets[0]
+    transaction = budget_model.Transaction(
+        date=budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=budget.month_date.isoformat(),
+    )
+    window.save_transaction(window.accounts[0], transaction)
+    budget.monthly_income = Decimal("99.00")
+
+    window.load_budget_income(budget)
+
+    assert budget.monthly_income == Decimal("2000.00")
+
+
 def test_load_budget_spending_applies_month_transaction_totals():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")

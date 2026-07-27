@@ -365,6 +365,14 @@ class MainWindow(QMainWindow):
         for page in self.transaction_pages:
             page.set_category_rows(category_rows)
 
+    def load_budget_income(self, budget):
+        # Assigned month controls budget timing independently from transaction date
+        income_in_cents = transactions.get_monthly_income_total(
+            self.con,
+            budget.month_date.isoformat(),
+        )
+        budget.monthly_income = budget_model.money_from_cents(income_in_cents)
+
     def load_budget_spending(self, budget):
         # Reset removes categories absent from latest aggregate results
         budget.reset_spending()
