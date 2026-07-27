@@ -1040,6 +1040,56 @@ def test_confirmed_delete_empty_account_survives_restart(
     assert reopened_window.closed_accounts == []
 
 
+def test_delete_account_with_transactions_offers_close_instead(
+    tmp_path,
+    monkeypatch,
+):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    groceries = master_category.subcategories[0]
+    window.add_account("Checking")
+    account = window.accounts[0]
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=groceries.database_id,
+    )
+    account.transactions.append(transaction)
+    window.save_transaction(account, transaction)
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+
+    window.transaction_pages[0].delete_account_button.click()
+
+    saved_account = accounts.get_account_by_name(window.con, "Checking")
+    saved_transactions = transactions.list_transactions(
+        window.con,
+        account.database_id,
+    )
+    assert saved_account["closed"] == True
+    assert len(saved_transactions) == 1
+    assert window.accounts == []
+    assert window.closed_accounts == [account]
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+
+    assert reopened_window.accounts == []
+    assert reopened_window.closed_accounts[0].name == "Checking"
+    assert len(reopened_window.closed_accounts[0].transactions) == 1
+
+
 def test_new_account_page_receives_hidden_income_category_id():
     window = MainWindow(":memory:")
 

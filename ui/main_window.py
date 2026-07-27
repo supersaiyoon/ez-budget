@@ -624,7 +624,7 @@ class MainWindow(QMainWindow):
         return True
 
     def delete_account(self, account):
-        if account.database_id is None or account.transactions:
+        if account.database_id is None:
             return False
 
         account_index = next(
@@ -636,6 +636,22 @@ class MainWindow(QMainWindow):
             None,
         )
         if account_index is None:
+            return False
+
+        if account.transactions:
+            # Accounts with history can leave active workflow without data loss
+            choice = QMessageBox.question(
+                self,
+                "Delete Account",
+                (
+                    f'"{account.name}" cannot be deleted because it has '
+                    "transactions. Close account instead?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if choice == QMessageBox.StandardButton.Yes:
+                return self.close_account(account)
             return False
 
         # Permanent deletion requires confirmation even when account is empty
