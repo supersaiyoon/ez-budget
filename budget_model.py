@@ -236,6 +236,43 @@ def format_money(amount):
     return f"{sign}${absolute:,.2f}"
 
 
+def parse_transaction_date(raw_value, current_date=None):
+    # ISO input remains valid when persisted transaction dates return to editor
+    normalized = raw_value.strip()
+    if not normalized:
+        raise ValueError("Enter a date.")
+
+    try:
+        parsed_date = date.fromisoformat(normalized)
+    except ValueError:
+        date_parts = normalized.split("/")
+        if len(date_parts) not in (2, 3):
+            raise ValueError("Use M/D, M/D/YYYY, or YYYY-MM-DD.")
+
+        month_text, day_text = date_parts[:2]
+        if len(date_parts) == 2:
+            # Missing year uses current calendar year
+            year = (current_date or date.today()).year
+        else:
+            year_text = date_parts[2]
+            if len(year_text) != 4:
+                raise ValueError("Use M/D, M/D/YYYY, or YYYY-MM-DD.")
+            year = year_text
+
+        try:
+            parsed_date = date(int(year), int(month_text), int(day_text))
+        except ValueError as exc:
+            raise ValueError("Use a valid calendar date.") from exc
+
+    return parsed_date.isoformat()
+
+
+def format_transaction_date(stored_date):
+    # Friendly display removes ISO padding while keeping full year visible
+    parsed_date = date.fromisoformat(stored_date)
+    return f"{parsed_date.month}/{parsed_date.day}/{parsed_date.year}"
+
+
 def create_empty_budget():
     month_date = date.today().replace(day=1)
     return Budget(

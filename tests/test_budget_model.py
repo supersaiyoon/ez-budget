@@ -10,7 +10,9 @@ from budget_model import (
     create_sample_accounts,
     create_sample_budget,
     create_sample_budgets,
+    format_transaction_date,
     parse_money,
+    parse_transaction_date,
 )
 
 
@@ -135,6 +137,40 @@ def test_category_totals_roll_up_from_subcategories():
 
 def test_parse_money_accepts_currency_formatting():
     assert parse_money("$1,234.5") == Decimal("1234.50")
+
+
+def test_parse_transaction_date_adds_current_year():
+    stored_date = parse_transaction_date(
+        "7/21",
+        current_date=date(2026, 7, 27),
+    )
+
+    assert stored_date == "2026-07-21"
+
+
+@pytest.mark.parametrize(
+    ("raw_value", "stored_date"),
+    [
+        ("7/21/2026", "2026-07-21"),
+        ("07/21/2026", "2026-07-21"),
+        ("2026-07-21", "2026-07-21"),
+    ],
+)
+def test_parse_transaction_date_accepts_full_dates(raw_value, stored_date):
+    assert parse_transaction_date(raw_value) == stored_date
+
+
+@pytest.mark.parametrize(
+    "raw_value",
+    ["", "7-21", "7/21/26", "2/30/2026"],
+)
+def test_parse_transaction_date_rejects_invalid_dates(raw_value):
+    with pytest.raises(ValueError):
+        parse_transaction_date(raw_value, current_date=date(2026, 7, 27))
+
+
+def test_format_transaction_date_uses_friendly_display():
+    assert format_transaction_date("2026-07-21") == "7/21/2026"
 
 
 def test_sample_budgets_include_multiple_months():
