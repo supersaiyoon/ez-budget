@@ -197,6 +197,7 @@ class MainWindow(QMainWindow):
                 categories.list_transaction_categories(self.con),
                 self.save_transaction,
                 income_category_id=self.income_category_id,
+                on_transaction_delete_requested=self.delete_transaction,
             )
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
@@ -321,6 +322,7 @@ class MainWindow(QMainWindow):
             categories.list_transaction_categories(self.con),
             self.save_transaction,
             income_category_id=self.income_category_id,
+            on_transaction_delete_requested=self.delete_transaction,
         )
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)

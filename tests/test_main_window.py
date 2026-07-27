@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QCheckBox
+from PyQt6.QtWidgets import QCheckBox, QMessageBox
 
 import budget_model
 from db import accounts, budgets, categories, database, payees, transactions
@@ -51,6 +51,10 @@ def test_new_window_loads_saved_account_details(tmp_path):
     assert (
         window.transaction_pages[0].on_transaction_changed
         == window.save_transaction
+    )
+    assert (
+        window.transaction_pages[0].on_transaction_delete_requested
+        == window.delete_transaction
     )
 
 
@@ -221,6 +225,55 @@ def test_delete_transaction_refreshes_assigned_income():
     window.delete_transaction(account, transaction)
 
     assert budget.monthly_income == Decimal("0.00")
+
+
+def test_confirmed_transaction_delete_survives_restart(tmp_path, monkeypatch):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    groceries = window.budgets[0].master_categories[0].subcategories[0]
+    window.add_account("Checking")
+    account = window.accounts[0]
+    transaction = budget_model.Transaction(
+        date=window.budgets[0].month_date.isoformat(),
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=groceries.database_id,
+    )
+    account.transactions.append(transaction)
+    window.save_transaction(account, transaction)
+    window.close()
+    window.con.close()
+
+    # Startup-loaded account page sends confirmed deletion through controller
+    reopened_window = MainWindow(db_path)
+    reopened_account = reopened_window.accounts[0]
+    reopened_page = reopened_window.transaction_pages[0]
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+
+    reopened_page.table.cellWidget(0, 7).click()
+
+    assert reopened_account.transactions == []
+    assert reopened_page.table.rowCount() == 1
+    assert transactions.list_transactions(
+        reopened_window.con,
+        reopened_account.database_id,
+    ) == []
+
+    reopened_window.close()
+    reopened_window.con.close()
+
+    final_window = MainWindow(db_path)
+
+    assert final_window.accounts[0].transactions == []
 
 
 def test_save_transaction_inserts_income_target_month():
@@ -744,6 +797,10 @@ def test_new_account_page_receives_hidden_income_category_id():
     window.add_account("Checking")
 
     assert window.transaction_pages[0].income_category_id == window.income_category_id
+    assert (
+        window.transaction_pages[0].on_transaction_delete_requested
+        == window.delete_transaction
+    )
 
 
 def test_add_account_rejects_duplicate_name():
