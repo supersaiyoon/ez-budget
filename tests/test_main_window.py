@@ -464,13 +464,18 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     window = MainWindow(db_path)
     window.add_account("Checking")
     page = window.transaction_pages[0]
+    current_year = date.today().year
+    stored_date = f"{current_year}-07-21"
+    display_date = f"7/21/{current_year}"
 
-    # Blank date editor creates partial transaction without saving it yet
+    # Short date creates partial transaction with normalized storage value
     date_input = page.table.cellWidget(0, 0)
-    date_input.setText("2026-07-21")
+    date_input.setText("7/21")
     date_input.editingFinished.emit()
     transaction = window.accounts[0].transactions[0]
     assert transaction.database_id is None
+    assert transaction.date == stored_date
+    assert page.table.cellWidget(0, 0).text() == display_date
 
     # Remaining required editors complete transaction and trigger persistence
     payee_input = page.table.cellWidget(0, 1)
@@ -484,6 +489,11 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
 
     saved_database_id = transaction.database_id
     assert saved_database_id is not None
+    saved_row = transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )[0]
+    assert saved_row["transaction_date"] == stored_date
 
     # Post-save checkbox change must update existing database row
     cleared_container = page.table.cellWidget(0, 6)
@@ -499,7 +509,12 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     reloaded_transaction = reopened_window.accounts[0].transactions[0]
 
     assert reloaded_transaction.database_id == saved_database_id
-    assert reloaded_transaction.date == "2026-07-21"
+    assert reloaded_transaction.date == stored_date
+    reopened_date_input = reopened_window.transaction_pages[0].table.cellWidget(
+        0,
+        0,
+    )
+    assert reopened_date_input.text() == display_date
     assert reloaded_transaction.payee == "Grocery Store"
     assert reloaded_transaction.category_database_id == category["id"]
     assert reloaded_transaction.outgoing == Decimal("42.50")
