@@ -194,7 +194,43 @@ def test_dated_transaction_row_selects_income_target_month():
     category_input.setCurrentText("Income for this month")
     assert transaction.category_database_id == 42
     assert transaction.income_month_date == "2026-07-01"
+    assert transaction.payee == "Employer"
 
+    category_input = page.table.cellWidget(0, 2)
     category_input.setCurrentText("Groceries")
     assert transaction.category_database_id == 7
     assert transaction.income_month_date is None
+    assert transaction.payee == "Employer"
+
+
+def test_income_category_autofills_and_clears_placeholder_payee():
+    transaction = Transaction(
+        date="2026-07-25",
+        payee="",
+        category="",
+        notes="",
+    )
+    account = Account("Checking", transactions=[transaction])
+    page = TransactionsPage(
+        account,
+        category_rows=[
+            {
+                "id": 7,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+        income_category_id=42,
+    )
+
+    category_input = page.table.cellWidget(0, 2)
+    category_input.setCurrentText("Income for this month")
+
+    assert transaction.payee == "Not needed for income"
+    assert page.table.cellWidget(0, 1).text() == "Not needed for income"
+
+    category_input = page.table.cellWidget(0, 2)
+    category_input.setCurrentText("Groceries")
+
+    assert transaction.payee == ""
+    assert page.table.cellWidget(0, 1).text() == ""

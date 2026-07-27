@@ -35,6 +35,7 @@ TRANSACTION_COLUMNS = [
     "Cleared",
     "Delete",
 ]
+INCOME_PAYEE_PLACEHOLDER = "Not needed for income"
 
 
 class TransactionsPage(QWidget):
@@ -368,12 +369,24 @@ class TransactionsPage(QWidget):
             transaction.category = ""
             transaction.category_database_id = None
             transaction.income_month_date = None
+            if transaction.payee == INCOME_PAYEE_PLACEHOLDER:
+                transaction.payee = ""
             self._notify_transaction_changed(transaction)
+            self.refresh()
             return
+
         transaction.category = category_option["name"]
         transaction.category_database_id = category_option["database_id"]
         transaction.income_month_date = category_option.get("income_month_date")
+        if transaction.income_month_date is not None:
+            # Blank income payee receives schema-compatible placeholder
+            if not transaction.payee.strip():
+                transaction.payee = INCOME_PAYEE_PLACEHOLDER
+        elif transaction.payee == INCOME_PAYEE_PLACEHOLDER:
+            # Automatic value should not follow transaction back to spending
+            transaction.payee = ""
         self._notify_transaction_changed(transaction)
+        self.refresh()
 
     def _set_money_input(self, row, column, value, apply_value):
         # Zero shown blank so empty money cells stay quick to scan
