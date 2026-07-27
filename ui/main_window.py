@@ -18,8 +18,19 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
-from db import accounts, budgets as budget_records, categories, database, payees, transactions
+from db import (
+    accounts,
+    budgets as budget_records,
+    categories,
+    database,
+    payees,
+    settings as app_settings,
+    transactions,
+)
 from ui import budget_page, reports_page, styles, transactions_page
+
+
+CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
 
 
 class AccountDialog(QDialog):
@@ -128,8 +139,15 @@ class MainWindow(QMainWindow):
         self.nav = QListWidget()
         self.nav.setObjectName("navList")
         self.nav.setFixedWidth(170)
-        # Closed section starts open so archived accounts stay discoverable
-        self.closed_accounts_expanded = True
+        # Missing first-run preference keeps Closed section discoverable
+        self.closed_accounts_expanded = (
+            app_settings.get_setting(
+                self.con,
+                CLOSED_ACCOUNTS_EXPANDED_SETTING,
+                default="true",
+            )
+            == "true"
+        )
         for page_index, name in enumerate(["Budget", "Reports"]):
             item = QListWidgetItem(name)
             item.setSizeHint(item.sizeHint())
@@ -306,11 +324,14 @@ class MainWindow(QMainWindow):
 
     def toggle_closed_accounts(self):
         # Header button controls archived account visibility without page changes
-        if not self.closed_accounts:
-            self.closed_accounts_expanded = True
-            self.update_closed_accounts_visibility()
-            return
         self.closed_accounts_expanded = not self.closed_accounts_expanded
+
+        # Immediate write preserves latest user choice across clean or abrupt exit
+        app_settings.set_setting(
+            self.con,
+            CLOSED_ACCOUNTS_EXPANDED_SETTING,
+            "true" if self.closed_accounts_expanded else "false",
+        )
         self.update_closed_accounts_visibility()
 
     def update_closed_accounts_visibility(self):

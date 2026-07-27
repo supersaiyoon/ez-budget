@@ -851,6 +851,27 @@ def test_empty_account_database_shows_account_header():
     assert not window.off_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
 
+def test_closed_accounts_expansion_state_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    assert window.closed_accounts_button.text() == "▼ Closed"
+
+    window.closed_accounts_button.click()
+    assert window.closed_accounts_button.text() == "▶ Closed"
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+    assert reopened_window.closed_accounts_button.text() == "▶ Closed"
+
+    reopened_window.closed_accounts_button.click()
+    reopened_window.close()
+    reopened_window.con.close()
+
+    final_window = MainWindow(db_path)
+    assert final_window.closed_accounts_button.text() == "▼ Closed"
+
+
 def test_add_account_persists_and_updates_loaded_accounts():
     window = MainWindow(":memory:")
 
