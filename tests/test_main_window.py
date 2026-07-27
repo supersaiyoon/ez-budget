@@ -896,6 +896,38 @@ def test_add_account_preserves_off_budget_state():
     assert window.accounts[0].on_budget is False
 
 
+def test_add_account_persists_opening_balance_transaction(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+
+    window.add_account(
+        "Checking",
+        opening_balance=Decimal("1234.56"),
+    )
+
+    account = window.accounts[0]
+    opening_transaction = account.transactions[0]
+    saved_rows = transactions.list_transactions(
+        window.con,
+        account.database_id,
+    )
+    assert opening_transaction.payee == "Opening Balance"
+    assert opening_transaction.incoming == Decimal("1234.56")
+    assert opening_transaction.cleared is True
+    assert saved_rows[0]["amount"] == 123456
+    assert window.budgets[0].monthly_income == Decimal("1234.56")
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+
+    reopened_transaction = reopened_window.accounts[0].transactions[0]
+    assert reopened_transaction.payee == "Opening Balance"
+    assert reopened_transaction.incoming == Decimal("1234.56")
+    assert reopened_window.budgets[0].monthly_income == Decimal("1234.56")
+
+
 def test_set_account_closed_updates_model_and_database():
     window = MainWindow(":memory:")
     window.add_account("Checking")

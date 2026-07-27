@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
@@ -428,23 +429,39 @@ class MainWindow(QMainWindow):
     def prompt_for_account(self):
         dialog = AccountDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                opening_balance = dialog.opening_balance()
+            except ValueError as exc:
+                QMessageBox.warning(self, "Add Account", str(exc))
+                return
             self.submit_account_name(
                 dialog.name_input.text(),
                 dialog.budget_radio.isChecked(),
+                opening_balance,
             )
 
-    def submit_account_name(self, name, on_budget=True):
+    def submit_account_name(
+        self,
+        name,
+        on_budget=True,
+        opening_balance=Decimal("0.00"),
+    ):
         name = name.strip()
         if not name:
             QMessageBox.warning(self, "Add Account", "Enter an account name.")
             return
 
         try:
-            self.add_account(name, on_budget)
+            self.add_account(name, on_budget, opening_balance)
         except ValueError as exc:
             QMessageBox.warning(self, "Add Account", str(exc))
 
-    def add_account(self, name, on_budget=True):
+    def add_account(
+        self,
+        name,
+        on_budget=True,
+        opening_balance=Decimal("0.00"),
+    ):
         if accounts.get_account_by_name(self.con, name) is not None:
             raise ValueError("Account already exists.")
 
@@ -455,6 +472,31 @@ class MainWindow(QMainWindow):
             on_budget=bool(account_row["on_budget"]),
             closed=bool(account_row["closed"]),
         )
+
+        if opening_balance != 0:
+            # Opening balance uses normal transaction storage and balance math
+            opening_transaction = budget_model.Transaction(
+                date=date.today().isoformat(),
+                payee="Opening Balance",
+                category="Income",
+                notes="",
+                outgoing=(
+                    abs(opening_balance)
+                    if opening_balance < 0
+                    else Decimal("0.00")
+                ),
+                incoming=(
+                    opening_balance
+                    if opening_balance > 0
+                    else Decimal("0.00")
+                ),
+                cleared=True,
+                category_database_id=self.income_category_id,
+                income_month_date=self.budgets[0].month_date.isoformat(),
+            )
+            account.transactions.append(opening_transaction)
+            self.save_transaction(account, opening_transaction)
+
         if account.on_budget:
             account_position = sum(
                 existing_account.on_budget
