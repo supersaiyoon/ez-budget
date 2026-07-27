@@ -43,6 +43,12 @@ class AccountDialog(QDialog):
         self.name_input = QLineEdit()
         layout.addRow("Account name:", self.name_input)
 
+        # Optional starting amount prepares account without manual first transaction
+        self.opening_balance_input = QLineEdit()
+        self.opening_balance_input.setObjectName("openingBalanceInput")
+        self.opening_balance_input.setPlaceholderText("0.00")
+        layout.addRow("Opening balance:", self.opening_balance_input)
+
         account_type_layout = QHBoxLayout()
         self.budget_radio = QRadioButton("Budget")
         self.off_budget_radio = QRadioButton("Off-Budget")
@@ -58,6 +64,13 @@ class AccountDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
+
+    def opening_balance(self):
+        # Blank optional field represents zero while typed values use money rules
+        raw_value = self.opening_balance_input.text().strip()
+        if not raw_value:
+            return Decimal("0.00")
+        return budget_model.parse_money(raw_value)
 
 
 class MainWindow(QMainWindow):

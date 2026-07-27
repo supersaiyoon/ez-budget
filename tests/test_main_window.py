@@ -1251,14 +1251,26 @@ def test_account_dialog_shows_name_and_account_type_together():
     dialog = AccountDialog()
 
     assert dialog.isAncestorOf(dialog.name_input)
+    assert dialog.isAncestorOf(dialog.opening_balance_input)
     assert dialog.isAncestorOf(dialog.budget_radio)
     assert dialog.isAncestorOf(dialog.off_budget_radio)
     assert dialog.budget_radio.isChecked()
+    assert dialog.opening_balance() == Decimal("0.00")
 
     dialog.off_budget_radio.setChecked(True)
+    dialog.opening_balance_input.setText("$1,234.56")
 
     assert dialog.budget_radio.isChecked() is False
     assert dialog.off_budget_radio.isChecked()
+    assert dialog.opening_balance() == Decimal("1234.56")
+
+
+def test_account_dialog_rejects_invalid_opening_balance():
+    dialog = AccountDialog()
+    dialog.opening_balance_input.setText("not money")
+
+    with pytest.raises(ValueError, match="valid number"):
+        dialog.opening_balance()
 
 
 def test_new_window_starts_without_sample_budget_values():
