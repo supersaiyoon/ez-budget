@@ -169,6 +169,34 @@ def test_save_transaction_inserts_then_updates_same_database_row():
     assert len(saved_rows) == 1
 
 
+def test_delete_transaction_removes_saved_row_and_account_model():
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    category_id = (
+        window.budgets[0].master_categories[0].subcategories[0].database_id
+    )
+    window.add_account("Checking")
+    account = window.accounts[0]
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=category_id,
+    )
+    account.transactions.append(transaction)
+    window.save_transaction(account, transaction)
+
+    deleted = window.delete_transaction(account, transaction)
+
+    assert deleted is True
+    assert account.transactions == []
+    assert transactions.list_transactions(window.con, account.database_id) == []
+
+
 def test_save_transaction_inserts_income_target_month():
     window = MainWindow(":memory:")
     window.add_account("Checking")

@@ -483,6 +483,30 @@ class MainWindow(QMainWindow):
         self.refresh_budget_income()
         return True
 
+    def delete_transaction(self, account, transaction):
+        # Object identity prevents equal-looking rows from removing wrong model
+        transaction_index = next(
+            (
+                index
+                for index, existing_transaction in enumerate(account.transactions)
+                if existing_transaction is transaction
+            ),
+            None,
+        )
+        if transaction_index is None:
+            return False
+
+        if transaction.database_id is not None:
+            deleted_row = transactions.delete_transaction(
+                self.con,
+                transaction.database_id,
+            )
+            if deleted_row is None:
+                return False
+
+        account.transactions.pop(transaction_index)
+        return True
+
     def add_subcategory(self, master_category_id, name):
         existing_subcategory = categories.get_budget_category_by_name(
             self.con,
