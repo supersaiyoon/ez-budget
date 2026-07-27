@@ -368,6 +368,7 @@ class MainWindow(QMainWindow):
             on_transaction_delete_requested=self.delete_transaction,
             income_reference_date=self.budgets[0].month_date.isoformat(),
             on_account_close_requested=self.close_account,
+            on_account_delete_requested=self.delete_account,
         )
 
     def show_navigation_page(self, row):
@@ -620,6 +621,49 @@ class MainWindow(QMainWindow):
         account.transactions.pop(transaction_index)
         self.refresh_budget_spending()
         self.refresh_budget_income()
+        return True
+
+    def delete_account(self, account):
+        if account.database_id is None or account.transactions:
+            return False
+
+        account_index = next(
+            (
+                index
+                for index, existing_account in enumerate(self.accounts)
+                if existing_account is account
+            ),
+            None,
+        )
+        if account_index is None:
+            return False
+
+        # Permanent deletion requires confirmation even when account is empty
+        choice = QMessageBox.question(
+            self,
+            "Delete Account",
+            f'Delete "{account.name}" permanently?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if choice != QMessageBox.StandardButton.Yes:
+            return False
+
+        deleted_row = accounts.delete_account(
+            self.con,
+            account.database_id,
+        )
+        if deleted_row is None:
+            return False
+
+        self.accounts.pop(account_index)
+        page = self.transaction_pages.pop(account_index)
+        if self.stack.currentWidget() is page:
+            # Budget becomes safe destination before selected page disappears
+            self.nav.setCurrentRow(0)
+        self.stack.removeWidget(page)
+        page.deleteLater()
+        self.rebuild_account_navigation()
         return True
 
     def set_account_closed(self, account, closed):

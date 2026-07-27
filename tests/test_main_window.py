@@ -1003,6 +1003,43 @@ def test_reopen_account_control_survives_restart(tmp_path):
     assert reopened_window.accounts[0].name == "Checking"
 
 
+def test_confirmed_delete_empty_account_survives_restart(
+    tmp_path,
+    monkeypatch,
+):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    account_page = window.transaction_pages[0]
+    checking_row = next(
+        row
+        for row in range(window.nav.count())
+        if window.nav.item(row).text() == "Checking"
+    )
+    window.nav.setCurrentRow(checking_row)
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+
+    account_page.delete_account_button.click()
+
+    assert accounts.get_account_by_name(window.con, "Checking") is None
+    assert window.accounts == []
+    assert window.transaction_pages == []
+    assert window.stack.indexOf(account_page) == -1
+    assert window.stack.currentWidget() is window.budget_page
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+
+    assert reopened_window.accounts == []
+    assert reopened_window.closed_accounts == []
+
+
 def test_new_account_page_receives_hidden_income_category_id():
     window = MainWindow(":memory:")
 
@@ -1017,6 +1054,10 @@ def test_new_account_page_receives_hidden_income_category_id():
     assert (
         window.transaction_pages[0].on_account_close_requested
         == window.close_account
+    )
+    assert (
+        window.transaction_pages[0].on_account_delete_requested
+        == window.delete_account
     )
 
 
