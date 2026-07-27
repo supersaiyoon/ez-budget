@@ -262,6 +262,40 @@ def test_load_budget_income_applies_assigned_transaction_total():
     assert budget.monthly_income == Decimal("2000.00")
 
 
+def test_refresh_budget_income_updates_each_generated_month():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    current_budget = window.budgets[0]
+    next_budget = window.budgets[1]
+    current_income = budget_model.Transaction(
+        date=current_budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=current_budget.month_date.isoformat(),
+    )
+    next_income = budget_model.Transaction(
+        date=current_budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for next month",
+        notes="",
+        incoming=Decimal("750.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=next_budget.month_date.isoformat(),
+    )
+    window.save_transaction(window.accounts[0], current_income)
+    window.save_transaction(window.accounts[0], next_income)
+    current_budget.monthly_income = Decimal("99.00")
+    next_budget.monthly_income = Decimal("99.00")
+
+    window.refresh_budget_income()
+
+    assert current_budget.monthly_income == Decimal("2000.00")
+    assert next_budget.monthly_income == Decimal("750.00")
+
+
 def test_load_budget_spending_applies_month_transaction_totals():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")

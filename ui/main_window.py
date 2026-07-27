@@ -371,6 +371,11 @@ class MainWindow(QMainWindow):
         )
         budget.monthly_income = budget_model.money_from_cents(income_in_cents)
 
+    def refresh_budget_income(self):
+        # Every generated month receives only income assigned to its date
+        for budget in self.budgets:
+            self.load_budget_income(budget)
+
     def load_budget_spending(self, budget):
         # Reset removes categories absent from latest aggregate results
         budget.reset_spending()
