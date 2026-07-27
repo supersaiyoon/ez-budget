@@ -379,6 +379,33 @@ def test_budget_navigation_refreshes_transaction_spending():
     assert window.budget_page.table.item(groceries_row, 2).text() == "-$58.99"
 
 
+def test_budget_navigation_displays_refreshed_income():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    budget = window.budgets[0]
+    transaction = budget_model.Transaction(
+        date=budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=budget.month_date.isoformat(),
+    )
+
+    window.save_transaction(window.accounts[0], transaction)
+
+    # Hidden Budget table keeps prior header until navigation requests repaint
+    stale_header = window.budget_page.table.item(0, 1).text()
+    assert "Income: $0.00" in stale_header
+
+    window.show_navigation_page(0)
+
+    refreshed_header = window.budget_page.table.item(0, 1).text()
+    assert "Income: $2,000.00" in refreshed_header
+    assert "Available: $2,000.00" in refreshed_header
+
+
 def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
