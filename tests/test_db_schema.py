@@ -19,6 +19,7 @@ def test_initialize_database_creates_core_tables():
 
     assert {
         "accounts",
+        "app_settings",
         "budget_allocations",
         "budget_months",
         "payees",

@@ -6,6 +6,12 @@ CREATE TABLE IF NOT EXISTS accounts (
     closed              BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- Small preferences stay with budget database across app restarts
+CREATE TABLE IF NOT EXISTS app_settings (
+    key                 TEXT PRIMARY KEY,
+    value               TEXT NOT NULL
+);
+
 -- One row per calendar month scopes category allocations
 CREATE TABLE IF NOT EXISTS budget_months (
     id                  INTEGER PRIMARY KEY,
