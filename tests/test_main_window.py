@@ -1087,6 +1087,46 @@ def test_reopen_account_control_survives_restart(tmp_path):
     assert reopened_window.accounts[0].name == "Checking"
 
 
+def test_closed_account_history_page_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    groceries = master_category.subcategories[0]
+    window.add_account("Checking")
+    account = window.accounts[0]
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=groceries.database_id,
+    )
+    account.transactions.append(transaction)
+    window.save_transaction(account, transaction)
+    window.close_account(account)
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+    closed_page = reopened_window.closed_transaction_pages[0]
+
+    reopened_window.closed_account_page_buttons[0].click()
+
+    assert reopened_window.stack.currentWidget() is closed_page
+    assert closed_page.table.rowCount() == 1
+    assert closed_page.table.cellWidget(0, 1).text() == "Grocery Store"
+    assert closed_page.allow_new_transactions is False
+
+    reopened_window.closed_account_reopen_buttons[0].click()
+
+    assert reopened_window.closed_transaction_pages == []
+    assert reopened_window.transaction_pages[0].account.name == "Checking"
+    assert reopened_window.transaction_pages[0].allow_new_transactions is True
+
+
 def test_confirmed_delete_empty_account_survives_restart(
     tmp_path,
     monkeypatch,

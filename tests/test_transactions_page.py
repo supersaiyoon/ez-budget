@@ -89,6 +89,8 @@ def test_closed_account_page_omits_blank_transaction_row():
 
     assert page.table.rowCount() == 1
     assert page.table.cellWidget(0, 1).text() == "Grocery Store"
+    assert page.close_account_button.isHidden()
+    assert page.delete_account_button.isHidden()
 
 
 def test_short_date_input_stores_iso_and_displays_full_year():

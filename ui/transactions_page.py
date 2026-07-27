@@ -103,6 +103,10 @@ class TransactionsPage(QWidget):
         self.delete_account_button.setObjectName("deleteAccountButton")
         self.delete_account_button.clicked.connect(self.request_account_delete)
         account_actions.addWidget(self.delete_account_button)
+
+        # Closed history pages omit actions that only apply while active
+        self.close_account_button.setVisible(self.allow_new_transactions)
+        self.delete_account_button.setVisible(self.allow_new_transactions)
         layout.addLayout(account_actions)
 
         self.summary = QLabel()

@@ -198,6 +198,16 @@ class MainWindow(QMainWindow):
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
 
+        self.closed_transaction_pages = []
+        for account in self.closed_accounts:
+            # Closed pages preserve editable history without new entry row
+            page = self.create_transaction_page(
+                account,
+                allow_new_transactions=False,
+            )
+            self.closed_transaction_pages.append(page)
+            self.stack.addWidget(page)
+
         shell_layout.addWidget(self.stack)
 
         self.nav.currentRowChanged.connect(self.show_navigation_page)
@@ -305,6 +315,7 @@ class MainWindow(QMainWindow):
         )
 
         self.closed_account_reopen_buttons = []
+        self.closed_account_page_buttons = []
 
         # Closed rows pair archived name with explicit non-destructive action
         for account in self.closed_accounts:
@@ -313,7 +324,17 @@ class MainWindow(QMainWindow):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(8, 0, 4, 0)
-            row_layout.addWidget(QLabel(account.name))
+            account_button = QPushButton(account.name)
+            account_button.setObjectName("closedAccountPageButton")
+            account_button.setStyleSheet(
+                "text-align: left; background: transparent; padding: 0;"
+            )
+            account_button.clicked.connect(
+                lambda checked=False, account=account: self.show_closed_account(
+                    account
+                )
+            )
+            row_layout.addWidget(account_button)
             reopen_button = QPushButton("Reopen")
             reopen_button.setObjectName("reopenAccountButton")
             reopen_button.clicked.connect(
@@ -327,6 +348,7 @@ class MainWindow(QMainWindow):
             self.nav.setItemWidget(item, row_widget)
             self.closed_account_items.append(item)
             self.closed_account_reopen_buttons.append(reopen_button)
+            self.closed_account_page_buttons.append(account_button)
         self.update_closed_accounts_visibility()
 
         # Add action stays below every account group
@@ -378,7 +400,11 @@ class MainWindow(QMainWindow):
         for item in self.closed_account_items:
             item.setHidden(not self.closed_accounts_expanded)
 
-    def create_transaction_page(self, account):
+    def create_transaction_page(
+        self,
+        account,
+        allow_new_transactions=True,
+    ):
         # Shared setup keeps loaded, new, and reopened account pages consistent
         return transactions_page.TransactionsPage(
             account,
@@ -389,7 +415,27 @@ class MainWindow(QMainWindow):
             income_reference_date=self.budgets[0].month_date.isoformat(),
             on_account_close_requested=self.close_account,
             on_account_delete_requested=self.delete_account,
+            allow_new_transactions=allow_new_transactions,
         )
+
+    def show_closed_account(self, account):
+        account_index = next(
+            (
+                index
+                for index, existing_account in enumerate(self.closed_accounts)
+                if existing_account is account
+            ),
+            None,
+        )
+        if account_index is None:
+            return False
+
+        # Button-driven row clears active selection before history page swap
+        self.nav.setCurrentRow(-1)
+        self.stack.setCurrentWidget(
+            self.closed_transaction_pages[account_index]
+        )
+        return True
 
     def show_navigation_page(self, row):
         item = self.nav.item(row)
@@ -538,7 +584,9 @@ class MainWindow(QMainWindow):
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices
         category_rows = categories.list_transaction_categories(self.con)
-        for page in self.transaction_pages:
+        for page in (
+            self.transaction_pages + self.closed_transaction_pages
+        ):
             page.set_category_rows(category_rows)
 
     def load_budget_allocations(self, budget):
@@ -780,10 +828,26 @@ class MainWindow(QMainWindow):
             self.stack.removeWidget(page)
             page.deleteLater()
             self.closed_accounts.append(account)
+
+            closed_page = self.create_transaction_page(
+                account,
+                allow_new_transactions=False,
+            )
+
+            self.closed_transaction_pages.append(closed_page)
+            self.stack.addWidget(closed_page)
             self.rebuild_account_navigation()
             return True
 
         self.closed_accounts.pop(account_index)
+        closed_page = self.closed_transaction_pages.pop(account_index)
+
+        if self.stack.currentWidget() is closed_page:
+            # Budget becomes safe destination before history page disappears
+            self.nav.setCurrentRow(0)
+
+        self.stack.removeWidget(closed_page)
+        closed_page.deleteLater()
         if account.on_budget:
             active_position = sum(
                 existing_account.on_budget
