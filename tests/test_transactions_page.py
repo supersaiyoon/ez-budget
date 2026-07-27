@@ -176,6 +176,20 @@ def test_close_account_button_cancel_keeps_account_active(monkeypatch):
     assert close_requests == []
 
 
+def test_delete_account_button_reports_account():
+    account = Account("Checking")
+    delete_requests = []
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_account_delete_requested=delete_requests.append,
+    )
+
+    page.delete_account_button.click()
+
+    assert delete_requests == [account]
+
+
 def test_income_category_options_use_current_planning_month():
     page = TransactionsPage(
         Account("Checking"),

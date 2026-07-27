@@ -50,6 +50,7 @@ class TransactionsPage(QWidget):
         on_transaction_delete_requested=None,
         income_reference_date=None,
         on_account_close_requested=None,
+        on_account_delete_requested=None,
     ):
         super().__init__()
 
@@ -76,6 +77,9 @@ class TransactionsPage(QWidget):
         # Controller owns account collection and navigation changes
         self.on_account_close_requested = on_account_close_requested
 
+        # Controller checks history before allowing permanent account deletion
+        self.on_account_delete_requested = on_account_delete_requested
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
@@ -91,6 +95,10 @@ class TransactionsPage(QWidget):
         self.close_account_button.setObjectName("closeAccountButton")
         self.close_account_button.clicked.connect(self.request_account_close)
         account_actions.addWidget(self.close_account_button)
+        self.delete_account_button = QPushButton("Delete Account")
+        self.delete_account_button.setObjectName("deleteAccountButton")
+        self.delete_account_button.clicked.connect(self.request_account_delete)
+        account_actions.addWidget(self.delete_account_button)
         layout.addLayout(account_actions)
 
         self.summary = QLabel()
@@ -515,3 +523,10 @@ class TransactionsPage(QWidget):
             return
 
         self.on_account_close_requested(self.account)
+
+    def request_account_delete(self):
+        if self.on_account_delete_requested is None:
+            return
+
+        # Controller decides whether account can be deleted or should be closed
+        self.on_account_delete_requested(self.account)
