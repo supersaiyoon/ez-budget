@@ -461,6 +461,38 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     assert reopened_window.accounts[0].cleared_balance == Decimal("-42.50")
 
 
+def test_assigned_income_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    budget = window.budgets[0]
+    month_date = budget.month_date.isoformat()
+    transaction = budget_model.Transaction(
+        date=month_date,
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=month_date,
+    )
+    window.save_transaction(window.accounts[0], transaction)
+    saved_database_id = transaction.database_id
+
+    window.close()
+    window.con.close()
+
+    # Fresh window rebuilds assigned income and transaction target from SQLite
+    reopened_window = MainWindow(db_path)
+    reopened_budget = reopened_window.budgets[0]
+    reloaded_transaction = reopened_window.accounts[0].transactions[0]
+
+    assert reopened_budget.monthly_income == Decimal("2000.00")
+    assert reopened_budget.available_to_budget == Decimal("2000.00")
+    assert reloaded_transaction.database_id == saved_database_id
+    assert reloaded_transaction.income_month_date == month_date
+
+
 def test_new_window_loads_closed_accounts_separately(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
