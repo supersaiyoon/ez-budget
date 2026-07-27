@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -283,14 +284,30 @@ class MainWindow(QMainWindow):
             self.closed_accounts_button,
         )
 
-        # Closed names remain display-only until reopen action is connected
+        self.closed_account_reopen_buttons = []
+        # Closed rows pair archived name with explicit non-destructive action
         for account in self.closed_accounts:
             item = QListWidgetItem(account.name)
             item.setFlags(
                 item.flags() & ~Qt.ItemFlag.ItemIsSelectable
             )
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(8, 0, 4, 0)
+            row_layout.addWidget(QLabel(account.name))
+            reopen_button = QPushButton("Reopen")
+            reopen_button.setObjectName("reopenAccountButton")
+            reopen_button.clicked.connect(
+                lambda checked=False, account=account: self.reopen_account(
+                    account
+                )
+            )
+            row_layout.addWidget(reopen_button)
+            item.setSizeHint(row_widget.sizeHint())
             self.nav.addItem(item)
+            self.nav.setItemWidget(item, row_widget)
             self.closed_account_items.append(item)
+            self.closed_account_reopen_buttons.append(reopen_button)
         self.update_closed_accounts_visibility()
 
         # Add action stays below every account group
@@ -663,6 +680,10 @@ class MainWindow(QMainWindow):
     def close_account(self, account):
         # Page callback exposes only close action while shared method supports reopen
         return self.set_account_closed(account, True)
+
+    def reopen_account(self, account):
+        # Closed-row action restores account through shared state transition
+        return self.set_account_closed(account, False)
 
     def add_subcategory(self, master_category_id, name):
         existing_subcategory = categories.get_budget_category_by_name(

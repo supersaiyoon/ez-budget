@@ -974,6 +974,35 @@ def test_confirmed_close_account_survives_restart(tmp_path, monkeypatch):
     assert reopened_window.closed_accounts[0].name == "Checking"
 
 
+def test_reopen_account_control_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    account = window.accounts[0]
+    window.close_account(account)
+    assert window.closed_account_reopen_buttons[0].text() == "Reopen"
+
+    window.closed_account_reopen_buttons[0].click()
+
+    reopened_row = accounts.get_account_by_name(window.con, "Checking")
+    assert reopened_row["closed"] == False
+    assert window.closed_accounts == []
+    assert window.accounts == [account]
+    assert window.transaction_pages[0].account is account
+    assert any(
+        window.nav.item(row).text() == "Checking"
+        for row in range(window.nav.count())
+    )
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+
+    assert reopened_window.closed_accounts == []
+    assert reopened_window.accounts[0].name == "Checking"
+
+
 def test_new_account_page_receives_hidden_income_category_id():
     window = MainWindow(":memory:")
 
