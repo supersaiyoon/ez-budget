@@ -46,6 +46,25 @@ def get_account_by_name(con, name):
     ).fetchone()
 
 
+def delete_account(con, account_id):
+    # Transaction ownership blocks deletion so history cannot disappear silently
+    row = con.execute(
+        """
+        DELETE FROM accounts
+        WHERE id = ?
+          AND NOT EXISTS (
+              SELECT 1
+              FROM transactions
+              WHERE transactions.account_id = accounts.id
+          )
+        RETURNING id, name, on_budget, closed
+        """,
+        (account_id,),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def has_accounts(con):
     row = con.execute("SELECT COUNT(*) FROM accounts").fetchone()
     return row[0] > 0

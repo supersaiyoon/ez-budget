@@ -1,4 +1,4 @@
-from db import accounts
+from db import accounts, categories, payees, transactions
 
 
 def test_create_account_inserts_account_row(con):
@@ -48,6 +48,46 @@ def test_get_account_by_name_returns_matching_account(con):
 
     assert account["id"] == credit_card["id"]
     assert account["name"] == "Credit Card"
+
+
+def test_delete_account_removes_empty_account(con):
+    checking = accounts.create_account(con, "Checking")
+    accounts.create_account(con, "Credit Card")
+
+    deleted = accounts.delete_account(con, checking["id"])
+
+    assert deleted["id"] == checking["id"]
+    assert deleted["name"] == "Checking"
+    assert [row["name"] for row in accounts.list_accounts(con)] == [
+        "Credit Card"
+    ]
+
+
+def test_delete_account_keeps_account_with_transactions(con):
+    checking = accounts.create_account(con, "Checking")
+    grocery_store = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(
+        con,
+        "Everyday Expenses",
+    )
+    groceries = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Groceries",
+    )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_store["id"],
+        groceries["id"],
+        "2026-07-21",
+        -4250,
+    )
+
+    deleted = accounts.delete_account(con, checking["id"])
+
+    assert deleted is None
+    assert accounts.get_account_by_name(con, "Checking")["id"] == checking["id"]
 
 
 def test_has_accounts_reports_whether_accounts_exist(con):
