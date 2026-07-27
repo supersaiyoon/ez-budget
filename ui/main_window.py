@@ -107,6 +107,13 @@ class MainWindow(QMainWindow):
                 on_budget=bool(account_row["on_budget"]),
                 closed=bool(account_row["closed"]),
             )
+            for transaction_row in transactions.list_transactions(
+                self.con,
+                account.database_id,
+            ):
+                account.transactions.append(
+                    budget_model.transaction_from_database_row(transaction_row)
+                )
             self.closed_accounts.append(account)
 
         self.setWindowTitle("EZ Budget")

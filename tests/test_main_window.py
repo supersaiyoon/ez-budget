@@ -782,6 +782,24 @@ def test_new_window_loads_closed_accounts_separately(tmp_path):
     con = database.connect(db_path)
     database.initialize_database(con)
     closed_account = accounts.create_account(con, "Old Checking", on_budget=False)
+    grocery_store = payees.add_payee(con, "Grocery Store")
+    master_category = categories.add_master_category(
+        con,
+        "Everyday Expenses",
+    )
+    groceries = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Groceries",
+    )
+    saved_transaction = transactions.add_transaction(
+        con,
+        closed_account["id"],
+        grocery_store["id"],
+        groceries["id"],
+        "2026-07-21",
+        -4250,
+    )
     con.execute(
         "UPDATE accounts SET closed = TRUE WHERE id = ?",
         (closed_account["id"],),
@@ -797,6 +815,8 @@ def test_new_window_loads_closed_accounts_separately(tmp_path):
     assert loaded_account.database_id == closed_account["id"]
     assert loaded_account.on_budget is False
     assert loaded_account.closed is True
+    assert loaded_account.transactions[0].database_id == saved_transaction["id"]
+    assert loaded_account.transactions[0].outgoing == Decimal("42.50")
 
 
 def test_empty_account_database_shows_account_header():
