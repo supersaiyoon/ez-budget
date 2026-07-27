@@ -199,14 +199,7 @@ class MainWindow(QMainWindow):
         self.transaction_pages = []
         for account in self.accounts:
             # Account pages report edits so controller can persist complete rows
-            page = transactions_page.TransactionsPage(
-                account,
-                categories.list_transaction_categories(self.con),
-                self.save_transaction,
-                income_category_id=self.income_category_id,
-                on_transaction_delete_requested=self.delete_transaction,
-                income_reference_date=self.budgets[0].month_date.isoformat(),
-            )
+            page = self.create_transaction_page(account)
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
 
@@ -242,6 +235,17 @@ class MainWindow(QMainWindow):
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         self.nav.addItem(item)
         return item
+
+    def create_transaction_page(self, account):
+        # Shared setup keeps loaded, new, and reopened account pages consistent
+        return transactions_page.TransactionsPage(
+            account,
+            categories.list_transaction_categories(self.con),
+            self.save_transaction,
+            income_category_id=self.income_category_id,
+            on_transaction_delete_requested=self.delete_transaction,
+            income_reference_date=self.budgets[0].month_date.isoformat(),
+        )
 
     def show_navigation_page(self, row):
         item = self.nav.item(row)
@@ -325,14 +329,7 @@ class MainWindow(QMainWindow):
 
         page_index = account_position + 2
         # Runtime-created pages use same persistence callback as startup pages
-        page = transactions_page.TransactionsPage(
-            account,
-            categories.list_transaction_categories(self.con),
-            self.save_transaction,
-            income_category_id=self.income_category_id,
-            on_transaction_delete_requested=self.delete_transaction,
-            income_reference_date=self.budgets[0].month_date.isoformat(),
-        )
+        page = self.create_transaction_page(account)
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)
 
