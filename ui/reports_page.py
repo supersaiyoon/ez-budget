@@ -17,9 +17,9 @@ class ReportsPage(QWidget):
         title.setObjectName("pageTitle")
         layout.addWidget(title)
 
-        description = QLabel("Sample monthly report data")
-        description.setObjectName("statusText")
-        layout.addWidget(description)
+        self.description = QLabel("Monthly budget totals")
+        self.description.setObjectName("statusText")
+        layout.addWidget(self.description)
 
         # Read-only table fits month-by-month totals better than editable controls
         self.table = QTableWidget()
