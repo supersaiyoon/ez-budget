@@ -630,6 +630,59 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     assert reopened_window.accounts[0].cleared_balance == Decimal("-42.50")
 
 
+def test_grid_income_without_payee_updates_budget_and_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    page = window.transaction_pages[0]
+    current_date = date.today()
+    short_date = f"{current_date.month}/21"
+    stored_date = date(
+        current_date.year,
+        current_date.month,
+        21,
+    ).isoformat()
+
+    date_input = page.table.cellWidget(0, 0)
+    date_input.setText(short_date)
+    date_input.editingFinished.emit()
+    transaction = window.accounts[0].transactions[0]
+
+    category_input = page.table.cellWidget(0, 2)
+    category_input.setCurrentText("Income for this month")
+    assert transaction.payee == "Not needed for income"
+
+    incoming_input = page.table.cellWidget(0, 5)
+    incoming_input.setText("2000")
+    incoming_input.editingFinished.emit()
+
+    saved_row = transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )[0]
+    assert transaction.database_id == saved_row["id"]
+    assert saved_row["transaction_date"] == stored_date
+    assert saved_row["payee_name"] == "Not needed for income"
+    assert saved_row["amount"] == 200000
+    assert window.budgets[0].monthly_income == Decimal("2000.00")
+
+    window.show_navigation_page(0)
+    budget_header = window.budget_page.table.item(0, 1).text()
+    assert "Income: $2,000.00" in budget_header
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+    reopened_transaction = reopened_window.accounts[0].transactions[0]
+    reopened_header = reopened_window.budget_page.table.item(0, 1).text()
+
+    assert reopened_transaction.payee == "Not needed for income"
+    assert reopened_transaction.incoming == Decimal("2000.00")
+    assert reopened_window.budgets[0].monthly_income == Decimal("2000.00")
+    assert "Income: $2,000.00" in reopened_header
+
+
 def test_assigned_income_survives_restart(tmp_path):
     db_path = tmp_path / "budget.db"
     window = MainWindow(db_path)
