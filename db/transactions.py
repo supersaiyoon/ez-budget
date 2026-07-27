@@ -99,6 +99,20 @@ def update_transaction(
     return row
 
 
+def delete_transaction(con, transaction_id):
+    # Stable row ID limits deletion to one persisted transaction
+    row = con.execute(
+        """
+        DELETE FROM transactions
+        WHERE id = ?
+        RETURNING id, account_id
+        """,
+        (transaction_id,),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def list_transactions(con, account_id):
     # Account rows retain category relationship and optional income assignment
     return con.execute(

@@ -122,6 +122,36 @@ def test_update_transaction_replaces_income_target_month(con):
     assert updated["income_month_date"] == "2026-08-01"
 
 
+def test_delete_transaction_removes_only_requested_row(con):
+    account, payee, category = _create_transaction_dependencies(con)
+    deleted_transaction = transactions.add_transaction(
+        con,
+        account["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-13",
+        -4250,
+    )
+    kept_transaction = transactions.add_transaction(
+        con,
+        account["id"],
+        payee["id"],
+        category["id"],
+        "2026-07-14",
+        -5899,
+    )
+
+    deleted_row = transactions.delete_transaction(
+        con,
+        deleted_transaction["id"],
+    )
+
+    remaining_rows = transactions.list_transactions(con, account["id"])
+    assert deleted_row["id"] == deleted_transaction["id"]
+    assert deleted_row["account_id"] == account["id"]
+    assert [row["id"] for row in remaining_rows] == [kept_transaction["id"]]
+
+
 def test_list_transactions_returns_only_account_rows(con):
     checking, payee, category = _create_transaction_dependencies(con)
     credit_card = accounts.create_account(con, "Credit Card")
