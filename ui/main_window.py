@@ -61,11 +61,6 @@ class MainWindow(QMainWindow):
             self.con,
         )["id"]
 
-        # Current date resolves persisted month row for allocation relationships
-        budget_month = budget_records.get_or_create_budget_month(
-            self.con,
-            self.budgets[0].month_date.isoformat(),
-        )
         self.load_budget_income(self.budgets[0])
 
         # Load master categories from db into budget
@@ -84,15 +79,7 @@ class MainWindow(QMainWindow):
                 category.subcategories.append(subcategory)
             self.budgets[0].master_categories.append(category)
 
-        # Saved allocations replace zeroed startup category amounts
-        for allocation_row in budget_records.list_budget_allocations(
-            self.con,
-            budget_month["id"],
-        ):
-            self.budgets[0].set_category_budgeted(
-                allocation_row["budget_category_id"],
-                budget_model.money_from_cents(allocation_row["amount"]),
-            )
+        self.load_budget_allocations(self.budgets[0])
 
         # Current month spending derives from saved Budget-account activity
         self.load_budget_spending(self.budgets[0])
@@ -365,6 +352,21 @@ class MainWindow(QMainWindow):
         category_rows = categories.list_transaction_categories(self.con)
         for page in self.transaction_pages:
             page.set_category_rows(category_rows)
+
+    def load_budget_allocations(self, budget):
+        # Month row scopes saved category amounts to one planning period
+        budget_month = budget_records.get_or_create_budget_month(
+            self.con,
+            budget.month_date.isoformat(),
+        )
+        for allocation_row in budget_records.list_budget_allocations(
+            self.con,
+            budget_month["id"],
+        ):
+            budget.set_category_budgeted(
+                allocation_row["budget_category_id"],
+                budget_model.money_from_cents(allocation_row["amount"]),
+            )
 
     def load_budget_income(self, budget):
         # Assigned month controls budget timing independently from transaction date

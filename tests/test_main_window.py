@@ -287,6 +287,29 @@ def test_load_budget_income_applies_assigned_transaction_total():
     assert budget.monthly_income == Decimal("2000.00")
 
 
+def test_load_budget_allocations_applies_requested_month_amount():
+    window = MainWindow(":memory:")
+    window.add_master_category("Monthly Bills")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Rent")
+    next_budget = window.budgets[1]
+    next_rent = next_budget.master_categories[0].subcategories[0]
+    budget_month = budgets.get_or_create_budget_month(
+        window.con,
+        next_budget.month_date.isoformat(),
+    )
+    budgets.set_budget_allocation(
+        window.con,
+        budget_month["id"],
+        next_rent.database_id,
+        185000,
+    )
+
+    window.load_budget_allocations(next_budget)
+
+    assert next_rent.budgeted == Decimal("1850.00")
+
+
 def test_refresh_budget_income_updates_each_generated_month():
     window = MainWindow(":memory:")
     window.add_account("Checking")
