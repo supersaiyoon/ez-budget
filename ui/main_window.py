@@ -61,14 +61,12 @@ class MainWindow(QMainWindow):
             self.con,
         )["id"]
 
-        # Current date resolves persisted income for initial budget month
+        # Current date resolves persisted month row for allocation relationships
         budget_month = budget_records.get_or_create_budget_month(
             self.con,
             self.budgets[0].month_date.isoformat(),
         )
-        self.budgets[0].monthly_income = budget_model.money_from_cents(
-            budget_month["monthly_income"]
-        )
+        self.load_budget_income(self.budgets[0])
 
         # Load master categories from db into budget
         for category_row in categories.list_master_categories(self.con):

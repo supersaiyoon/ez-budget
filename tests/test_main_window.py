@@ -606,14 +606,27 @@ def test_new_window_starts_without_sample_budget_values():
     assert window.budgets[0].total_spent == Decimal("0.00")
 
 
-def test_new_window_loads_saved_monthly_income(tmp_path):
+def test_new_window_loads_assigned_transaction_income(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
     database.initialize_database(con)
+    month_date = date.today().replace(day=1).isoformat()
     budgets.add_budget_month(
         con,
-        date.today().replace(day=1).isoformat(),
+        month_date,
+        100000,
+    )
+    checking = accounts.create_account(con, "Checking")
+    employer = payees.add_payee(con, "Employer")
+    income_category = categories.get_or_create_income_category(con)
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        employer["id"],
+        income_category["id"],
+        month_date,
         520000,
+        income_month_date=month_date,
     )
     con.close()
 
