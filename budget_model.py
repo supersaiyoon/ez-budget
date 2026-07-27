@@ -404,7 +404,7 @@ def create_next_month_budget(previous_budget):
     return Budget(
         month_date=month_date,
         month_name=format_month_name(month_date),
-        monthly_income=previous_budget.monthly_income,
+        monthly_income=Decimal("0.00"),
         master_categories=[
             MasterCategory(
                 category.name,

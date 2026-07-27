@@ -166,7 +166,7 @@ def test_next_month_budget_advances_month_and_keeps_categories():
 
     # Generated month needs same budget shape for the table to keep working
     assert next_budget.month_name == "September 2026"
-    assert next_budget.monthly_income == budgets[-1].monthly_income
+    assert next_budget.monthly_income == Decimal("0.00")
     assert [category.name for category in next_budget.master_categories] == [
         category.name for category in budgets[-1].master_categories
     ]
