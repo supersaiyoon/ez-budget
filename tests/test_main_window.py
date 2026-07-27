@@ -928,6 +928,57 @@ def test_add_account_persists_opening_balance_transaction(tmp_path):
     assert reopened_window.budgets[0].monthly_income == Decimal("1234.56")
 
 
+def test_negative_opening_balance_stays_out_of_budget_income():
+    window = MainWindow(":memory:")
+
+    window.add_account(
+        "Credit Card",
+        opening_balance=Decimal("-425.75"),
+    )
+
+    account = window.accounts[0]
+    opening_transaction = account.transactions[0]
+    saved_rows = transactions.list_transactions(
+        window.con,
+        account.database_id,
+    )
+    assert opening_transaction.outgoing == Decimal("425.75")
+    assert opening_transaction.incoming == Decimal("0.00")
+    assert account.working_balance == Decimal("-425.75")
+    assert account.cleared_balance == Decimal("-425.75")
+    assert saved_rows[0]["amount"] == -42575
+    # Debt affects account balance without being treated as earned income
+    assert window.budgets[0].monthly_income == Decimal("0.00")
+
+
+def test_off_budget_opening_balance_stays_out_of_budget_income(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+
+    window.add_account(
+        "House Value",
+        on_budget=False,
+        opening_balance=Decimal("250000.00"),
+    )
+
+    account = window.accounts[0]
+    assert account.working_balance == Decimal("250000.00")
+    assert window.budgets[0].monthly_income == Decimal("0.00")
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+
+    assert reopened_window.accounts[0].on_budget is False
+    assert (
+        reopened_window.accounts[0].working_balance
+        == Decimal("250000.00")
+    )
+    # Tracking accounts never contribute funds to Budget page
+    assert reopened_window.budgets[0].monthly_income == Decimal("0.00")
+
+
 def test_set_account_closed_updates_model_and_database():
     window = MainWindow(":memory:")
     window.add_account("Checking")

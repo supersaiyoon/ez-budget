@@ -148,8 +148,11 @@ def list_category_transaction_totals(con, start_date, end_date):
             SUM(transactions.amount) AS total_amount
         FROM transactions
         JOIN accounts ON accounts.id = transactions.account_id
+        JOIN budget_categories
+          ON budget_categories.id = transactions.budget_category_id
         WHERE transactions.transaction_date BETWEEN ? AND ?
           AND accounts.on_budget = TRUE
+          AND budget_categories.hidden = FALSE
           AND transactions.amount < 0
         GROUP BY transactions.budget_category_id
         ORDER BY transactions.budget_category_id
