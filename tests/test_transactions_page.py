@@ -3,6 +3,8 @@ import pytest
 from datetime import date
 from decimal import Decimal
 
+from PyQt6.QtWidgets import QMessageBox
+
 from budget_model import Account, Transaction
 from ui.transactions_page import TransactionsPage
 
@@ -74,7 +76,7 @@ def test_existing_transaction_date_edit_normalizes_storage_and_display():
     assert page.table.cellWidget(0, 0).text() == "8/5/2027"
 
 
-def test_delete_button_reports_account_and_transaction():
+def test_delete_button_reports_account_and_transaction(monkeypatch):
     transaction = Transaction(
         date="2026-07-21",
         payee="Grocery Store",
@@ -95,11 +97,45 @@ def test_delete_button_reports_account_and_transaction():
         category_rows=[],
         on_transaction_delete_requested=delete_transaction,
     )
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
 
     page.table.cellWidget(0, 7).click()
 
     assert deletion_requests == [(account, transaction)]
     assert page.table.rowCount() == 1
+
+
+def test_delete_button_cancel_keeps_transaction(monkeypatch):
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    account = Account("Checking", transactions=[transaction])
+    deletion_requests = []
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_transaction_delete_requested=lambda *args: deletion_requests.append(
+            args
+        ),
+    )
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.No,
+    )
+
+    page.table.cellWidget(0, 7).click()
+
+    assert deletion_requests == []
+    assert account.transactions == [transaction]
 
 
 def test_income_category_options_use_transaction_months():

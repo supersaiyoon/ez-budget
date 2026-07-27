@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QVBoxLayout,
@@ -428,6 +429,17 @@ class TransactionsPage(QWidget):
 
     def request_transaction_deletion(self, transaction):
         if self.on_transaction_delete_requested is None:
+            return
+
+        # Destructive row action requires explicit confirmation
+        choice = QMessageBox.question(
+            self,
+            "Delete Transaction",
+            "Delete this transaction?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if choice != QMessageBox.StandardButton.Yes:
             return
 
         deleted = self.on_transaction_delete_requested(
