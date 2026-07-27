@@ -901,6 +901,13 @@ def test_set_account_closed_updates_model_and_database():
     window.add_account("Checking")
     account = window.accounts[0]
     account_page = window.transaction_pages[0]
+    checking_row = next(
+        row
+        for row in range(window.nav.count())
+        if window.nav.item(row).text() == "Checking"
+    )
+    window.nav.setCurrentRow(checking_row)
+    assert window.stack.currentWidget() is account_page
 
     closed = window.set_account_closed(account, True)
     closed_row = accounts.get_account_by_name(window.con, "Checking")
@@ -912,6 +919,8 @@ def test_set_account_closed_updates_model_and_database():
     assert window.closed_accounts == [account]
     assert window.transaction_pages == []
     assert window.stack.indexOf(account_page) == -1
+    assert window.stack.currentWidget() is window.budget_page
+    assert window.closed_account_items[0].text() == "Checking"
 
     reopened = window.set_account_closed(account, False)
     reopened_row = accounts.get_account_by_name(window.con, "Checking")
@@ -923,6 +932,11 @@ def test_set_account_closed_updates_model_and_database():
     assert window.closed_accounts == []
     assert window.transaction_pages[0].account is account
     assert window.stack.indexOf(window.transaction_pages[0]) == 2
+    assert window.closed_account_items == []
+    assert any(
+        window.nav.item(row).text() == "Checking"
+        for row in range(window.nav.count())
+    )
 
 
 def test_new_account_page_receives_hidden_income_category_id():

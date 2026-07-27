@@ -633,9 +633,15 @@ class MainWindow(QMainWindow):
         if closed:
             self.accounts.pop(account_index)
             page = self.transaction_pages.pop(account_index)
+
+            if self.stack.currentWidget() is page:
+                # Budget becomes safe destination before selected page disappears
+                self.nav.setCurrentRow(0)
+
             self.stack.removeWidget(page)
             page.deleteLater()
             self.closed_accounts.append(account)
+            self.rebuild_account_navigation()
             return True
 
         self.closed_accounts.pop(account_index)
@@ -650,6 +656,7 @@ class MainWindow(QMainWindow):
         page = self.create_transaction_page(account)
         self.transaction_pages.insert(active_position, page)
         self.stack.insertWidget(active_position + 2, page)
+        self.rebuild_account_navigation()
         return True
 
     def add_subcategory(self, master_category_id, name):
