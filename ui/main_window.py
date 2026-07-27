@@ -198,6 +198,7 @@ class MainWindow(QMainWindow):
                 self.save_transaction,
                 income_category_id=self.income_category_id,
                 on_transaction_delete_requested=self.delete_transaction,
+                income_reference_date=self.budgets[0].month_date.isoformat(),
             )
             self.transaction_pages.append(page)
             self.stack.addWidget(page)
@@ -323,6 +324,7 @@ class MainWindow(QMainWindow):
             self.save_transaction,
             income_category_id=self.income_category_id,
             on_transaction_delete_requested=self.delete_transaction,
+            income_reference_date=self.budgets[0].month_date.isoformat(),
         )
         self.transaction_pages.insert(account_position, page)
         self.stack.insertWidget(page_index, page)

@@ -138,15 +138,16 @@ def test_delete_button_cancel_keeps_transaction(monkeypatch):
     assert account.transactions == [transaction]
 
 
-def test_income_category_options_use_transaction_months():
+def test_income_category_options_use_current_planning_month():
     page = TransactionsPage(
         Account("Checking"),
         category_rows=[],
         income_category_id=42,
+        income_reference_date="2026-07-01",
     )
 
-    # Relative labels carry stable July and August target dates
-    options = page.income_category_options("2026-07-25")
+    # June transaction still assigns against current July planning month
+    options = page.income_category_options("2026-06-01")
 
     assert options == [
         {
@@ -166,7 +167,7 @@ def test_income_category_options_use_transaction_months():
 
 def test_dated_transaction_row_selects_income_target_month():
     transaction = Transaction(
-        date="2026-07-25",
+        date="2026-06-01",
         payee="Employer",
         category="Income",
         notes="",
@@ -185,6 +186,7 @@ def test_dated_transaction_row_selects_income_target_month():
             }
         ],
         income_category_id=42,
+        income_reference_date="2026-07-01",
     )
     category_input = page.table.cellWidget(0, 2)
 
@@ -221,6 +223,7 @@ def test_income_category_autofills_and_clears_placeholder_payee():
             }
         ],
         income_category_id=42,
+        income_reference_date="2026-07-01",
     )
 
     category_input = page.table.cellWidget(0, 2)

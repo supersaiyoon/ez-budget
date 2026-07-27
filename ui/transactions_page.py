@@ -1,3 +1,4 @@
+from datetime import date
 from functools import partial
 
 from PyQt6.QtCore import Qt
@@ -46,6 +47,7 @@ class TransactionsPage(QWidget):
         on_transaction_changed=None,
         income_category_id=None,
         on_transaction_delete_requested=None,
+        income_reference_date=None,
     ):
         super().__init__()
 
@@ -63,6 +65,10 @@ class TransactionsPage(QWidget):
 
         # Controller owns persistence and decides whether deletion succeeded
         self.on_transaction_delete_requested = on_transaction_delete_requested
+        # Current planning month keeps income labels stable across transaction dates
+        self.income_reference_date = (
+            income_reference_date or date.today().replace(day=1).isoformat()
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -123,7 +129,10 @@ class TransactionsPage(QWidget):
         if self.income_category_id is None or not transaction_date:
             return []
         try:
-            this_month, following_month = income_target_month_dates(transaction_date)
+            date.fromisoformat(transaction_date)
+            this_month, following_month = income_target_month_dates(
+                self.income_reference_date
+            )
         except ValueError:
             return []
 
