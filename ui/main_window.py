@@ -505,6 +505,8 @@ class MainWindow(QMainWindow):
                 return False
 
         account.transactions.pop(transaction_index)
+        self.refresh_budget_spending()
+        self.refresh_budget_income()
         return True
 
     def add_subcategory(self, master_category_id, name):

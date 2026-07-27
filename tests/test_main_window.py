@@ -177,10 +177,11 @@ def test_delete_transaction_removes_saved_row_and_account_model():
     category_id = (
         window.budgets[0].master_categories[0].subcategories[0].database_id
     )
+    groceries = window.budgets[0].master_categories[0].subcategories[0]
     window.add_account("Checking")
     account = window.accounts[0]
     transaction = budget_model.Transaction(
-        date="2026-07-21",
+        date=window.budgets[0].month_date.isoformat(),
         payee="Grocery Store",
         category="Groceries",
         notes="",
@@ -189,12 +190,37 @@ def test_delete_transaction_removes_saved_row_and_account_model():
     )
     account.transactions.append(transaction)
     window.save_transaction(account, transaction)
+    assert groceries.spent == Decimal("42.50")
 
     deleted = window.delete_transaction(account, transaction)
 
     assert deleted is True
     assert account.transactions == []
     assert transactions.list_transactions(window.con, account.database_id) == []
+    assert groceries.spent == Decimal("0.00")
+
+
+def test_delete_transaction_refreshes_assigned_income():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    account = window.accounts[0]
+    budget = window.budgets[0]
+    transaction = budget_model.Transaction(
+        date=budget.month_date.isoformat(),
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=budget.month_date.isoformat(),
+    )
+    account.transactions.append(transaction)
+    window.save_transaction(account, transaction)
+    assert budget.monthly_income == Decimal("2000.00")
+
+    window.delete_transaction(account, transaction)
+
+    assert budget.monthly_income == Decimal("0.00")
 
 
 def test_save_transaction_inserts_income_target_month():
