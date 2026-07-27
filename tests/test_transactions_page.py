@@ -74,6 +74,34 @@ def test_existing_transaction_date_edit_normalizes_storage_and_display():
     assert page.table.cellWidget(0, 0).text() == "8/5/2027"
 
 
+def test_delete_button_reports_account_and_transaction():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    account = Account("Checking", transactions=[transaction])
+    deletion_requests = []
+
+    def delete_transaction(changed_account, changed_transaction):
+        deletion_requests.append((changed_account, changed_transaction))
+        changed_account.transactions.remove(changed_transaction)
+        return True
+
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_transaction_delete_requested=delete_transaction,
+    )
+
+    page.table.cellWidget(0, 7).click()
+
+    assert deletion_requests == [(account, transaction)]
+    assert page.table.rowCount() == 1
+
+
 def test_income_category_options_use_transaction_months():
     page = TransactionsPage(
         Account("Checking"),

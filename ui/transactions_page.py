@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QPushButton,
     QTableWidget,
     QVBoxLayout,
     QWidget,
@@ -23,7 +24,16 @@ from budget_model import (
 )
 
 
-TRANSACTION_COLUMNS = ["Date", "Payee", "Category", "Notes", "Outgoing", "Incoming", "Cleared"]
+TRANSACTION_COLUMNS = [
+    "Date",
+    "Payee",
+    "Category",
+    "Notes",
+    "Outgoing",
+    "Incoming",
+    "Cleared",
+    "Delete",
+]
 
 
 class TransactionsPage(QWidget):
@@ -33,16 +43,24 @@ class TransactionsPage(QWidget):
         category_rows,
         on_transaction_changed=None,
         income_category_id=None,
+        on_transaction_delete_requested=None,
     ):
         super().__init__()
+
         # Shared account object so edits update the main window's sample state
         self.account = account
+
         # Joined rows retain category ids and their parent display groups
         self.category_rows = category_rows
+
         # Optional callback keeps persistence outside this UI-only page
         self.on_transaction_changed = on_transaction_changed
+
         # Hidden category ID backs virtual income choices
         self.income_category_id = income_category_id
+
+        # Controller owns persistence and decides whether deletion succeeded
+        self.on_transaction_delete_requested = on_transaction_delete_requested
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -69,6 +87,7 @@ class TransactionsPage(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table, 1)
 
         # Fixed feedback line keeps validation messages from resizing the page
@@ -149,6 +168,7 @@ class TransactionsPage(QWidget):
             lambda value: self._update_transaction_field(transaction, "incoming", value),
         )
         self._set_cleared_input(row, transaction)
+        self._set_delete_button(row, transaction)
         self.table.setRowHeight(row, 36)
 
     def _set_blank_row(self, row):
@@ -158,6 +178,7 @@ class TransactionsPage(QWidget):
 
         category = QComboBox()
         self._populate_category_input(category)
+
         # Category alone can be useful for starting an incomplete transaction
         category.currentIndexChanged.connect(
             lambda: self.create_transaction_from_category(category)
@@ -169,6 +190,7 @@ class TransactionsPage(QWidget):
         self._set_new_transaction_input(row, 5, money_column="incoming")
 
         checkbox = QCheckBox()
+
         # Cleared checkbox starts a row because reconciliation may happen before details
         checkbox.stateChanged.connect(lambda state: self.create_transaction(cleared=state == Qt.CheckState.Checked.value))
         container = QWidget()
@@ -181,6 +203,7 @@ class TransactionsPage(QWidget):
 
     def _set_new_transaction_input(self, row, column, money_column=None):
         input_field = QLineEdit()
+
         # Partial keeps the source editor available after Qt emits no useful value
         input_field.editingFinished.connect(partial(self.create_transaction_from_input, column, input_field, money_column))
         self.table.setCellWidget(row, column, input_field)
@@ -394,3 +417,23 @@ class TransactionsPage(QWidget):
         transaction.cleared = state == Qt.CheckState.Checked.value
         self._notify_transaction_changed(transaction)
         self.refresh()
+
+    def _set_delete_button(self, row, transaction):
+        delete_button = QPushButton("Delete")
+        delete_button.setObjectName("deleteTransactionButton")
+        delete_button.clicked.connect(
+            lambda: self.request_transaction_deletion(transaction)
+        )
+        self.table.setCellWidget(row, 7, delete_button)
+
+    def request_transaction_deletion(self, transaction):
+        if self.on_transaction_delete_requested is None:
+            return
+
+        deleted = self.on_transaction_delete_requested(
+            self.account,
+            transaction,
+        )
+        if deleted:
+            # Rebuild rows and balances after controller removes transaction
+            self.refresh()
