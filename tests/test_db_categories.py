@@ -129,6 +129,71 @@ def test_get_budget_category_by_name_returns_matching_category(con):
     assert category["name"] == "Other"
 
 
+def test_rename_budget_category_updates_matching_row(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+
+    renamed = categories.rename_budget_category(
+        con,
+        groceries["id"],
+        "Food",
+    )
+
+    assert renamed["id"] == groceries["id"]
+    assert renamed["name"] == "Food"
+    assert categories.get_budget_category_by_name(
+        con,
+        expenses["id"],
+        "Groceries",
+    ) is None
+
+
+def test_rename_budget_category_rejects_duplicate_within_master(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+    categories.add_budget_category(con, expenses["id"], "Dining Out")
+
+    renamed = categories.rename_budget_category(
+        con,
+        groceries["id"],
+        "dining out",
+    )
+
+    assert renamed is None
+    assert categories.get_budget_category_by_name(
+        con,
+        expenses["id"],
+        "Groceries",
+    )["id"] == groceries["id"]
+
+
+def test_rename_budget_category_allows_name_used_under_other_master(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    household = categories.add_master_category(con, "Household")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+    categories.add_budget_category(con, household["id"], "Food")
+
+    renamed = categories.rename_budget_category(
+        con,
+        groceries["id"],
+        "Food",
+    )
+
+    assert renamed["name"] == "Food"
+
+
 def test_get_or_create_income_category_reuses_hidden_category(con):
     # Repeated lookup preserves one stable transaction category ID
     created = categories.get_or_create_income_category(con)

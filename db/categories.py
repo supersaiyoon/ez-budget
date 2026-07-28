@@ -114,6 +114,29 @@ def get_budget_category_by_name(con, master_category_id, name):
     ).fetchone()
 
 
+def rename_budget_category(con, budget_category_id, name):
+    # Duplicate names blocked only among siblings under same master
+    row = con.execute(
+        """
+        UPDATE budget_categories
+        SET name = ?
+        WHERE id = ?
+          AND NOT EXISTS (
+              SELECT 1
+              FROM budget_categories AS existing_category
+              WHERE existing_category.master_budget_category_id
+                    = budget_categories.master_budget_category_id
+                AND LOWER(existing_category.name) = LOWER(?)
+                AND existing_category.id != budget_categories.id
+          )
+        RETURNING id, master_budget_category_id, name, hidden
+        """,
+        (name, budget_category_id, name),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def get_or_create_income_category(con):
     # Reserved hidden parent avoids user-category name collisions
     master_category = get_master_category_by_name(con, "__System__")
