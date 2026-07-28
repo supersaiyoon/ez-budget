@@ -581,6 +581,40 @@ class MainWindow(QMainWindow):
 
         self.budget_page.refresh()
 
+    def rename_master_category(self, master_category_id, name):
+        name = name.strip()
+        if not name:
+            raise ValueError("Enter a master category name.")
+
+        existing_category = categories.get_master_category_by_name(
+            self.con,
+            name,
+        )
+        if (
+            existing_category is not None
+            and existing_category["id"] != master_category_id
+        ):
+            raise ValueError("Master category already exists.")
+
+        renamed_row = categories.rename_master_category(
+            self.con,
+            master_category_id,
+            name,
+        )
+        if renamed_row is None:
+            return False
+
+        # Shared ID updates same category object in every generated month
+        for budget in self.budgets:
+            for master_category in budget.master_categories:
+                if master_category.database_id == master_category_id:
+                    master_category.name = renamed_row["name"]
+                    break
+
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+        return True
+
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices
         category_rows = categories.list_transaction_categories(self.con)

@@ -1620,6 +1620,51 @@ def test_add_master_category_rejects_duplicate_name():
     assert [category["name"] for category in category_rows] == ["Savings"]
 
 
+def test_rename_master_category_updates_loaded_budgets_and_account_pages():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+
+    renamed = window.rename_master_category(
+        master_category_id,
+        "Weekly Spending",
+    )
+
+    saved_category = categories.get_master_category_by_name(
+        window.con,
+        "Weekly Spending",
+    )
+    assert renamed is True
+    assert saved_category["id"] == master_category_id
+    assert [
+        budget.master_categories[0].name
+        for budget in window.budgets
+    ] == ["Weekly Spending"] * len(window.budgets)
+    assert (
+        window.transaction_pages[0].category_rows[0][
+            "master_category_name"
+        ]
+        == "Weekly Spending"
+    )
+
+
+def test_rename_master_category_rejects_duplicate_name():
+    window = MainWindow(":memory:")
+    window.add_master_category("Monthly Bills")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+
+    with pytest.raises(ValueError, match="Master category already exists"):
+        window.rename_master_category(
+            master_category_id,
+            "everyday expenses",
+        )
+
+    assert window.budgets[0].master_categories[0].name == "Monthly Bills"
+
+
 def test_add_subcategory_persists_and_updates_loaded_budgets():
     window = MainWindow(":memory:")
     # Account-first setup verifies its existing page receives the later category
