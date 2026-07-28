@@ -33,6 +33,40 @@ def test_get_master_category_by_name_returns_matching_category(con):
     assert category["name"] == "Everyday Expenses"
 
 
+def test_rename_master_category_updates_matching_row(con):
+    category = categories.add_master_category(con, "Monthly Bills")
+
+    renamed = categories.rename_master_category(
+        con,
+        category["id"],
+        "Fixed Expenses",
+    )
+
+    assert renamed["id"] == category["id"]
+    assert renamed["name"] == "Fixed Expenses"
+    assert categories.get_master_category_by_name(
+        con,
+        "Monthly Bills",
+    ) is None
+
+
+def test_rename_master_category_rejects_duplicate_name(con):
+    monthly_bills = categories.add_master_category(con, "Monthly Bills")
+    categories.add_master_category(con, "Everyday Expenses")
+
+    renamed = categories.rename_master_category(
+        con,
+        monthly_bills["id"],
+        "everyday expenses",
+    )
+
+    assert renamed is None
+    assert categories.get_master_category_by_name(
+        con,
+        "Monthly Bills",
+    )["id"] == monthly_bills["id"]
+
+
 def test_add_budget_category_inserts_budget_category_row(con):
     master_category = categories.add_master_category(con, "Everyday Expenses")
 

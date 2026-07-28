@@ -35,6 +35,27 @@ def get_master_category_by_name(con, name):
     ).fetchone()
 
 
+def rename_master_category(con, master_category_id, name):
+    # Case-insensitive guard keeps visible category headings unambiguous
+    row = con.execute(
+        """
+        UPDATE master_budget_categories
+        SET name = ?
+        WHERE id = ?
+          AND NOT EXISTS (
+              SELECT 1
+              FROM master_budget_categories AS existing_category
+              WHERE LOWER(existing_category.name) = LOWER(?)
+                AND existing_category.id != master_budget_categories.id
+          )
+        RETURNING id, name, hidden
+        """,
+        (name, master_category_id, name),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def add_budget_category(con, master_category_id, name, hidden=False):
     row = con.execute(
         """
