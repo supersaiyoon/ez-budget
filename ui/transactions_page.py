@@ -457,7 +457,8 @@ class TransactionsPage(QWidget):
     def _set_money_input(self, row, column, value, apply_value):
         # Zero shown blank so empty money cells stay quick to scan
         input_field = QLineEdit("" if value == 0 else format(value, ".2f"))
-        input_field.setFixedWidth(96)
+
+        # Default expanding policy fills same column width as blank entry fields
         input_field.editingFinished.connect(partial(self.apply_money_value, input_field, apply_value))
         self.table.setCellWidget(row, column, input_field)
 

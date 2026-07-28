@@ -126,6 +126,30 @@ def test_existing_transaction_date_edit_normalizes_storage_and_display():
     assert page.table.cellWidget(0, 0).text() == "8/5/2027"
 
 
+def test_saved_money_inputs_expand_like_blank_row_inputs():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    page = TransactionsPage(
+        Account("Checking", transactions=[transaction]),
+        category_rows=[],
+    )
+
+    saved_outgoing = page.table.cellWidget(0, 4)
+    saved_incoming = page.table.cellWidget(0, 5)
+    blank_outgoing = page.table.cellWidget(1, 4)
+    blank_incoming = page.table.cellWidget(1, 5)
+
+    assert saved_outgoing.minimumWidth() == blank_outgoing.minimumWidth()
+    assert saved_outgoing.maximumWidth() == blank_outgoing.maximumWidth()
+    assert saved_incoming.minimumWidth() == blank_incoming.minimumWidth()
+    assert saved_incoming.maximumWidth() == blank_incoming.maximumWidth()
+
+
 def test_delete_button_reports_account_and_transaction(monkeypatch):
     transaction = Transaction(
         date="2026-07-21",
