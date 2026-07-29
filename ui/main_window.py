@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -181,6 +182,9 @@ class MainWindow(QMainWindow):
             self.add_master_category,
             self.add_subcategory,
             self.budget_allocation_changed,
+            on_master_category_rename_requested=(
+                self.prompt_for_master_category_rename
+            ),
         )
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
@@ -614,6 +618,32 @@ class MainWindow(QMainWindow):
         self.budget_page.refresh()
         self.refresh_transaction_categories()
         return True
+
+    def prompt_for_master_category_rename(self, master_category):
+        name, accepted = QInputDialog.getText(
+            self,
+            "Rename Master Category",
+            "Master category name:",
+            QLineEdit.EchoMode.Normal,
+            master_category.name,
+        )
+        if not accepted:
+            return False
+
+        try:
+            renamed = self.rename_master_category(
+                master_category.database_id,
+                name,
+            )
+        except ValueError as exc:
+            self.budget_page.status.setText(str(exc))
+            return False
+
+        if renamed:
+            self.budget_page.status.setText(
+                f'Renamed master category to "{name.strip()}".'
+            )
+        return renamed
 
     def rename_subcategory(
         self,

@@ -4,7 +4,12 @@ from decimal import Decimal
 import pytest
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QCheckBox, QMessageBox
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QInputDialog,
+    QMessageBox,
+    QPushButton,
+)
 
 import budget_model
 from db import accounts, budgets, categories, database, payees, transactions
@@ -1663,6 +1668,43 @@ def test_rename_master_category_rejects_duplicate_name():
         )
 
     assert window.budgets[0].master_categories[0].name == "Monthly Bills"
+
+
+def test_master_category_rename_button_opens_prefilled_dialog(monkeypatch):
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    dialog_requests = []
+
+    def rename_dialog(*args):
+        dialog_requests.append(args)
+        return "Weekly Spending", True
+
+    monkeypatch.setattr(QInputDialog, "getText", rename_dialog)
+    rename_button = next(
+        button
+        for button in window.budget_page.findChildren(
+            QPushButton,
+            "renameMasterCategoryButton",
+        )
+        if button.property("master_category_id")
+        == master_category.database_id
+    )
+
+    rename_button.click()
+
+    assert dialog_requests[0][4] == "Everyday Expenses"
+    assert master_category.name == "Weekly Spending"
+    assert (
+        categories.get_master_category_by_name(
+            window.con,
+            "Weekly Spending",
+        )["id"]
+        == master_category.database_id
+    )
+    assert window.budget_page.status.text() == (
+        'Renamed master category to "Weekly Spending".'
+    )
 
 
 def test_add_subcategory_persists_and_updates_loaded_budgets():
