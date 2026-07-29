@@ -23,6 +23,25 @@ def test_list_master_categories_returns_visible_categories_in_id_order(con):
     ]
 
 
+def test_list_hidden_master_categories_excludes_system_group(con):
+    categories.get_or_create_income_category(con)
+    hidden_user_category = categories.add_master_category(
+        con,
+        "Archived Goals",
+        hidden=True,
+    )
+    categories.add_master_category(con, "Monthly Bills")
+
+    category_rows = categories.list_hidden_master_categories(con)
+
+    assert [category["id"] for category in category_rows] == [
+        hidden_user_category["id"]
+    ]
+    assert [category["name"] for category in category_rows] == [
+        "Archived Goals"
+    ]
+
+
 def test_get_master_category_by_name_returns_matching_category(con):
     categories.add_master_category(con, "Monthly Bills")
     everyday_expenses = categories.add_master_category(con, "Everyday Expenses")

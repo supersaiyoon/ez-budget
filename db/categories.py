@@ -22,6 +22,19 @@ def list_master_categories(con):
     ).fetchall()
 
 
+def list_hidden_master_categories(con):
+    # Reserved system group never appears in user-facing Hidden section
+    return con.execute(
+        """
+        SELECT id, name, hidden
+        FROM master_budget_categories
+        WHERE hidden = TRUE
+          AND name != '__System__'
+        ORDER BY id
+        """
+    ).fetchall()
+
+
 def get_master_category_by_name(con, name):
     return con.execute(
         """
