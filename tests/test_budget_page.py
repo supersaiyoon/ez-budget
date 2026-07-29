@@ -50,6 +50,8 @@ def test_master_category_name_is_sent_to_callback():
     page.submit_master_category_name(" Savings ")
 
     assert page.add_master_category_button.text() == "+"
+    assert page.add_master_category_button.font().pixelSize() == 18
+    assert page.add_master_category_button.font().bold() is True
     assert added_names == ["Savings"]
 
 
@@ -106,6 +108,41 @@ def test_master_category_row_has_subcategory_button_with_database_id():
 
     assert add_button.text() == "+"
     assert add_button.isEnabled() == True
+    assert add_button.font().pixelSize() == 18
+    assert add_button.font().bold() is True
+
+
+def test_master_category_rename_button_reports_selected_model():
+    budgets = create_sample_budgets()
+    master_category = budgets[0].master_categories[0]
+    master_category.database_id = 12
+    rename_requests = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_master_category_rename_requested=(
+            lambda category: rename_requests.append(category)
+        ),
+    )
+    master_button = next(
+        button
+        for button in page.findChildren(
+            QPushButton,
+            "renameMasterCategoryButton",
+        )
+        if button.property("master_category_id") == 12
+    )
+    master_button.click()
+
+    assert master_button.text() == ""
+    assert master_button.icon().isNull() is False
+    assert master_button.iconSize().width() == 18
+    assert master_button.iconSize().height() == 18
+    assert master_button.size().width() == 32
+    assert master_button.size().height() == 32
+    assert rename_requests == [master_category]
 
 
 def test_spending_values_display_as_negative_on_budget_page():

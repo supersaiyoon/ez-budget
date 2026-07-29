@@ -1,7 +1,8 @@
 from functools import partial
+from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import (
     QHeaderView,
     QHBoxLayout,
@@ -20,6 +21,11 @@ from ui.helpers import get_category, money_item
 from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
+RENAME_ICON_PATH = (
+    Path(__file__).parent / "assets" / "icons" / "edit_pencil.svg"
+)
+
+
 class BudgetPage(QWidget):
     def __init__(
         self,
@@ -28,6 +34,7 @@ class BudgetPage(QWidget):
         on_master_category_added,
         on_subcategory_added,
         on_allocation_changed=None,
+        on_master_category_rename_requested=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -38,6 +45,9 @@ class BudgetPage(QWidget):
         self.on_master_category_added = on_master_category_added
         self.on_subcategory_added = on_subcategory_added
         self.on_allocation_changed = on_allocation_changed
+        self.on_master_category_rename_requested = (
+            on_master_category_rename_requested
+        )
         self.active_index = 0
 
         # For matching visual rows back to category names
@@ -73,6 +83,11 @@ class BudgetPage(QWidget):
         self.add_master_category_button = QPushButton("+")
         self.add_master_category_button.setObjectName("addMasterCategoryButton")
         self.add_master_category_button.setToolTip("Add master category")
+        # Bold icon-sized plus matches weight of filled rename SVG
+        add_master_font = self.add_master_category_button.font()
+        add_master_font.setPixelSize(18)
+        add_master_font.setBold(True)
+        self.add_master_category_button.setFont(add_master_font)
         self.add_master_category_button.setFixedWidth(28)
         self.add_master_category_button.clicked.connect(self.prompt_for_master_category)
         category_header_layout.addWidget(self.add_master_category_button)
@@ -224,6 +239,11 @@ class BudgetPage(QWidget):
 
         self.status.setText(f'Added subcategory "{name}".')
 
+    def request_master_category_rename(self, master_category):
+        # Page reports selected model while controller owns persistence
+        if self.on_master_category_rename_requested is not None:
+            self.on_master_category_rename_requested(master_category)
+
     def _set_master_row(self, row, category_name, budgets):
         master_category = get_category(budgets[0], category_name)
         category_cell = QWidget()
@@ -237,11 +257,34 @@ class BudgetPage(QWidget):
         category_layout.addWidget(title)
         category_layout.addStretch()
 
+        rename_button = QPushButton()
+        rename_button.setObjectName("renameMasterCategoryButton")
+        rename_button.setToolTip(f"Rename {category_name}")
+        rename_button.setProperty(
+            "master_category_id",
+            master_category.database_id,
+        )
+        # Project SVG provides consistent filled icon across system fonts
+        rename_button.setIcon(QIcon(str(RENAME_ICON_PATH)))
+        rename_button.setIconSize(QSize(18, 18))
+        rename_button.setFixedSize(32, 32)
+        rename_button.clicked.connect(
+            lambda checked=False, category=master_category: (
+                self.request_master_category_rename(category)
+            )
+        )
+        category_layout.addWidget(rename_button)
+
         add_button = QPushButton("+")
         add_button.setObjectName("addSubcategoryButton")
         add_button.setToolTip(f"Add subcategory to {category_name}")
         add_button.setProperty("master_category_id", master_category.database_id)
-        add_button.setFixedSize(24, 24)
+        # Same glyph sizing keeps category actions visually balanced
+        add_button_font = add_button.font()
+        add_button_font.setPixelSize(18)
+        add_button_font.setBold(True)
+        add_button.setFont(add_button_font)
+        add_button.setFixedSize(32, 32)
         add_button.setEnabled(master_category.database_id is not None)
         add_button.clicked.connect(
             lambda checked=False, category_id=master_category.database_id: self.prompt_for_subcategory(
