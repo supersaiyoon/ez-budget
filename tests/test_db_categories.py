@@ -1,4 +1,4 @@
-from db import categories
+from db import accounts, budgets, categories, payees, transactions
 
 
 def test_add_master_category_inserts_master_category_row(con):
@@ -192,6 +192,81 @@ def test_rename_budget_category_allows_name_used_under_other_master(con):
     )
 
     assert renamed["name"] == "Food"
+
+
+def test_delete_budget_category_removes_unused_category_allocations(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+    budget_month = budgets.get_or_create_budget_month(
+        con,
+        "2026-07-01",
+    )
+    budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        groceries["id"],
+        50000,
+    )
+
+    deleted = categories.delete_budget_category(
+        con,
+        groceries["id"],
+    )
+
+    assert deleted["id"] == groceries["id"]
+    assert categories.list_budget_categories(con, expenses["id"]) == []
+    assert budgets.list_budget_allocations(
+        con,
+        budget_month["id"],
+    ) == []
+
+
+def test_delete_budget_category_preserves_category_with_transactions(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+    budget_month = budgets.get_or_create_budget_month(
+        con,
+        "2026-07-01",
+    )
+    budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        groceries["id"],
+        50000,
+    )
+    checking = accounts.create_account(con, "Checking")
+    grocery_store = payees.add_payee(con, "Grocery Store")
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_store["id"],
+        groceries["id"],
+        "2026-07-21",
+        -4250,
+    )
+
+    deleted = categories.delete_budget_category(
+        con,
+        groceries["id"],
+    )
+
+    assert deleted is None
+    assert categories.get_budget_category_by_name(
+        con,
+        expenses["id"],
+        "Groceries",
+    )["id"] == groceries["id"]
+    assert len(
+        budgets.list_budget_allocations(con, budget_month["id"])
+    ) == 1
 
 
 def test_get_or_create_income_category_reuses_hidden_category(con):

@@ -137,6 +137,39 @@ def rename_budget_category(con, budget_category_id, name):
     return row
 
 
+def delete_budget_category(con, budget_category_id):
+    # History check happens before allocation cleanup so refusal changes nothing
+    transaction_row = con.execute(
+        """
+        SELECT 1
+        FROM transactions
+        WHERE budget_category_id = ?
+        LIMIT 1
+        """,
+        (budget_category_id,),
+    ).fetchone()
+    if transaction_row is not None:
+        return None
+
+    con.execute(
+        """
+        DELETE FROM budget_allocations
+        WHERE budget_category_id = ?
+        """,
+        (budget_category_id,),
+    )
+    deleted_row = con.execute(
+        """
+        DELETE FROM budget_categories
+        WHERE id = ?
+        RETURNING id, master_budget_category_id, name, hidden
+        """,
+        (budget_category_id,),
+    ).fetchone()
+    con.commit()
+    return deleted_row
+
+
 def get_or_create_income_category(con):
     # Reserved hidden parent avoids user-category name collisions
     master_category = get_master_category_by_name(con, "__System__")
