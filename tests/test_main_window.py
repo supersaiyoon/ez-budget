@@ -1694,6 +1694,72 @@ def test_add_subcategory_persists_and_updates_loaded_budgets():
     ]
 
 
+def test_rename_subcategory_updates_loaded_budgets_and_transactions():
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    subcategory_id = (
+        window.budgets[0].master_categories[0].subcategories[0].database_id
+    )
+    window.add_account("Checking")
+    window.add_account("Old Checking")
+    for account in window.accounts:
+        account.transactions.append(
+            budget_model.Transaction(
+                date="2026-07-21",
+                payee="Grocery Store",
+                category="Groceries",
+                notes="",
+                outgoing=Decimal("42.50"),
+                category_database_id=subcategory_id,
+            )
+        )
+    window.close_account(window.accounts[1])
+
+    renamed = window.rename_subcategory(
+        master_category_id,
+        subcategory_id,
+        "Food",
+    )
+
+    assert renamed is True
+    assert [
+        budget.master_categories[0].subcategories[0].name
+        for budget in window.budgets
+    ] == ["Food"] * len(window.budgets)
+    assert window.accounts[0].transactions[0].category == "Food"
+    assert window.closed_accounts[0].transactions[0].category == "Food"
+    assert window.transaction_pages[0].category_rows[0]["category_name"] == "Food"
+    assert (
+        window.closed_transaction_pages[0].category_rows[0]["category_name"]
+        == "Food"
+    )
+
+
+def test_rename_subcategory_rejects_duplicate_name_within_master():
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    window.add_subcategory(master_category_id, "Dining Out")
+    subcategory_id = (
+        window.budgets[0].master_categories[0].subcategories[0].database_id
+    )
+
+    with pytest.raises(ValueError, match="Subcategory already exists"):
+        window.rename_subcategory(
+            master_category_id,
+            subcategory_id,
+            "dining out",
+        )
+
+    assert (
+        window.budgets[0].master_categories[0].subcategories[0].name
+        == "Groceries"
+    )
+
+
 def test_add_subcategory_rejects_duplicate_name_within_master():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")

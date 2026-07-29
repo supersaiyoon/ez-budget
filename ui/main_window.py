@@ -615,6 +615,55 @@ class MainWindow(QMainWindow):
         self.refresh_transaction_categories()
         return True
 
+    def rename_subcategory(
+        self,
+        master_category_id,
+        budget_category_id,
+        name,
+    ):
+        name = name.strip()
+        if not name:
+            raise ValueError("Enter a subcategory name.")
+
+        existing_category = categories.get_budget_category_by_name(
+            self.con,
+            master_category_id,
+            name,
+        )
+        if (
+            existing_category is not None
+            and existing_category["id"] != budget_category_id
+        ):
+            raise ValueError(
+                "Subcategory already exists in this master category."
+            )
+
+        renamed_row = categories.rename_budget_category(
+            self.con,
+            budget_category_id,
+            name,
+        )
+        if renamed_row is None:
+            return False
+
+        # Stable category ID updates every month without changing allocations
+        for budget in self.budgets:
+            for master_category in budget.master_categories:
+                for subcategory in master_category.subcategories:
+                    if subcategory.database_id == budget_category_id:
+                        subcategory.name = renamed_row["name"]
+                        break
+
+        # Existing rows retain display name alongside unchanged database ID
+        for account in self.accounts + self.closed_accounts:
+            for transaction in account.transactions:
+                if transaction.category_database_id == budget_category_id:
+                    transaction.category = renamed_row["name"]
+
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+        return True
+
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices
         category_rows = categories.list_transaction_categories(self.con)
