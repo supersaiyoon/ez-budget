@@ -185,6 +185,9 @@ class MainWindow(QMainWindow):
             on_master_category_rename_requested=(
                 self.prompt_for_master_category_rename
             ),
+            on_subcategory_rename_requested=(
+                self.prompt_for_subcategory_rename
+            ),
         )
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
@@ -693,6 +696,37 @@ class MainWindow(QMainWindow):
         self.budget_page.refresh()
         self.refresh_transaction_categories()
         return True
+
+    def prompt_for_subcategory_rename(
+        self,
+        master_category,
+        subcategory,
+    ):
+        name, accepted = QInputDialog.getText(
+            self,
+            "Rename Subcategory",
+            "Subcategory name:",
+            QLineEdit.EchoMode.Normal,
+            subcategory.name,
+        )
+        if not accepted:
+            return False
+
+        try:
+            renamed = self.rename_subcategory(
+                master_category.database_id,
+                subcategory.database_id,
+                name,
+            )
+        except ValueError as exc:
+            self.budget_page.status.setText(str(exc))
+            return False
+
+        if renamed:
+            self.budget_page.status.setText(
+                f'Renamed subcategory to "{name.strip()}".'
+            )
+        return renamed
 
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices

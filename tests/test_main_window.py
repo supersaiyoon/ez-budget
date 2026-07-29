@@ -1802,6 +1802,46 @@ def test_rename_subcategory_rejects_duplicate_name_within_master():
     )
 
 
+def test_subcategory_rename_button_opens_prefilled_dialog(monkeypatch):
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    subcategory = master_category.subcategories[0]
+    dialog_requests = []
+
+    def rename_dialog(*args):
+        dialog_requests.append(args)
+        return "Food", True
+
+    monkeypatch.setattr(QInputDialog, "getText", rename_dialog)
+    rename_button = next(
+        button
+        for button in window.budget_page.findChildren(
+            QPushButton,
+            "renameSubcategoryButton",
+        )
+        if button.property("budget_category_id")
+        == subcategory.database_id
+    )
+
+    rename_button.click()
+
+    assert dialog_requests[0][4] == "Groceries"
+    assert subcategory.name == "Food"
+    assert (
+        categories.get_budget_category_by_name(
+            window.con,
+            master_category.database_id,
+            "Food",
+        )["id"]
+        == subcategory.database_id
+    )
+    assert window.budget_page.status.text() == (
+        'Renamed subcategory to "Food".'
+    )
+
+
 def test_add_subcategory_rejects_duplicate_name_within_master():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
