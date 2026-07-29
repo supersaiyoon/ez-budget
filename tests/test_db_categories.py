@@ -351,6 +351,40 @@ def test_delete_budget_category_preserves_category_with_transactions(con):
     ) == 1
 
 
+def test_set_budget_category_hidden_filters_and_restores_category(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+
+    hidden = categories.set_budget_category_hidden(
+        con,
+        groceries["id"],
+        True,
+    )
+
+    assert hidden["hidden"] == True
+    assert categories.list_budget_categories(con, expenses["id"]) == []
+    assert categories.list_transaction_categories(con) == []
+
+    restored = categories.set_budget_category_hidden(
+        con,
+        groceries["id"],
+        False,
+    )
+
+    assert restored["hidden"] == False
+    assert categories.list_budget_categories(
+        con,
+        expenses["id"],
+    )[0]["id"] == groceries["id"]
+    assert categories.list_transaction_categories(con)[0]["id"] == (
+        groceries["id"]
+    )
+
+
 def test_get_or_create_income_category_reuses_hidden_category(con):
     # Repeated lookup preserves one stable transaction category ID
     created = categories.get_or_create_income_category(con)

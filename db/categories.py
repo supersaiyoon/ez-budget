@@ -216,6 +216,21 @@ def delete_budget_category(con, budget_category_id):
     return deleted_row
 
 
+def set_budget_category_hidden(con, budget_category_id, hidden):
+    # Hidden flag preserves transaction relationships while changing visibility
+    row = con.execute(
+        """
+        UPDATE budget_categories
+        SET hidden = ?
+        WHERE id = ?
+        RETURNING id, master_budget_category_id, name, hidden
+        """,
+        (hidden, budget_category_id),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def get_or_create_income_category(con):
     # Reserved hidden parent avoids user-category name collisions
     master_category = get_master_category_by_name(con, "__System__")
