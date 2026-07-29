@@ -208,6 +208,40 @@ def test_subcategory_rename_button_reports_selected_models():
     assert rename_requests == [(master_category, subcategory)]
 
 
+def test_subcategory_delete_button_reports_selected_models():
+    budgets = create_sample_budgets()
+    master_category = budgets[0].master_categories[0]
+    subcategory = master_category.subcategories[0]
+    subcategory.database_id = 34
+    delete_requests = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_subcategory_delete_requested=(
+            lambda category, selected_subcategory: delete_requests.append(
+                (category, selected_subcategory)
+            )
+        ),
+    )
+    delete_button = next(
+        button
+        for button in page.findChildren(
+            QPushButton,
+            "deleteSubcategoryButton",
+        )
+        if button.property("budget_category_id") == 34
+    )
+
+    delete_button.click()
+
+    assert delete_button.icon().isNull() is False
+    assert delete_button.iconSize() == QSize(12, 12)
+    assert delete_button.size() == QSize(24, 24)
+    assert delete_requests == [(master_category, subcategory)]
+
+
 def test_spending_values_display_as_negative_on_budget_page():
     budgets = create_sample_budgets()
     page = BudgetPage(

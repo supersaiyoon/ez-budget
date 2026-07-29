@@ -40,6 +40,7 @@ class BudgetPage(QWidget):
         on_master_category_rename_requested=None,
         on_subcategory_rename_requested=None,
         on_master_category_delete_requested=None,
+        on_subcategory_delete_requested=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -58,6 +59,9 @@ class BudgetPage(QWidget):
         )
         self.on_master_category_delete_requested = (
             on_master_category_delete_requested
+        )
+        self.on_subcategory_delete_requested = (
+            on_subcategory_delete_requested
         )
         self.active_index = 0
 
@@ -268,6 +272,14 @@ class BudgetPage(QWidget):
         if self.on_master_category_delete_requested is not None:
             self.on_master_category_delete_requested(master_category)
 
+    def request_subcategory_delete(self, master_category, subcategory):
+        # Parent model keeps later delete or hide handling correctly scoped
+        if self.on_subcategory_delete_requested is not None:
+            self.on_subcategory_delete_requested(
+                master_category,
+                subcategory,
+            )
+
     def _set_master_row(self, row, category_name, budgets):
         master_category = get_category(budgets[0], category_name)
         category_cell = QWidget()
@@ -379,6 +391,27 @@ class BudgetPage(QWidget):
             )
         )
         category_layout.addWidget(rename_button)
+
+        delete_button = QPushButton()
+        delete_button.setObjectName("deleteSubcategoryButton")
+        delete_button.setToolTip(f"Delete {subcategory_name}")
+        delete_button.setProperty(
+            "budget_category_id",
+            subcategory.database_id,
+        )
+        # Smaller icon matches existing subcategory action hierarchy
+        delete_button.setIcon(QIcon(str(DELETE_ICON_PATH)))
+        delete_button.setIconSize(QSize(12, 12))
+        delete_button.setFixedSize(24, 24)
+        delete_button.clicked.connect(
+            lambda checked=False,
+            category=master_category,
+            selected_subcategory=subcategory: self.request_subcategory_delete(
+                category,
+                selected_subcategory,
+            )
+        )
+        category_layout.addWidget(delete_button)
         self.table.setCellWidget(row, 0, category_cell)
 
         for month_index, budget in enumerate(budgets):
