@@ -88,6 +88,9 @@ class MainWindow(QMainWindow):
             self.con,
         )["id"]
 
+        # Hidden rows stay outside active Budget models until restored
+        self.refresh_hidden_category_rows()
+
         self.load_budget_income(self.budgets[0])
 
         # Load master categories from db into budget
@@ -237,6 +240,15 @@ class MainWindow(QMainWindow):
             + ["Off Budget"]
             + off_budget_names
             + ["Closed"]
+        )
+
+    def refresh_hidden_category_rows(self):
+        # Separate collections match Hidden section group and child entries
+        self.hidden_master_category_rows = (
+            categories.list_hidden_master_categories(self.con)
+        )
+        self.hidden_subcategory_rows = (
+            categories.list_hidden_budget_categories(self.con)
         )
 
     def _add_navigation_header(self, text, pixel_size):

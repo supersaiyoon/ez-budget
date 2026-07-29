@@ -37,6 +37,45 @@ def test_new_window_initializes_hidden_income_category():
     assert window.budgets[0].master_categories == []
 
 
+def test_new_window_loads_hidden_category_rows(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    visible_master = categories.add_master_category(
+        con,
+        "Everyday Expenses",
+    )
+    categories.add_budget_category(
+        con,
+        visible_master["id"],
+        "Groceries",
+        hidden=True,
+    )
+    hidden_master = categories.add_master_category(
+        con,
+        "Archived Goals",
+        hidden=True,
+    )
+    categories.add_budget_category(
+        con,
+        hidden_master["id"],
+        "Old Goal",
+    )
+    con.close()
+
+    window = MainWindow(db_path)
+
+    assert [
+        row["name"] for row in window.hidden_master_category_rows
+    ] == ["Archived Goals"]
+    assert [
+        row["name"] for row in window.hidden_subcategory_rows
+    ] == ["Groceries"]
+    assert window.hidden_subcategory_rows[0][
+        "master_category_name"
+    ] == "Everyday Expenses"
+
+
 def test_new_window_loads_saved_account_details(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
