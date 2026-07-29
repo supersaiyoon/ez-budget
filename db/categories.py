@@ -156,6 +156,27 @@ def list_budget_categories(con, master_category_id):
     ).fetchall()
 
 
+def list_hidden_budget_categories(con):
+    # Parent must remain visible so hidden master groups are not duplicated
+    return con.execute(
+        """
+        SELECT
+            budget_categories.id,
+            budget_categories.master_budget_category_id,
+            budget_categories.name,
+            budget_categories.hidden,
+            master_budget_categories.name AS master_category_name
+        FROM budget_categories
+        JOIN master_budget_categories
+          ON master_budget_categories.id
+             = budget_categories.master_budget_category_id
+        WHERE budget_categories.hidden = TRUE
+          AND master_budget_categories.hidden = FALSE
+        ORDER BY master_budget_categories.id, budget_categories.id
+        """
+    ).fetchall()
+
+
 def list_transaction_categories(con):
     # Parent names distinguish same-named categories in transaction dropdowns
     return con.execute(

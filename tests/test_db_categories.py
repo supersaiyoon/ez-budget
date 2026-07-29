@@ -232,6 +232,39 @@ def test_list_budget_categories_returns_visible_categories_for_master_in_id_orde
     assert [category["name"] for category in category_rows] == ["Groceries", "Gas"]
 
 
+def test_list_hidden_budget_categories_excludes_hidden_master_groups(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    archived = categories.add_master_category(
+        con,
+        "Archived",
+        hidden=True,
+    )
+    hidden_groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+        hidden=True,
+    )
+    categories.add_budget_category(con, expenses["id"], "Dining Out")
+    categories.add_budget_category(
+        con,
+        archived["id"],
+        "Old Goal",
+        hidden=True,
+    )
+    categories.get_or_create_income_category(con)
+
+    category_rows = categories.list_hidden_budget_categories(con)
+
+    assert len(category_rows) == 1
+    assert category_rows[0]["id"] == hidden_groceries["id"]
+    assert category_rows[0]["name"] == "Groceries"
+    assert (
+        category_rows[0]["master_category_name"]
+        == "Everyday Expenses"
+    )
+
+
 def test_list_transaction_categories_joins_visible_categories_with_their_masters(con):
     # Duplicate names verify parent join while hidden rows verify filtering
     expenses = categories.add_master_category(con, "Everyday Expenses")
