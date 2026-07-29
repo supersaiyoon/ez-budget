@@ -24,6 +24,9 @@ from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 RENAME_ICON_PATH = (
     Path(__file__).parent / "assets" / "icons" / "edit_pencil.svg"
 )
+DELETE_ICON_PATH = (
+    Path(__file__).parent / "assets" / "icons" / "delete.svg"
+)
 
 
 class BudgetPage(QWidget):
@@ -36,6 +39,7 @@ class BudgetPage(QWidget):
         on_allocation_changed=None,
         on_master_category_rename_requested=None,
         on_subcategory_rename_requested=None,
+        on_master_category_delete_requested=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -51,6 +55,9 @@ class BudgetPage(QWidget):
         )
         self.on_subcategory_rename_requested = (
             on_subcategory_rename_requested
+        )
+        self.on_master_category_delete_requested = (
+            on_master_category_delete_requested
         )
         self.active_index = 0
 
@@ -256,6 +263,11 @@ class BudgetPage(QWidget):
                 subcategory,
             )
 
+    def request_master_category_delete(self, master_category):
+        # Controller decides between permanent deletion and hiding
+        if self.on_master_category_delete_requested is not None:
+            self.on_master_category_delete_requested(master_category)
+
     def _set_master_row(self, row, category_name, budgets):
         master_category = get_category(budgets[0], category_name)
         category_cell = QWidget()
@@ -286,6 +298,23 @@ class BudgetPage(QWidget):
             )
         )
         category_layout.addWidget(rename_button)
+
+        delete_button = QPushButton()
+        delete_button.setObjectName("deleteMasterCategoryButton")
+        delete_button.setToolTip(f"Delete {category_name}")
+        delete_button.setProperty(
+            "master_category_id",
+            master_category.database_id,
+        )
+        delete_button.setIcon(QIcon(str(DELETE_ICON_PATH)))
+        delete_button.setIconSize(QSize(18, 18))
+        delete_button.setFixedSize(32, 32)
+        delete_button.clicked.connect(
+            lambda checked=False, category=master_category: (
+                self.request_master_category_delete(category)
+            )
+        )
+        category_layout.addWidget(delete_button)
 
         add_button = QPushButton("+")
         add_button.setObjectName("addSubcategoryButton")

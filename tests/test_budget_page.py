@@ -145,6 +145,35 @@ def test_master_category_rename_button_reports_selected_model():
     assert rename_requests == [master_category]
 
 
+def test_master_category_delete_button_reports_selected_model():
+    budgets = create_sample_budgets()
+    master_category = budgets[0].master_categories[0]
+    master_category.database_id = 12
+    delete_requests = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_master_category_delete_requested=delete_requests.append,
+    )
+    delete_button = next(
+        button
+        for button in page.findChildren(
+            QPushButton,
+            "deleteMasterCategoryButton",
+        )
+        if button.property("master_category_id") == 12
+    )
+
+    delete_button.click()
+
+    assert delete_button.icon().isNull() is False
+    assert delete_button.iconSize() == QSize(18, 18)
+    assert delete_button.size() == QSize(32, 32)
+    assert delete_requests == [master_category]
+
+
 def test_subcategory_rename_button_reports_selected_models():
     budgets = create_sample_budgets()
     master_category = budgets[0].master_categories[0]
