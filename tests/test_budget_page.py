@@ -2,8 +2,8 @@ from decimal import Decimal
 
 import pytest
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import QLabel, QPushButton
 
 from budget_model import Subcategory, create_sample_budgets, format_money
 from ui.budget_page import BudgetPage
@@ -145,6 +145,40 @@ def test_master_category_rename_button_reports_selected_model():
     assert rename_requests == [master_category]
 
 
+def test_subcategory_rename_button_reports_selected_models():
+    budgets = create_sample_budgets()
+    master_category = budgets[0].master_categories[0]
+    subcategory = master_category.subcategories[0]
+    subcategory.database_id = 34
+    rename_requests = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_subcategory_rename_requested=(
+            lambda category, selected_subcategory: rename_requests.append(
+                (category, selected_subcategory)
+            )
+        ),
+    )
+    rename_button = next(
+        button
+        for button in page.findChildren(
+            QPushButton,
+            "renameSubcategoryButton",
+        )
+        if button.property("budget_category_id") == 34
+    )
+
+    rename_button.click()
+
+    assert rename_button.icon().isNull() is False
+    assert rename_button.iconSize() == QSize(12, 12)
+    assert rename_button.size() == QSize(24, 24)
+    assert rename_requests == [(master_category, subcategory)]
+
+
 def test_spending_values_display_as_negative_on_budget_page():
     budgets = create_sample_budgets()
     page = BudgetPage(
@@ -236,5 +270,9 @@ def test_refresh_removes_stale_master_widget_from_new_subcategory_row():
     page.refresh()
     row = page.rows.index(("Monthly Bills", "Other")) + 2
 
-    assert page.table.cellWidget(row, 0) is None
-    assert page.table.item(row, 0).text().strip() == "Other"
+    category_cell = page.table.cellWidget(row, 0)
+    assert category_cell.objectName() == "subcategoryCell"
+    assert (
+        category_cell.findChild(QLabel, "subcategoryNameLabel").text()
+        == "Other"
+    )

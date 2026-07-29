@@ -35,6 +35,7 @@ class BudgetPage(QWidget):
         on_subcategory_added,
         on_allocation_changed=None,
         on_master_category_rename_requested=None,
+        on_subcategory_rename_requested=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -47,6 +48,9 @@ class BudgetPage(QWidget):
         self.on_allocation_changed = on_allocation_changed
         self.on_master_category_rename_requested = (
             on_master_category_rename_requested
+        )
+        self.on_subcategory_rename_requested = (
+            on_subcategory_rename_requested
         )
         self.active_index = 0
 
@@ -244,6 +248,14 @@ class BudgetPage(QWidget):
         if self.on_master_category_rename_requested is not None:
             self.on_master_category_rename_requested(master_category)
 
+    def request_subcategory_rename(self, master_category, subcategory):
+        # Parent model keeps later duplicate validation correctly scoped
+        if self.on_subcategory_rename_requested is not None:
+            self.on_subcategory_rename_requested(
+                master_category,
+                subcategory,
+            )
+
     def _set_master_row(self, row, category_name, budgets):
         master_category = get_category(budgets[0], category_name)
         category_cell = QWidget()
@@ -304,7 +316,41 @@ class BudgetPage(QWidget):
         self.table.setRowHeight(row, 34)
 
     def _set_subcategory_row(self, row, category_name, subcategory_name, budgets):
-        self.table.setItem(row, 0, QTableWidgetItem(f"   {subcategory_name}"))
+        master_category = get_category(budgets[0], category_name)
+        subcategory = budgets[0].get_subcategory(
+            category_name,
+            subcategory_name,
+        )
+        category_cell = QWidget()
+        category_cell.setObjectName("subcategoryCell")
+        category_layout = QHBoxLayout(category_cell)
+        category_layout.setContentsMargins(20, 0, 4, 0)
+        category_label = QLabel(subcategory_name)
+        category_label.setObjectName("subcategoryNameLabel")
+        category_layout.addWidget(category_label)
+        category_layout.addStretch()
+
+        rename_button = QPushButton()
+        rename_button.setObjectName("renameSubcategoryButton")
+        rename_button.setToolTip(f"Rename {subcategory_name}")
+        rename_button.setProperty(
+            "budget_category_id",
+            subcategory.database_id,
+        )
+        # Same SVG treatment keeps rename actions consistent across row types
+        rename_button.setIcon(QIcon(str(RENAME_ICON_PATH)))
+        rename_button.setIconSize(QSize(12, 12))
+        rename_button.setFixedSize(24, 24)
+        rename_button.clicked.connect(
+            lambda checked=False,
+            category=master_category,
+            selected_subcategory=subcategory: self.request_subcategory_rename(
+                category,
+                selected_subcategory,
+            )
+        )
+        category_layout.addWidget(rename_button)
+        self.table.setCellWidget(row, 0, category_cell)
 
         for month_index, budget in enumerate(budgets):
             subcategory = budget.get_subcategory(category_name, subcategory_name)
