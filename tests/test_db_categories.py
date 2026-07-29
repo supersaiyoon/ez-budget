@@ -67,6 +67,88 @@ def test_rename_master_category_rejects_duplicate_name(con):
     )["id"] == monthly_bills["id"]
 
 
+def test_delete_master_category_removes_unused_children_and_allocations(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+    categories.add_budget_category(con, expenses["id"], "Dining Out")
+    budget_month = budgets.get_or_create_budget_month(
+        con,
+        "2026-07-01",
+    )
+    budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        groceries["id"],
+        50000,
+    )
+
+    deleted = categories.delete_master_category(
+        con,
+        expenses["id"],
+    )
+
+    assert deleted["id"] == expenses["id"]
+    assert categories.get_master_category_by_name(
+        con,
+        "Everyday Expenses",
+    ) is None
+    assert budgets.list_budget_allocations(
+        con,
+        budget_month["id"],
+    ) == []
+
+
+def test_delete_master_category_preserves_group_with_transactions(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+    budget_month = budgets.get_or_create_budget_month(
+        con,
+        "2026-07-01",
+    )
+    budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        groceries["id"],
+        50000,
+    )
+    checking = accounts.create_account(con, "Checking")
+    grocery_store = payees.add_payee(con, "Grocery Store")
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_store["id"],
+        groceries["id"],
+        "2026-07-21",
+        -4250,
+    )
+
+    deleted = categories.delete_master_category(
+        con,
+        expenses["id"],
+    )
+
+    assert deleted is None
+    assert categories.get_master_category_by_name(
+        con,
+        "Everyday Expenses",
+    )["id"] == expenses["id"]
+    assert categories.list_budget_categories(
+        con,
+        expenses["id"],
+    )[0]["id"] == groceries["id"]
+    assert len(
+        budgets.list_budget_allocations(con, budget_month["id"])
+    ) == 1
+
+
 def test_add_budget_category_inserts_budget_category_row(con):
     master_category = categories.add_master_category(con, "Everyday Expenses")
 

@@ -56,6 +56,52 @@ def rename_master_category(con, master_category_id, name):
     return row
 
 
+def delete_master_category(con, master_category_id):
+    # Any child transaction preserves entire group and its saved allocations
+    transaction_row = con.execute(
+        """
+        SELECT 1
+        FROM transactions
+        JOIN budget_categories
+          ON budget_categories.id = transactions.budget_category_id
+        WHERE budget_categories.master_budget_category_id = ?
+        LIMIT 1
+        """,
+        (master_category_id,),
+    ).fetchone()
+    if transaction_row is not None:
+        return None
+
+    con.execute(
+        """
+        DELETE FROM budget_allocations
+        WHERE budget_category_id IN (
+            SELECT id
+            FROM budget_categories
+            WHERE master_budget_category_id = ?
+        )
+        """,
+        (master_category_id,),
+    )
+    con.execute(
+        """
+        DELETE FROM budget_categories
+        WHERE master_budget_category_id = ?
+        """,
+        (master_category_id,),
+    )
+    deleted_row = con.execute(
+        """
+        DELETE FROM master_budget_categories
+        WHERE id = ?
+        RETURNING id, name, hidden
+        """,
+        (master_category_id,),
+    ).fetchone()
+    con.commit()
+    return deleted_row
+
+
 def add_budget_category(con, master_category_id, name, hidden=False):
     row = con.execute(
         """
