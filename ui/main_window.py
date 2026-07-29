@@ -191,6 +191,7 @@ class MainWindow(QMainWindow):
             on_subcategory_rename_requested=(
                 self.prompt_for_subcategory_rename
             ),
+            on_subcategory_delete_requested=self.delete_subcategory,
         )
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
@@ -739,6 +740,83 @@ class MainWindow(QMainWindow):
                 f'Renamed subcategory to "{name.strip()}".'
             )
         return renamed
+
+    def delete_subcategory(self, master_category, subcategory):
+        if subcategory.database_id is None:
+            return False
+
+        # Saved transaction relationships decide whether data must be retained
+        has_transactions = any(
+            transaction.category_database_id == subcategory.database_id
+            for account in self.accounts + self.closed_accounts
+            for transaction in account.transactions
+        )
+        if has_transactions:
+            choice = QMessageBox.question(
+                self,
+                "Delete Subcategory",
+                (
+                    f'"{subcategory.name}" cannot be deleted because it has '
+                    "transactions. Hide subcategory instead?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if choice != QMessageBox.StandardButton.Yes:
+                return False
+
+            changed_row = categories.set_budget_category_hidden(
+                self.con,
+                subcategory.database_id,
+                True,
+            )
+            action = "Hidden"
+        else:
+            choice = QMessageBox.question(
+                self,
+                "Delete Subcategory",
+                f'Delete "{subcategory.name}" permanently?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if choice != QMessageBox.StandardButton.Yes:
+                return False
+
+            changed_row = categories.delete_budget_category(
+                self.con,
+                subcategory.database_id,
+            )
+            action = "Deleted"
+
+        if changed_row is None:
+            return False
+
+        # Stable ID removes matching category from every loaded budget month
+        for budget in self.budgets:
+            for loaded_master_category in budget.master_categories:
+                if (
+                    loaded_master_category.database_id
+                    != master_category.database_id
+                ):
+                    continue
+                loaded_master_category.subcategories = [
+                    loaded_subcategory
+                    for loaded_subcategory
+                    in loaded_master_category.subcategories
+                    if (
+                        loaded_subcategory.database_id
+                        != subcategory.database_id
+                    )
+                ]
+                break
+
+        self.refresh_hidden_category_rows()
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+        self.budget_page.status.setText(
+            f'{action} subcategory "{subcategory.name}".'
+        )
+        return True
 
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices

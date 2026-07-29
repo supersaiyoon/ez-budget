@@ -1881,6 +1881,88 @@ def test_subcategory_rename_button_opens_prefilled_dialog(monkeypatch):
     )
 
 
+def test_subcategory_delete_button_removes_unused_category(monkeypatch):
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    subcategory = master_category.subcategories[0]
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+    delete_button = next(
+        button
+        for button in window.budget_page.findChildren(
+            QPushButton,
+            "deleteSubcategoryButton",
+        )
+        if button.property("budget_category_id")
+        == subcategory.database_id
+    )
+
+    delete_button.click()
+
+    assert categories.list_budget_categories(
+        window.con,
+        master_category.database_id,
+    ) == []
+    assert master_category.subcategories == []
+    assert window.budget_page.status.text() == (
+        'Deleted subcategory "Groceries".'
+    )
+
+
+def test_subcategory_delete_button_hides_category_with_transactions(
+    monkeypatch,
+):
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    subcategory = master_category.subcategories[0]
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=subcategory.database_id,
+    )
+    window.accounts[0].transactions.append(transaction)
+    window.save_transaction(window.accounts[0], transaction)
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+    delete_button = next(
+        button
+        for button in window.budget_page.findChildren(
+            QPushButton,
+            "deleteSubcategoryButton",
+        )
+        if button.property("budget_category_id")
+        == subcategory.database_id
+    )
+
+    delete_button.click()
+
+    assert master_category.subcategories == []
+    assert [
+        row["id"] for row in window.hidden_subcategory_rows
+    ] == [subcategory.database_id]
+    assert transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )[0]["budget_category_id"] == subcategory.database_id
+    assert window.budget_page.status.text() == (
+        'Hidden subcategory "Groceries".'
+    )
+
+
 def test_add_subcategory_rejects_duplicate_name_within_master():
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
