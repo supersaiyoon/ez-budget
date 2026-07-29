@@ -102,6 +102,21 @@ def delete_master_category(con, master_category_id):
     return deleted_row
 
 
+def set_master_category_hidden(con, master_category_id, hidden):
+    # Parent flag hides group without rewriting every child category
+    row = con.execute(
+        """
+        UPDATE master_budget_categories
+        SET hidden = ?
+        WHERE id = ?
+        RETURNING id, name, hidden
+        """,
+        (hidden, master_category_id),
+    ).fetchone()
+    con.commit()
+    return row
+
+
 def add_budget_category(con, master_category_id, name, hidden=False):
     row = con.execute(
         """

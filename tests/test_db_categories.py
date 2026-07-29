@@ -149,6 +149,42 @@ def test_delete_master_category_preserves_group_with_transactions(con):
     ) == 1
 
 
+def test_set_master_category_hidden_filters_and_restores_group(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        expenses["id"],
+        "Groceries",
+    )
+
+    hidden = categories.set_master_category_hidden(
+        con,
+        expenses["id"],
+        True,
+    )
+
+    assert hidden["hidden"] == True
+    assert categories.list_master_categories(con) == []
+    assert categories.list_transaction_categories(con) == []
+    # Child keeps own visibility so restoring parent restores group
+    assert categories.list_budget_categories(
+        con,
+        expenses["id"],
+    )[0]["id"] == groceries["id"]
+
+    restored = categories.set_master_category_hidden(
+        con,
+        expenses["id"],
+        False,
+    )
+
+    assert restored["hidden"] == False
+    assert categories.list_master_categories(con)[0]["id"] == expenses["id"]
+    assert categories.list_transaction_categories(con)[0]["id"] == (
+        groceries["id"]
+    )
+
+
 def test_add_budget_category_inserts_budget_category_row(con):
     master_category = categories.add_master_category(con, "Everyday Expenses")
 
