@@ -82,6 +82,8 @@ class MainWindow(QMainWindow):
         self.budgets = [budget_model.create_empty_budget()]
         self.con = database.connect(db_path)
         database.initialize_database(self.con)
+        # Page created after initial hidden-category query
+        self.budget_page = None
 
         # Hidden category ID backs virtual income choices without Budget rows
         self.income_category_id = categories.get_or_create_income_category(
@@ -193,6 +195,8 @@ class MainWindow(QMainWindow):
             ),
             on_master_category_delete_requested=self.delete_master_category,
             on_subcategory_delete_requested=self.delete_subcategory,
+            hidden_master_category_rows=self.hidden_master_category_rows,
+            hidden_subcategory_rows=self.hidden_subcategory_rows,
         )
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
@@ -252,6 +256,12 @@ class MainWindow(QMainWindow):
         self.hidden_subcategory_rows = (
             categories.list_hidden_budget_categories(self.con)
         )
+        # Existing page receives fresh query rows after hide or later restore
+        if self.budget_page is not None:
+            self.budget_page.set_hidden_category_rows(
+                self.hidden_master_category_rows,
+                self.hidden_subcategory_rows,
+            )
 
     def _add_navigation_header(self, text, pixel_size):
         item = QListWidgetItem(text)

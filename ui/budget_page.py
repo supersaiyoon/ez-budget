@@ -41,6 +41,8 @@ class BudgetPage(QWidget):
         on_subcategory_rename_requested=None,
         on_master_category_delete_requested=None,
         on_subcategory_delete_requested=None,
+        hidden_master_category_rows=None,
+        hidden_subcategory_rows=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -62,6 +64,10 @@ class BudgetPage(QWidget):
         )
         self.on_subcategory_delete_requested = (
             on_subcategory_delete_requested
+        )
+        self.set_hidden_category_rows(
+            hidden_master_category_rows,
+            hidden_subcategory_rows,
         )
         self.active_index = 0
 
@@ -148,6 +154,23 @@ class BudgetPage(QWidget):
     def visible_budgets(self):
         # Active month plus neighbors, matching the comparison window width
         return self.budgets[self.active_index : self.active_index + VISIBLE_MONTHS]
+
+    def set_hidden_category_rows(
+        self,
+        master_category_rows,
+        subcategory_rows,
+    ):
+        # Controller-owned query results ready for later section rendering
+        self.hidden_master_category_rows = (
+            master_category_rows
+            if master_category_rows is not None
+            else []
+        )
+        self.hidden_subcategory_rows = (
+            subcategory_rows
+            if subcategory_rows is not None
+            else []
+        )
 
     def visible_scroller_indexes(self):
         # Centered window when possible, easier context while stepping through months

@@ -74,6 +74,12 @@ def test_new_window_loads_hidden_category_rows(tmp_path):
     assert window.hidden_subcategory_rows[0][
         "master_category_name"
     ] == "Everyday Expenses"
+    assert window.budget_page.hidden_master_category_rows == (
+        window.hidden_master_category_rows
+    )
+    assert window.budget_page.hidden_subcategory_rows == (
+        window.hidden_subcategory_rows
+    )
 
 
 def test_new_window_loads_saved_account_details(tmp_path):
@@ -1970,6 +1976,9 @@ def test_master_category_delete_button_hides_group_with_transactions(
     assert [
         row["id"] for row in window.hidden_master_category_rows
     ] == [master_category.database_id]
+    assert window.budget_page.hidden_master_category_rows == (
+        window.hidden_master_category_rows
+    )
     assert transactions.list_transactions(
         window.con,
         window.accounts[0].database_id,
@@ -2053,6 +2062,9 @@ def test_subcategory_delete_button_hides_category_with_transactions(
     assert [
         row["id"] for row in window.hidden_subcategory_rows
     ] == [subcategory.database_id]
+    assert window.budget_page.hidden_subcategory_rows == (
+        window.hidden_subcategory_rows
+    )
     assert transactions.list_transactions(
         window.con,
         window.accounts[0].database_id,
