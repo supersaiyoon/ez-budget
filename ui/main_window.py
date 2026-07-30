@@ -200,6 +200,7 @@ class MainWindow(QMainWindow):
             on_master_category_restore_requested=(
                 self.restore_master_category
             ),
+            on_subcategory_restore_requested=self.restore_subcategory,
         )
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
@@ -879,6 +880,45 @@ class MainWindow(QMainWindow):
         self.refresh_transaction_categories()
         self.budget_page.status.setText(
             f'Restored master category "{restored_row["name"]}".'
+        )
+        return True
+
+    def restore_subcategory(self, category_row):
+        # Database flag returns category to active Budget and transaction queries
+        restored_row = categories.set_budget_category_hidden(
+            self.con,
+            category_row["id"],
+            False,
+        )
+        if restored_row is None:
+            return False
+
+        # Stable parent ID restores category under matching group in every month
+        for budget in self.budgets:
+            for master_category in budget.master_categories:
+                if (
+                    master_category.database_id
+                    != restored_row["master_budget_category_id"]
+                ):
+                    continue
+                master_category.subcategories.append(
+                    budget_model.Subcategory(
+                        restored_row["name"],
+                        Decimal("0.00"),
+                        Decimal("0.00"),
+                        database_id=restored_row["id"],
+                    )
+                )
+                break
+
+        # Restored row regains saved month allocations and transaction spending
+        self.refresh_budget_allocations()
+        self.refresh_budget_spending()
+        self.refresh_hidden_category_rows()
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+        self.budget_page.status.setText(
+            f'Restored subcategory "{restored_row["name"]}".'
         )
         return True
 

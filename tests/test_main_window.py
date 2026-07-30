@@ -132,6 +132,50 @@ def test_hidden_master_restore_button_restores_group(tmp_path):
     )
 
 
+def test_hidden_subcategory_restore_button_restores_category(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    master_category = categories.add_master_category(
+        con,
+        "Everyday Expenses",
+    )
+    hidden_subcategory = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Groceries",
+        hidden=True,
+    )
+    con.close()
+
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    restore_button = window.budget_page.findChild(
+        QPushButton,
+        "restoreSubcategoryButton",
+    )
+
+    restore_button.click()
+
+    assert all(
+        budget.master_categories[0].subcategories[0].database_id
+        == hidden_subcategory["id"]
+        for budget in window.budgets
+    )
+    assert categories.get_budget_category_by_name(
+        window.con,
+        master_category["id"],
+        "Groceries",
+    )["hidden"] == False
+    assert window.hidden_subcategory_rows == []
+    assert window.transaction_pages[0].category_rows[0][
+        "category_name"
+    ] == "Groceries"
+    assert window.budget_page.status.text() == (
+        'Restored subcategory "Groceries".'
+    )
+
+
 def test_new_window_loads_saved_account_details(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
