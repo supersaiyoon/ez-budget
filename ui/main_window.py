@@ -197,6 +197,9 @@ class MainWindow(QMainWindow):
             on_subcategory_delete_requested=self.delete_subcategory,
             hidden_master_category_rows=self.hidden_master_category_rows,
             hidden_subcategory_rows=self.hidden_subcategory_rows,
+            on_master_category_restore_requested=(
+                self.restore_master_category
+            ),
         )
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
@@ -833,6 +836,49 @@ class MainWindow(QMainWindow):
         self.refresh_transaction_categories()
         self.budget_page.status.setText(
             f'{action} master category "{master_category.name}".'
+        )
+        return True
+
+    def restore_master_category(self, category_row):
+        # Database flag returns group to active category queries
+        restored_row = categories.set_master_category_hidden(
+            self.con,
+            category_row["id"],
+            False,
+        )
+        if restored_row is None:
+            return False
+
+        subcategory_rows = categories.list_budget_categories(
+            self.con,
+            restored_row["id"],
+        )
+
+        # Rebuild same stable category identities in every generated month
+        for budget in self.budgets:
+            master_category = budget_model.MasterCategory(
+                restored_row["name"],
+                database_id=restored_row["id"],
+            )
+            for subcategory_row in subcategory_rows:
+                master_category.subcategories.append(
+                    budget_model.Subcategory(
+                        subcategory_row["name"],
+                        Decimal("0.00"),
+                        Decimal("0.00"),
+                        database_id=subcategory_row["id"],
+                    )
+                )
+            budget.master_categories.append(master_category)
+
+        # Restored rows regain saved month allocations and transaction spending
+        self.refresh_budget_allocations()
+        self.refresh_budget_spending()
+        self.refresh_hidden_category_rows()
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+        self.budget_page.status.setText(
+            f'Restored master category "{restored_row["name"]}".'
         )
         return True
 

@@ -82,6 +82,56 @@ def test_new_window_loads_hidden_category_rows(tmp_path):
     )
 
 
+def test_hidden_master_restore_button_restores_group(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    hidden_master = categories.add_master_category(
+        con,
+        "Archived Goals",
+        hidden=True,
+    )
+    subcategory = categories.add_budget_category(
+        con,
+        hidden_master["id"],
+        "Old Goal",
+    )
+    con.close()
+
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    restore_button = window.budget_page.findChild(
+        QPushButton,
+        "restoreMasterCategoryButton",
+    )
+
+    restore_button.click()
+
+    assert all(
+        [
+            category.database_id
+            for category in budget.master_categories
+        ] == [hidden_master["id"]]
+        for budget in window.budgets
+    )
+    assert all(
+        budget.master_categories[0].subcategories[0].database_id
+        == subcategory["id"]
+        for budget in window.budgets
+    )
+    assert categories.get_master_category_by_name(
+        window.con,
+        "Archived Goals",
+    )["hidden"] == False
+    assert window.hidden_master_category_rows == []
+    assert window.transaction_pages[0].category_rows[0][
+        "category_name"
+    ] == "Old Goal"
+    assert window.budget_page.status.text() == (
+        'Restored master category "Archived Goals".'
+    )
+
+
 def test_new_window_loads_saved_account_details(tmp_path):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
