@@ -1013,10 +1013,18 @@ class MainWindow(QMainWindow):
             self.con,
             budget.month_date.isoformat(),
         )
+        active_category_ids = {
+            subcategory.database_id
+            for master_category in budget.master_categories
+            for subcategory in master_category.subcategories
+        }
         for allocation_row in budget_records.list_budget_allocations(
             self.con,
             budget_month["id"],
         ):
+            # Hidden category allocations stay saved until category is restored
+            if allocation_row["budget_category_id"] not in active_category_ids:
+                continue
             budget.set_category_budgeted(
                 allocation_row["budget_category_id"],
                 budget_model.money_from_cents(allocation_row["amount"]),
@@ -1044,12 +1052,23 @@ class MainWindow(QMainWindow):
         # Reset removes categories absent from latest aggregate results
         budget.reset_spending()
         start_date, end_date = budget.month_date_range
+
         category_totals = transactions.list_category_transaction_totals(
             self.con,
             start_date.isoformat(),
             end_date.isoformat(),
         )
+
+        active_category_ids = {
+            subcategory.database_id
+            for master_category in budget.master_categories
+            for subcategory in master_category.subcategories
+        }
+
         for category_total in category_totals:
+            # Hidden category spending stays queryable without an active UI row
+            if category_total["budget_category_id"] not in active_category_ids:
+                continue
             # Stable category ID applies total without relying on display name
             spending = budget_model.transaction_total_to_spending(
                 category_total["total_amount"]

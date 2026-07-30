@@ -45,11 +45,31 @@ def test_new_window_loads_hidden_category_rows(tmp_path):
         con,
         "Everyday Expenses",
     )
-    categories.add_budget_category(
+    hidden_subcategory = categories.add_budget_category(
         con,
         visible_master["id"],
         "Groceries",
         hidden=True,
+    )
+    budget_month = budgets.get_or_create_budget_month(
+        con,
+        date.today().replace(day=1).isoformat(),
+    )
+    budgets.set_budget_allocation(
+        con,
+        budget_month["id"],
+        hidden_subcategory["id"],
+        50000,
+    )
+    checking = accounts.create_account(con, "Checking")
+    grocery_store = payees.add_payee(con, "Grocery Store")
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_store["id"],
+        hidden_subcategory["id"],
+        date.today().isoformat(),
+        -4250,
     )
     hidden_master = categories.add_master_category(
         con,
@@ -80,6 +100,7 @@ def test_new_window_loads_hidden_category_rows(tmp_path):
     assert window.budget_page.hidden_subcategory_rows == (
         window.hidden_subcategory_rows
     )
+    assert window.budgets[0].master_categories[0].subcategories == []
 
 
 def test_hidden_master_restore_button_restores_group(tmp_path):
