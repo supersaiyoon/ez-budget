@@ -191,6 +191,7 @@ class MainWindow(QMainWindow):
             on_subcategory_rename_requested=(
                 self.prompt_for_subcategory_rename
             ),
+            on_master_category_delete_requested=self.delete_master_category,
             on_subcategory_delete_requested=self.delete_subcategory,
         )
         # Generated visible months load saved planning data for their own dates
@@ -740,6 +741,90 @@ class MainWindow(QMainWindow):
                 f'Renamed subcategory to "{name.strip()}".'
             )
         return renamed
+
+    def delete_master_category(self, master_category):
+        # Stable database ID scopes group across every loaded budget month
+        if master_category.database_id is None:
+            return False
+
+        # Include individually hidden children omitted from active Budget models
+        child_category_ids = {
+            subcategory.database_id
+            for subcategory in master_category.subcategories
+        }
+        child_category_ids.update(
+            row["id"]
+            for row in self.hidden_subcategory_rows
+            if (
+                row["master_budget_category_id"]
+                == master_category.database_id
+            )
+        )
+        has_transactions = any(
+            transaction.category_database_id in child_category_ids
+            for account in self.accounts + self.closed_accounts
+            for transaction in account.transactions
+        )
+
+        if has_transactions:
+            choice = QMessageBox.question(
+                self,
+                "Delete Master Category",
+                (
+                    f'"{master_category.name}" cannot be deleted because one '
+                    "or more subcategories have transactions. Hide master "
+                    "category instead?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if choice != QMessageBox.StandardButton.Yes:
+                return False
+
+            changed_row = categories.set_master_category_hidden(
+                self.con,
+                master_category.database_id,
+                True,
+            )
+            action = "Hidden"
+        else:
+            choice = QMessageBox.question(
+                self,
+                "Delete Master Category",
+                f'Delete "{master_category.name}" permanently?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if choice != QMessageBox.StandardButton.Yes:
+                return False
+
+            changed_row = categories.delete_master_category(
+                self.con,
+                master_category.database_id,
+            )
+            action = "Deleted"
+
+        if changed_row is None:
+            return False
+
+        # Remove matching group from every generated month
+        for budget in self.budgets:
+            budget.master_categories = [
+                loaded_master_category
+                for loaded_master_category in budget.master_categories
+                if (
+                    loaded_master_category.database_id
+                    != master_category.database_id
+                )
+            ]
+
+        self.refresh_hidden_category_rows()
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+        self.budget_page.status.setText(
+            f'{action} master category "{master_category.name}".'
+        )
+        return True
 
     def delete_subcategory(self, master_category, subcategory):
         if subcategory.database_id is None:

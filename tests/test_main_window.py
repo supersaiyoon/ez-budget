@@ -1881,6 +1881,105 @@ def test_subcategory_rename_button_opens_prefilled_dialog(monkeypatch):
     )
 
 
+def test_master_category_delete_button_removes_unused_group(monkeypatch):
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    window.add_account("Checking")
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+    delete_button = next(
+        button
+        for button in window.budget_page.findChildren(
+            QPushButton,
+            "deleteMasterCategoryButton",
+        )
+        if button.property("master_category_id")
+        == master_category.database_id
+    )
+
+    delete_button.click()
+
+    assert categories.get_master_category_by_name(
+        window.con,
+        "Everyday Expenses",
+    ) is None
+    assert all(
+        all(
+            category.database_id != master_category.database_id
+            for category in budget.master_categories
+        )
+        for budget in window.budgets
+    )
+    assert window.transaction_pages[0].category_rows == []
+    assert window.budget_page.status.text() == (
+        'Deleted master category "Everyday Expenses".'
+    )
+
+
+def test_master_category_delete_button_hides_group_with_transactions(
+    monkeypatch,
+):
+    window = MainWindow(":memory:")
+    window.add_master_category("Everyday Expenses")
+    master_category = window.budgets[0].master_categories[0]
+    window.add_subcategory(master_category.database_id, "Groceries")
+    subcategory = master_category.subcategories[0]
+    window.add_account("Checking")
+    transaction = budget_model.Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+        category_database_id=subcategory.database_id,
+    )
+    window.accounts[0].transactions.append(transaction)
+    window.save_transaction(window.accounts[0], transaction)
+    questions = []
+
+    def confirm_hide(*args):
+        questions.append(args)
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", confirm_hide)
+    delete_button = next(
+        button
+        for button in window.budget_page.findChildren(
+            QPushButton,
+            "deleteMasterCategoryButton",
+        )
+        if button.property("master_category_id")
+        == master_category.database_id
+    )
+
+    delete_button.click()
+
+    assert "cannot be deleted" in questions[0][2]
+    assert all(
+        all(
+            category.database_id != master_category.database_id
+            for category in budget.master_categories
+        )
+        for budget in window.budgets
+    )
+    assert [
+        row["id"] for row in window.hidden_master_category_rows
+    ] == [master_category.database_id]
+    assert transactions.list_transactions(
+        window.con,
+        window.accounts[0].database_id,
+    )[0]["budget_category_id"] == subcategory.database_id
+    assert window.transaction_pages[0].category_rows == []
+    assert window.budget_page.status.text() == (
+        'Hidden master category "Everyday Expenses".'
+    )
+
+
 def test_subcategory_delete_button_removes_unused_category(monkeypatch):
     window = MainWindow(":memory:")
     window.add_master_category("Everyday Expenses")
