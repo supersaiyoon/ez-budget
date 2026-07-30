@@ -115,6 +115,36 @@ def test_hidden_categories_section_toggles_open_and_closed():
     assert page.hidden_categories_content.isHidden() is True
 
 
+def test_hidden_master_category_row_reports_restore_request():
+    hidden_master_category = {
+        "id": 12,
+        "name": "Archived Goals",
+        "hidden": True,
+    }
+    restore_requests = []
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        hidden_master_category_rows=[hidden_master_category],
+        on_master_category_restore_requested=restore_requests.append,
+    )
+    label = page.findChild(QLabel, "hiddenMasterCategoryLabel")
+    restore_button = page.findChild(
+        QPushButton,
+        "restoreMasterCategoryButton",
+    )
+
+    assert label.text() == "Archived Goals"
+    assert restore_button.text() == "Restore"
+    assert restore_button.property("master_category_id") == 12
+
+    restore_button.click()
+
+    assert restore_requests == [hidden_master_category]
+
+
 def test_master_category_row_has_subcategory_button_with_database_id():
     budgets = create_sample_budgets()
     budgets[0].master_categories[0].database_id = 12

@@ -43,6 +43,7 @@ class BudgetPage(QWidget):
         on_subcategory_delete_requested=None,
         hidden_master_category_rows=None,
         hidden_subcategory_rows=None,
+        on_master_category_restore_requested=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -65,10 +66,11 @@ class BudgetPage(QWidget):
         self.on_subcategory_delete_requested = (
             on_subcategory_delete_requested
         )
-        self.set_hidden_category_rows(
-            hidden_master_category_rows,
-            hidden_subcategory_rows,
+        self.on_master_category_restore_requested = (
+            on_master_category_restore_requested
         )
+        self.hidden_master_category_rows = []
+        self.hidden_subcategory_rows = []
         self.active_index = 0
 
         # For matching visual rows back to category names
@@ -123,6 +125,10 @@ class BudgetPage(QWidget):
         self.hidden_categories_content_layout.setSpacing(2)
         hidden_section_layout.addWidget(self.hidden_categories_content)
         layout.addWidget(self.hidden_categories_section)
+        self.set_hidden_category_rows(
+            hidden_master_category_rows,
+            hidden_subcategory_rows,
+        )
         self.update_hidden_categories_visibility()
 
         self.category_header = QWidget()
@@ -171,6 +177,48 @@ class BudgetPage(QWidget):
             if subcategory_rows is not None
             else []
         )
+        self._refresh_hidden_master_category_rows()
+
+    def _refresh_hidden_master_category_rows(self):
+        # Replace stale widgets after controller supplies fresh query rows
+        while self.hidden_categories_content_layout.count():
+            layout_item = self.hidden_categories_content_layout.takeAt(0)
+            widget = layout_item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+
+        for category_row in self.hidden_master_category_rows:
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(8, 2, 8, 2)
+
+            label = QLabel(category_row["name"])
+            label.setObjectName("hiddenMasterCategoryLabel")
+            label.setFont(
+                QFont("Segoe UI", 10, QFont.Weight.DemiBold)
+            )
+            row_layout.addWidget(label)
+            row_layout.addStretch()
+
+            restore_button = QPushButton("Restore")
+            restore_button.setObjectName("restoreMasterCategoryButton")
+            restore_button.setProperty(
+                "master_category_id",
+                category_row["id"],
+            )
+            restore_button.clicked.connect(
+                lambda checked=False, row=category_row: (
+                    self.request_master_category_restore(row)
+                )
+            )
+            row_layout.addWidget(restore_button)
+            self.hidden_categories_content_layout.addWidget(row_widget)
+
+    def request_master_category_restore(self, category_row):
+        # Page reports selected database row while controller owns persistence
+        if self.on_master_category_restore_requested is not None:
+            self.on_master_category_restore_requested(category_row)
 
     def visible_scroller_indexes(self):
         # Centered window when possible, easier context while stepping through months
