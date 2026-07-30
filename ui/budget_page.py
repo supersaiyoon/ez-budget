@@ -88,6 +88,37 @@ class BudgetPage(QWidget):
             self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table, 1)
 
+        # Collapsible shell reserved for later hidden-category restore rows
+        self.hidden_categories_expanded = False
+        self.hidden_categories_section = QWidget()
+        hidden_section_layout = QVBoxLayout(self.hidden_categories_section)
+        hidden_section_layout.setContentsMargins(0, 0, 0, 0)
+        hidden_section_layout.setSpacing(0)
+
+        self.hidden_categories_button = QPushButton()
+        self.hidden_categories_button.setObjectName("hiddenCategoriesButton")
+        hidden_button_font = self.hidden_categories_button.font()
+        hidden_button_font.setPixelSize(10)
+        hidden_button_font.setBold(True)
+        self.hidden_categories_button.setFont(hidden_button_font)
+        self.hidden_categories_button.setStyleSheet("text-align: left;")
+        self.hidden_categories_button.clicked.connect(
+            self.toggle_hidden_categories
+        )
+        hidden_section_layout.addWidget(self.hidden_categories_button)
+
+        # Empty container keeps row rendering separate from expansion behavior
+        self.hidden_categories_content = QWidget()
+        self.hidden_categories_content.setObjectName("hiddenCategoriesContent")
+        self.hidden_categories_content_layout = QVBoxLayout(
+            self.hidden_categories_content
+        )
+        self.hidden_categories_content_layout.setContentsMargins(8, 0, 0, 0)
+        self.hidden_categories_content_layout.setSpacing(2)
+        hidden_section_layout.addWidget(self.hidden_categories_content)
+        layout.addWidget(self.hidden_categories_section)
+        self.update_hidden_categories_visibility()
+
         self.category_header = QWidget()
         category_header_layout = QHBoxLayout(self.category_header)
         category_header_layout.setContentsMargins(8, 0, 8, 0)
@@ -154,6 +185,21 @@ class BudgetPage(QWidget):
         indexed_budgets = [(index, self.budgets[index]) for index in scroller_indexes]
         self.month_scroller.set_months(indexed_budgets, self.active_index)
         self._refresh_budget_table(budgets)
+
+    def toggle_hidden_categories(self):
+        # Header controls restore-area visibility without rebuilding Budget table
+        self.hidden_categories_expanded = not self.hidden_categories_expanded
+        self.update_hidden_categories_visibility()
+
+    def update_hidden_categories_visibility(self):
+        # Arrow and container share one expansion flag
+        arrow = "\u25bc" if self.hidden_categories_expanded else "\u25b6"
+        self.hidden_categories_button.setText(
+            f"{arrow} Hidden Categories"
+        )
+        self.hidden_categories_content.setVisible(
+            self.hidden_categories_expanded
+        )
 
     def _refresh_budget_table(self, budgets):
         self.rows = []

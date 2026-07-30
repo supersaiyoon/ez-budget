@@ -91,6 +91,30 @@ def test_subcategory_error_is_shown_in_status():
     assert page.status.text() == "Subcategory already exists in this master category."
 
 
+def test_hidden_categories_section_toggles_open_and_closed():
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    assert page.hidden_categories_expanded is False
+    assert page.hidden_categories_button.text() == "▶ Hidden Categories"
+    assert page.hidden_categories_content.isHidden() is True
+
+    page.hidden_categories_button.click()
+
+    assert page.hidden_categories_expanded is True
+    assert page.hidden_categories_button.text() == "▼ Hidden Categories"
+    assert page.hidden_categories_content.isHidden() is False
+
+    page.hidden_categories_button.click()
+
+    assert page.hidden_categories_expanded is False
+    assert page.hidden_categories_content.isHidden() is True
+
+
 def test_master_category_row_has_subcategory_button_with_database_id():
     budgets = create_sample_budgets()
     budgets[0].master_categories[0].database_id = 12
