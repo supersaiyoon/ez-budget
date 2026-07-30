@@ -145,6 +145,38 @@ def test_hidden_master_category_row_reports_restore_request():
     assert restore_requests == [hidden_master_category]
 
 
+def test_hidden_subcategory_row_shows_parent_and_reports_restore_request():
+    hidden_subcategory = {
+        "id": 34,
+        "master_budget_category_id": 12,
+        "name": "Groceries",
+        "hidden": True,
+        "master_category_name": "Everyday Expenses",
+    }
+    restore_requests = []
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        hidden_subcategory_rows=[hidden_subcategory],
+        on_subcategory_restore_requested=restore_requests.append,
+    )
+    label = page.findChild(QLabel, "hiddenSubcategoryLabel")
+    restore_button = page.findChild(
+        QPushButton,
+        "restoreSubcategoryButton",
+    )
+
+    assert label.text() == "Everyday Expenses: Groceries"
+    assert restore_button.text() == "Restore"
+    assert restore_button.property("budget_category_id") == 34
+
+    restore_button.click()
+
+    assert restore_requests == [hidden_subcategory]
+
+
 def test_master_category_row_has_subcategory_button_with_database_id():
     budgets = create_sample_budgets()
     budgets[0].master_categories[0].database_id = 12
