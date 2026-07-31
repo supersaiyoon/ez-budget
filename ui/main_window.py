@@ -152,27 +152,8 @@ class MainWindow(QMainWindow):
 
         # Stack lets navigation swap full workflows without rebuilding windows
         self.stack = QStackedWidget()
-        self.budget_page = budget_page.BudgetPage(
-            self.budgets,
-            self.budget_months_changed,
-            self.add_master_category,
-            self.add_subcategory,
-            self.budget_allocation_changed,
-            on_master_category_rename_requested=(
-                self.prompt_for_master_category_rename
-            ),
-            on_subcategory_rename_requested=(
-                self.prompt_for_subcategory_rename
-            ),
-            on_master_category_delete_requested=self.delete_master_category,
-            on_subcategory_delete_requested=self.delete_subcategory,
-            hidden_master_category_rows=self.hidden_master_category_rows,
-            hidden_subcategory_rows=self.hidden_subcategory_rows,
-            on_master_category_restore_requested=(
-                self.restore_master_category
-            ),
-            on_subcategory_restore_requested=self.restore_subcategory,
-        )
+        self.budget_page = self.create_budget_page()
+
         # Generated visible months load saved planning data for their own dates
         self.refresh_budget_allocations()
         self.refresh_budget_income()
@@ -246,6 +227,30 @@ class MainWindow(QMainWindow):
                 )
                 category.subcategories.append(subcategory)
             budget.master_categories.append(category)
+
+    def create_budget_page(self):
+        # Callback wiring keeps persistence in MainWindow, not BudgetPage
+        return budget_page.BudgetPage(
+            self.budgets,
+            self.budget_months_changed,
+            self.add_master_category,
+            self.add_subcategory,
+            self.budget_allocation_changed,
+            on_master_category_rename_requested=(
+                self.prompt_for_master_category_rename
+            ),
+            on_subcategory_rename_requested=(
+                self.prompt_for_subcategory_rename
+            ),
+            on_master_category_delete_requested=self.delete_master_category,
+            on_subcategory_delete_requested=self.delete_subcategory,
+            hidden_master_category_rows=self.hidden_master_category_rows,
+            hidden_subcategory_rows=self.hidden_subcategory_rows,
+            on_master_category_restore_requested=(
+                self.restore_master_category
+            ),
+            on_subcategory_restore_requested=self.restore_subcategory,
+        )
 
     def create_transaction_pages(self, account_list):
         # Active account pages include the blank entry row
