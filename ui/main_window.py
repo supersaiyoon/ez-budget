@@ -127,27 +127,7 @@ class MainWindow(QMainWindow):
         shell_layout.setContentsMargins(0, 0, 0, 0)
         shell_layout.setSpacing(0)
 
-        # Left rail kept fixed so page switching stays predictable
-        self.nav = QListWidget()
-        self.nav.setObjectName("navList")
-        self.nav.setFixedWidth(170)
-        # Missing first-run preference keeps Closed section discoverable
-        self.closed_accounts_expanded = (
-            app_settings.get_setting(
-                self.con,
-                CLOSED_ACCOUNTS_EXPANDED_SETTING,
-                default="true",
-            )
-            == "true"
-        )
-        for page_index, name in enumerate(["Budget", "Reports"]):
-            item = QListWidgetItem(name)
-            item.setSizeHint(item.sizeHint())
-            item.setData(Qt.ItemDataRole.UserRole, page_index)
-            self.nav.addItem(item)
-
-        self.accounts_header_item = self._add_navigation_header("Accounts", 12)
-        self.rebuild_account_navigation()
+        self.nav = self.create_navigation_list()
         shell_layout.addWidget(self.nav)
 
         # Stack lets navigation swap full workflows without rebuilding windows
@@ -272,6 +252,32 @@ class MainWindow(QMainWindow):
             pages.append(page)
             self.stack.addWidget(page)
         return pages
+
+    def create_navigation_list(self):
+        # Left rail kept fixed so page switching stays predictable
+        nav = QListWidget()
+        nav.setObjectName("navList")
+        nav.setFixedWidth(170)
+        self.nav = nav
+
+        # Missing first-run preference keeps Closed section discoverable
+        self.closed_accounts_expanded = (
+            app_settings.get_setting(
+                self.con,
+                CLOSED_ACCOUNTS_EXPANDED_SETTING,
+                default="true",
+            )
+            == "true"
+        )
+        for page_index, name in enumerate(["Budget", "Reports"]):
+            item = QListWidgetItem(name)
+            item.setSizeHint(item.sizeHint())
+            item.setData(Qt.ItemDataRole.UserRole, page_index)
+            nav.addItem(item)
+
+        self.accounts_header_item = self._add_navigation_header("Accounts", 12)
+        self.rebuild_account_navigation()
+        return nav
 
     def nav_names(self):
         on_budget_names = []
