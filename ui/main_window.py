@@ -36,6 +36,18 @@ from ui import budget_page, reports_page, styles, transactions_page
 CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
 
 
+def index_by_identity(items, selected_item):
+    # Object identity keeps equal-looking model rows distinct
+    return next(
+        (
+            index
+            for index, item in enumerate(items)
+            if item is selected_item
+        ),
+        None,
+    )
+
+
 class AccountDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -454,14 +466,7 @@ class MainWindow(QMainWindow):
         )
 
     def show_closed_account(self, account):
-        account_index = next(
-            (
-                index
-                for index, existing_account in enumerate(self.closed_accounts)
-                if existing_account is account
-            ),
-            None,
-        )
+        account_index = index_by_identity(self.closed_accounts, account)
         if account_index is None:
             return False
 
@@ -1144,15 +1149,7 @@ class MainWindow(QMainWindow):
         return True
 
     def delete_transaction(self, account, transaction):
-        # Object identity prevents equal-looking rows from removing wrong model
-        transaction_index = next(
-            (
-                index
-                for index, existing_transaction in enumerate(account.transactions)
-                if existing_transaction is transaction
-            ),
-            None,
-        )
+        transaction_index = index_by_identity(account.transactions, transaction)
         if transaction_index is None:
             return False
 
@@ -1173,14 +1170,7 @@ class MainWindow(QMainWindow):
         if account.database_id is None:
             return False
 
-        account_index = next(
-            (
-                index
-                for index, existing_account in enumerate(self.accounts)
-                if existing_account is account
-            ),
-            None,
-        )
+        account_index = index_by_identity(self.accounts, account)
         if account_index is None:
             return False
 
@@ -1233,14 +1223,7 @@ class MainWindow(QMainWindow):
             return False
 
         source_accounts = self.accounts if closed else self.closed_accounts
-        account_index = next(
-            (
-                index
-                for index, existing_account in enumerate(source_accounts)
-                if existing_account is account
-            ),
-            None,
-        )
+        account_index = index_by_identity(source_accounts, account)
         if account_index is None:
             return False
 
