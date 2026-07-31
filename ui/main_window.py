@@ -646,8 +646,7 @@ class MainWindow(QMainWindow):
                     master_category.name = renamed_row["name"]
                     break
 
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_category_views()
         return True
 
     def prompt_for_master_category_rename(self, master_category):
@@ -721,8 +720,7 @@ class MainWindow(QMainWindow):
                 if transaction.category_database_id == budget_category_id:
                     transaction.category = renamed_row["name"]
 
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_category_views()
         return True
 
     def prompt_for_subcategory_rename(
@@ -832,9 +830,7 @@ class MainWindow(QMainWindow):
                 )
             ]
 
-        self.refresh_hidden_category_rows()
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_hidden_category_views()
         self.budget_page.status.setText(
             f'{action} master category "{master_category.name}".'
         )
@@ -875,9 +871,7 @@ class MainWindow(QMainWindow):
         # Restored rows regain saved month allocations and transaction spending
         self.refresh_budget_allocations()
         self.refresh_budget_spending()
-        self.refresh_hidden_category_rows()
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_hidden_category_views()
         self.budget_page.status.setText(
             f'Restored master category "{restored_row["name"]}".'
         )
@@ -914,9 +908,7 @@ class MainWindow(QMainWindow):
         # Restored row regains saved month allocations and transaction spending
         self.refresh_budget_allocations()
         self.refresh_budget_spending()
-        self.refresh_hidden_category_rows()
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_hidden_category_views()
         self.budget_page.status.setText(
             f'Restored subcategory "{restored_row["name"]}".'
         )
@@ -991,13 +983,21 @@ class MainWindow(QMainWindow):
                 ]
                 break
 
-        self.refresh_hidden_category_rows()
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_hidden_category_views()
         self.budget_page.status.setText(
             f'{action} subcategory "{subcategory.name}".'
         )
         return True
+
+    def refresh_category_views(self):
+        # Category edits affect Budget rows and transaction dropdown labels
+        self.budget_page.refresh()
+        self.refresh_transaction_categories()
+
+    def refresh_hidden_category_views(self):
+        # Hidden list must reload after hide or restore
+        self.refresh_hidden_category_rows()
+        self.refresh_category_views()
 
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices
@@ -1335,5 +1335,4 @@ class MainWindow(QMainWindow):
                 master_category.subcategories.append(subcategory)
                 break
 
-        self.budget_page.refresh()
-        self.refresh_transaction_categories()
+        self.refresh_category_views()
