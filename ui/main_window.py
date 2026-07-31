@@ -182,22 +182,12 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.budget_page)
         self.stack.addWidget(self.reports_page)
 
-        self.transaction_pages = []
-        for account in self.accounts:
-            # Account pages report edits so controller can persist complete rows
-            page = self.create_transaction_page(account)
-            self.transaction_pages.append(page)
-            self.stack.addWidget(page)
-
-        self.closed_transaction_pages = []
-        for account in self.closed_accounts:
-            # Closed pages preserve editable history without new entry row
-            page = self.create_transaction_page(
-                account,
-                allow_new_transactions=False,
-            )
-            self.closed_transaction_pages.append(page)
-            self.stack.addWidget(page)
+        self.transaction_pages = self.create_transaction_pages(
+            self.accounts,
+        )
+        self.closed_transaction_pages = self.create_closed_transaction_pages(
+            self.closed_accounts,
+        )
 
         shell_layout.addWidget(self.stack)
 
@@ -256,6 +246,27 @@ class MainWindow(QMainWindow):
                 )
                 category.subcategories.append(subcategory)
             budget.master_categories.append(category)
+
+    def create_transaction_pages(self, account_list):
+        # Active account pages include the blank entry row
+        pages = []
+        for account in account_list:
+            page = self.create_transaction_page(account)
+            pages.append(page)
+            self.stack.addWidget(page)
+        return pages
+
+    def create_closed_transaction_pages(self, account_list):
+        # Closed account pages show history without new entry rows
+        pages = []
+        for account in account_list:
+            page = self.create_transaction_page(
+                account,
+                allow_new_transactions=False,
+            )
+            pages.append(page)
+            self.stack.addWidget(page)
+        return pages
 
     def nav_names(self):
         on_budget_names = []
