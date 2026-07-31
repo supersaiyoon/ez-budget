@@ -130,35 +130,14 @@ class MainWindow(QMainWindow):
 
         self.accounts = []
         for account_row in accounts.list_accounts(self.con):
-            account = budget_model.Account(
-                account_row["name"],
-                database_id=account_row["id"],
-                on_budget=bool(account_row["on_budget"]),
-                closed=bool(account_row["closed"]),
-            )
-            for transaction_row in transactions.list_transactions(self.con, account.database_id):
-                account.transactions.append(
-                    budget_model.transaction_from_database_row(transaction_row)
-                )
-            self.accounts.append(account)
+            self.accounts.append(self.account_from_database_row(account_row))
         self.accounts.sort(key=lambda account: not account.on_budget)
 
         self.closed_accounts = []
         for account_row in accounts.list_closed_accounts(self.con):
-            account = budget_model.Account(
-                account_row["name"],
-                database_id=account_row["id"],
-                on_budget=bool(account_row["on_budget"]),
-                closed=bool(account_row["closed"]),
+            self.closed_accounts.append(
+                self.account_from_database_row(account_row)
             )
-            for transaction_row in transactions.list_transactions(
-                self.con,
-                account.database_id,
-            ):
-                account.transactions.append(
-                    budget_model.transaction_from_database_row(transaction_row)
-                )
-            self.closed_accounts.append(account)
 
         self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)
@@ -246,6 +225,23 @@ class MainWindow(QMainWindow):
         self.nav.setCurrentRow(0)
         self.setCentralWidget(shell)
         self.setStyleSheet(styles.APP_STYLE)
+
+    def account_from_database_row(self, account_row):
+        # Startup account models include persisted transaction history
+        account = budget_model.Account(
+            account_row["name"],
+            database_id=account_row["id"],
+            on_budget=bool(account_row["on_budget"]),
+            closed=bool(account_row["closed"]),
+        )
+        for transaction_row in transactions.list_transactions(
+            self.con,
+            account.database_id,
+        ):
+            account.transactions.append(
+                budget_model.transaction_from_database_row(transaction_row)
+            )
+        return account
 
     def nav_names(self):
         on_budget_names = []
