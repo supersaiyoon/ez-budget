@@ -164,8 +164,7 @@ def transaction_amounts_from_cents(amount_in_cents):
 
 def transaction_total_to_spending(total_in_cents):
     # Negative database total makes outgoing activity positive spending
-    amount = Decimal(-total_in_cents) / Decimal("100")
-    return amount.quantize(Decimal("0.01"))
+    return money_from_cents(-total_in_cents)
 
 
 def transaction_from_database_row(transaction_row):
