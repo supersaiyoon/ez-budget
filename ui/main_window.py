@@ -1007,17 +1007,21 @@ class MainWindow(QMainWindow):
         ):
             page.set_category_rows(category_rows)
 
+    def active_budget_category_ids(self, budget):
+        # Hidden categories are absent from active Budget rows
+        return {
+            subcategory.database_id
+            for master_category in budget.master_categories
+            for subcategory in master_category.subcategories
+        }
+
     def load_budget_allocations(self, budget):
         # Month row scopes saved category amounts to one planning period
         budget_month = budget_records.get_or_create_budget_month(
             self.con,
             budget.month_date.isoformat(),
         )
-        active_category_ids = {
-            subcategory.database_id
-            for master_category in budget.master_categories
-            for subcategory in master_category.subcategories
-        }
+        active_category_ids = self.active_budget_category_ids(budget)
         for allocation_row in budget_records.list_budget_allocations(
             self.con,
             budget_month["id"],
@@ -1059,11 +1063,7 @@ class MainWindow(QMainWindow):
             end_date.isoformat(),
         )
 
-        active_category_ids = {
-            subcategory.database_id
-            for master_category in budget.master_categories
-            for subcategory in master_category.subcategories
-        }
+        active_category_ids = self.active_budget_category_ids(budget)
 
         for category_total in category_totals:
             # Hidden category spending stays queryable without an active UI row
