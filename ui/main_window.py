@@ -105,14 +105,7 @@ class MainWindow(QMainWindow):
         # Hidden rows stay outside active Budget models until restored
         self.refresh_hidden_category_rows()
 
-        self.load_budget_income(self.budgets[0])
-
-        self.load_budget_categories(self.budgets[0])
-
-        self.load_budget_allocations(self.budgets[0])
-
-        # Current month spending derives from saved Budget-account activity
-        self.load_budget_spending(self.budgets[0])
+        self.load_startup_budget_data()
 
         self.accounts = self.load_accounts()
         self.accounts.sort(key=lambda account: not account.on_budget)
@@ -183,6 +176,14 @@ class MainWindow(QMainWindow):
             self.account_from_database_row(account_row)
             for account_row in accounts.list_closed_accounts(self.con)
         ]
+
+    def load_startup_budget_data(self):
+        # BudgetPage constructor needs the first month already populated
+        current_budget = self.budgets[0]
+        self.load_budget_income(current_budget)
+        self.load_budget_categories(current_budget)
+        self.load_budget_allocations(current_budget)
+        self.load_budget_spending(current_budget)
 
     def load_budget_categories(self, budget):
         # Visible database categories become active Budget rows
