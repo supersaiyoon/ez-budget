@@ -107,21 +107,7 @@ class MainWindow(QMainWindow):
 
         self.load_budget_income(self.budgets[0])
 
-        # Load master categories from db into budget
-        for category_row in categories.list_master_categories(self.con):
-            category = budget_model.MasterCategory(
-                category_row["name"],
-                database_id=category_row["id"],
-            )
-            for subcategory_row in categories.list_budget_categories(self.con, category_row["id"]):
-                subcategory = budget_model.Subcategory(
-                    subcategory_row["name"],
-                    Decimal("0.00"),
-                    Decimal("0.00"),
-                    database_id=subcategory_row["id"],
-                )
-                category.subcategories.append(subcategory)
-            self.budgets[0].master_categories.append(category)
+        self.load_budget_categories(self.budgets[0])
 
         self.load_budget_allocations(self.budgets[0])
 
@@ -242,6 +228,26 @@ class MainWindow(QMainWindow):
                 budget_model.transaction_from_database_row(transaction_row)
             )
         return account
+
+    def load_budget_categories(self, budget):
+        # Visible database categories become active Budget rows
+        for category_row in categories.list_master_categories(self.con):
+            category = budget_model.MasterCategory(
+                category_row["name"],
+                database_id=category_row["id"],
+            )
+            for subcategory_row in categories.list_budget_categories(
+                self.con,
+                category_row["id"],
+            ):
+                subcategory = budget_model.Subcategory(
+                    subcategory_row["name"],
+                    Decimal("0.00"),
+                    Decimal("0.00"),
+                    database_id=subcategory_row["id"],
+                )
+                category.subcategories.append(subcategory)
+            budget.master_categories.append(category)
 
     def nav_names(self):
         on_budget_names = []
