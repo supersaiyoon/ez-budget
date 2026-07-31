@@ -134,11 +134,7 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.budget_page = self.create_budget_page()
 
-        # Generated visible months load saved planning data for their own dates
-        self.refresh_budget_allocations()
-        self.refresh_budget_income()
-        self.refresh_budget_spending()
-        self.budget_page.refresh()
+        self.refresh_budget_page_totals()
         self.reports_page = reports_page.ReportsPage(self.budgets)
         self.stack.addWidget(self.budget_page)
         self.stack.addWidget(self.reports_page)
@@ -528,12 +524,15 @@ class MainWindow(QMainWindow):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
 
-    def budget_months_changed(self):
-        # Newly generated months reload saved data before pages recalculate
+    def refresh_budget_page_totals(self):
+        # Generated months reload saved planning data before repaint
         self.refresh_budget_allocations()
         self.refresh_budget_income()
         self.refresh_budget_spending()
         self.budget_page.refresh()
+
+    def budget_months_changed(self):
+        self.refresh_budget_page_totals()
         self.refresh_reports()
 
     def budget_allocation_changed(self, budget, subcategory):
