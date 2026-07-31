@@ -114,16 +114,10 @@ class MainWindow(QMainWindow):
         # Current month spending derives from saved Budget-account activity
         self.load_budget_spending(self.budgets[0])
 
-        self.accounts = []
-        for account_row in accounts.list_accounts(self.con):
-            self.accounts.append(self.account_from_database_row(account_row))
+        self.accounts = self.load_accounts()
         self.accounts.sort(key=lambda account: not account.on_budget)
 
-        self.closed_accounts = []
-        for account_row in accounts.list_closed_accounts(self.con):
-            self.closed_accounts.append(
-                self.account_from_database_row(account_row)
-            )
+        self.closed_accounts = self.load_closed_accounts()
 
         self.setWindowTitle("EZ Budget")
         self.resize(1160, 720)
@@ -228,6 +222,20 @@ class MainWindow(QMainWindow):
                 budget_model.transaction_from_database_row(transaction_row)
             )
         return account
+
+    def load_accounts(self):
+        # Active accounts drive navigation and editable transaction pages
+        return [
+            self.account_from_database_row(account_row)
+            for account_row in accounts.list_accounts(self.con)
+        ]
+
+    def load_closed_accounts(self):
+        # Closed accounts keep history available outside active workflows
+        return [
+            self.account_from_database_row(account_row)
+            for account_row in accounts.list_closed_accounts(self.con)
+        ]
 
     def load_budget_categories(self, budget):
         # Visible database categories become active Budget rows
