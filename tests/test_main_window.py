@@ -1292,6 +1292,25 @@ def test_closed_account_history_page_survives_restart(tmp_path):
     assert reopened_window.transaction_pages[0].allow_new_transactions is True
 
 
+def test_closed_account_navigation_row_opens_history_page(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    account = window.accounts[0]
+    window.close_account(account)
+    closed_page = window.closed_transaction_pages[0]
+    closed_row = next(
+        row
+        for row in range(window.nav.count())
+        if window.nav.item(row).text() == "Checking"
+    )
+
+    window.nav.setCurrentRow(closed_row)
+
+    assert window.stack.currentWidget() is closed_page
+    assert closed_page.allow_new_transactions is False
+
+
 def test_confirmed_delete_empty_account_survives_restart(
     tmp_path,
     monkeypatch,

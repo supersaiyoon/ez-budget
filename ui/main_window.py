@@ -394,9 +394,12 @@ class MainWindow(QMainWindow):
         self.closed_account_page_buttons = []
 
         # Closed rows pair archived name with explicit non-destructive action
-        for account in self.closed_accounts:
+        for account_position, account in enumerate(self.closed_accounts):
             item = QListWidgetItem(account.name)
-            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                2 + len(self.accounts) + account_position,
+            )
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(8, 0, 4, 0)
