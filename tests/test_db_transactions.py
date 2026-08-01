@@ -337,7 +337,7 @@ def test_list_category_transaction_totals_excludes_incoming_amounts(con):
     assert category_totals[0]["total_amount"] == -4250
 
 
-def test_list_category_transaction_totals_excludes_hidden_categories(con):
+def test_list_category_transaction_totals_excludes_income_assignments(con):
     checking = accounts.create_account(con, "Checking")
     payee = payees.add_payee(con, "Opening Balance")
     income_category = categories.get_or_create_income_category(con)
@@ -359,6 +359,35 @@ def test_list_category_transaction_totals_excludes_hidden_categories(con):
 
     # System activity can change account balance without appearing as spending
     assert category_totals == []
+
+
+def test_list_category_transaction_totals_includes_hidden_user_categories(con):
+    checking = accounts.create_account(con, "Checking")
+    payee = payees.add_payee(con, "Landlord")
+    master_category = categories.add_master_category(con, "Monthly")
+    rent = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Rent",
+        hidden=True,
+    )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        payee["id"],
+        rent["id"],
+        "2026-07-27",
+        -100000,
+    )
+
+    category_totals = transactions.list_category_transaction_totals(
+        con,
+        "2026-07-01",
+        "2026-07-31",
+    )
+
+    assert category_totals[0]["budget_category_id"] == rent["id"]
+    assert category_totals[0]["total_amount"] == -100000
 
 
 def test_get_monthly_income_total_sums_only_eligible_incoming_amounts(con):

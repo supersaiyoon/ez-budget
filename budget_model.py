@@ -49,14 +49,24 @@ class Budget:
     monthly_income: Decimal
     master_categories: list
 
+    # Hidden category totals affect header math without visible rows
+    hidden_budgeted: Decimal = Decimal("0.00")
+    hidden_spent: Decimal = Decimal("0.00")
+
     @property
     def total_budgeted(self):
         # Derived total avoids stale budget summaries after edits
-        return sum((category.budgeted for category in self.master_categories), Decimal("0.00"))
+        return self.hidden_budgeted + sum(
+            (category.budgeted for category in self.master_categories),
+            Decimal("0.00"),
+        )
 
     @property
     def total_spent(self):
-        return sum((category.spent for category in self.master_categories), Decimal("0.00"))
+        return self.hidden_spent + sum(
+            (category.spent for category in self.master_categories),
+            Decimal("0.00"),
+        )
 
     @property
     def available_to_budget(self):
@@ -76,6 +86,7 @@ class Budget:
 
     def reset_spending(self):
         # Clear prior totals before current transaction totals apply
+        self.hidden_spent = Decimal("0.00")
         for master_category in self.master_categories:
             for subcategory in master_category.subcategories:
                 subcategory.spent = Decimal("0.00")

@@ -28,6 +28,17 @@ def test_empty_budget_starts_current_month_with_zero_values():
     assert budget.total_spent == Decimal("0.00")
 
 
+def test_budget_totals_include_hidden_category_amounts():
+    budget = create_empty_budget()
+    budget.monthly_income = Decimal("1000.00")
+    budget.hidden_budgeted = Decimal("300.00")
+    budget.hidden_spent = Decimal("125.00")
+
+    assert budget.total_budgeted == Decimal("300.00")
+    assert budget.total_spent == Decimal("125.00")
+    assert budget.available_to_budget == Decimal("700.00")
+
+
 def test_budget_month_date_range_includes_first_and_last_day():
     budget = budget_model.Budget(date(2026, 7, 1), "July 2026", Decimal("0.00"), [])
 
@@ -73,9 +84,11 @@ def test_remaining_amount_equals_budgeted_minus_spent():
 
 def test_reset_spending_clears_every_subcategory():
     budget = create_sample_budget()
+    budget.hidden_spent = Decimal("10.00")
 
     budget.reset_spending()
 
+    assert budget.hidden_spent == Decimal("0.00")
     for master_category in budget.master_categories:
         for subcategory in master_category.subcategories:
             assert subcategory.spent == Decimal("0.00")

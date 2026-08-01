@@ -101,6 +101,10 @@ def test_new_window_loads_hidden_category_rows(tmp_path):
         window.hidden_subcategory_rows
     )
     assert window.budgets[0].master_categories[0].subcategories == []
+    assert window.budgets[0].hidden_budgeted == Decimal("500.00")
+    assert window.budgets[0].hidden_spent == Decimal("42.50")
+    assert window.budgets[0].total_budgeted == Decimal("500.00")
+    assert window.budgets[0].total_spent == Decimal("42.50")
 
 
 def test_hidden_master_restore_button_restores_group(tmp_path):
@@ -2069,13 +2073,15 @@ def test_master_category_delete_button_hides_group_with_transactions(
     master_category = window.budgets[0].master_categories[0]
     window.add_subcategory(master_category.database_id, "Groceries")
     subcategory = master_category.subcategories[0]
+    subcategory.budgeted = Decimal("1000.00")
+    window.budget_allocation_changed(window.budgets[0], subcategory)
     window.add_account("Checking")
     transaction = budget_model.Transaction(
-        date="2026-07-21",
+        date=window.budgets[0].month_date.isoformat(),
         payee="Grocery Store",
         category="Groceries",
         notes="",
-        outgoing=Decimal("42.50"),
+        outgoing=Decimal("1000.00"),
         category_database_id=subcategory.database_id,
     )
     window.accounts[0].transactions.append(transaction)
@@ -2117,6 +2123,10 @@ def test_master_category_delete_button_hides_group_with_transactions(
         window.con,
         window.accounts[0].database_id,
     )[0]["budget_category_id"] == subcategory.database_id
+    assert window.budgets[0].hidden_budgeted == Decimal("1000.00")
+    assert window.budgets[0].hidden_spent == Decimal("1000.00")
+    assert window.budgets[0].total_budgeted == Decimal("1000.00")
+    assert window.budgets[0].total_spent == Decimal("1000.00")
     assert window.transaction_pages[0].category_rows == []
     assert window.budget_page.status.text() == (
         'Hidden master category "Everyday Expenses".'
@@ -2164,13 +2174,15 @@ def test_subcategory_delete_button_hides_category_with_transactions(
     master_category = window.budgets[0].master_categories[0]
     window.add_subcategory(master_category.database_id, "Groceries")
     subcategory = master_category.subcategories[0]
+    subcategory.budgeted = Decimal("1000.00")
+    window.budget_allocation_changed(window.budgets[0], subcategory)
     window.add_account("Checking")
     transaction = budget_model.Transaction(
-        date="2026-07-21",
+        date=window.budgets[0].month_date.isoformat(),
         payee="Grocery Store",
         category="Groceries",
         notes="",
-        outgoing=Decimal("42.50"),
+        outgoing=Decimal("1000.00"),
         category_database_id=subcategory.database_id,
     )
     window.accounts[0].transactions.append(transaction)
@@ -2203,6 +2215,10 @@ def test_subcategory_delete_button_hides_category_with_transactions(
         window.con,
         window.accounts[0].database_id,
     )[0]["budget_category_id"] == subcategory.database_id
+    assert window.budgets[0].hidden_budgeted == Decimal("1000.00")
+    assert window.budgets[0].hidden_spent == Decimal("1000.00")
+    assert window.budgets[0].total_budgeted == Decimal("1000.00")
+    assert window.budgets[0].total_spent == Decimal("1000.00")
     assert window.budget_page.status.text() == (
         'Hidden subcategory "Groceries".'
     )

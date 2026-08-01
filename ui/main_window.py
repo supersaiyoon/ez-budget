@@ -870,6 +870,8 @@ class MainWindow(QMainWindow):
                 )
             ]
 
+        self.refresh_budget_allocations()
+        self.refresh_budget_spending()
         self.refresh_hidden_category_views()
         self.budget_page.status.setText(
             f'{action} master category "{master_category.name}".'
@@ -1023,6 +1025,8 @@ class MainWindow(QMainWindow):
                 ]
                 break
 
+        self.refresh_budget_allocations()
+        self.refresh_budget_spending()
         self.refresh_hidden_category_views()
         self.budget_page.status.setText(
             f'{action} subcategory "{subcategory.name}".'
@@ -1057,6 +1061,7 @@ class MainWindow(QMainWindow):
 
     def load_budget_allocations(self, budget):
         # Month row scopes saved category amounts to one planning period
+        budget.hidden_budgeted = Decimal("0.00")
         budget_month = budget_records.get_or_create_budget_month(
             self.con,
             budget.month_date.isoformat(),
@@ -1068,6 +1073,9 @@ class MainWindow(QMainWindow):
         ):
             # Hidden category allocations stay saved until category is restored
             if allocation_row["budget_category_id"] not in active_category_ids:
+                budget.hidden_budgeted += budget_model.money_from_cents(
+                    allocation_row["amount"]
+                )
                 continue
             budget.set_category_budgeted(
                 allocation_row["budget_category_id"],
@@ -1108,6 +1116,11 @@ class MainWindow(QMainWindow):
         for category_total in category_totals:
             # Hidden category spending stays queryable without an active UI row
             if category_total["budget_category_id"] not in active_category_ids:
+                budget.hidden_spent += (
+                    budget_model.transaction_total_to_spending(
+                        category_total["total_amount"]
+                    )
+                )
                 continue
             # Stable category ID applies total without relying on display name
             spending = budget_model.transaction_total_to_spending(

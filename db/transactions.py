@@ -152,7 +152,7 @@ def list_category_transaction_totals(con, start_date, end_date):
           ON budget_categories.id = transactions.budget_category_id
         WHERE transactions.transaction_date BETWEEN ? AND ?
           AND accounts.on_budget = TRUE
-          AND budget_categories.hidden = FALSE
+          AND transactions.income_month_date IS NULL
           AND transactions.amount < 0
         GROUP BY transactions.budget_category_id
         ORDER BY transactions.budget_category_id
