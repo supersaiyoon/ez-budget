@@ -27,6 +27,7 @@ RENAME_ICON_PATH = (
 DELETE_ICON_PATH = (
     Path(__file__).parent / "assets" / "icons" / "delete.svg"
 )
+BUDGET_VALUE_COLUMN_WIDTH = 96
 
 
 class BudgetPage(QWidget):
@@ -97,7 +98,12 @@ class BudgetPage(QWidget):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for column in range(1, self.table.columnCount()):
-            self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+            # Fixed month columns avoid layout jumps as category rows change
+            self.table.horizontalHeader().setSectionResizeMode(
+                column,
+                QHeaderView.ResizeMode.Fixed,
+            )
+            self.table.setColumnWidth(column, BUDGET_VALUE_COLUMN_WIDTH)
         layout.addWidget(self.table, 1)
 
         # Collapsible shell reserved for later hidden-category restore rows

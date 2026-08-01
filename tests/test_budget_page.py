@@ -3,10 +3,10 @@ from decimal import Decimal
 import pytest
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtWidgets import QLabel, QPushButton
+from PyQt6.QtWidgets import QHeaderView, QLabel, QPushButton
 
 from budget_model import Subcategory, create_sample_budgets, format_money
-from ui.budget_page import BudgetPage
+from ui.budget_page import BUDGET_VALUE_COLUMN_WIDTH, BudgetPage
 
 
 # Every test in this module creates Qt widgets and requires the shared application
@@ -363,6 +363,23 @@ def test_budgeted_cell_displays_current_subcategory_amount():
 
     assert budgeted_input.text() == format(subcategory.budgeted, ".2f")
     assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
+
+
+def test_budget_value_columns_keep_fixed_width():
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    for column in range(1, page.table.columnCount()):
+        assert (
+            page.table.horizontalHeader().sectionResizeMode(column)
+            == QHeaderView.ResizeMode.Fixed
+        )
+        assert page.table.columnWidth(column) == BUDGET_VALUE_COLUMN_WIDTH
 
 
 def test_editing_budgeted_cell_replaces_current_amount():
