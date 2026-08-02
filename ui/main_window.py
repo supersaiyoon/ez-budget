@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -34,6 +35,7 @@ from ui import budget_page, reports_page, styles, transactions_page
 
 
 CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
+ACCOUNT_NAV_INDENT_WIDTH = 12
 
 
 def index_by_identity(items, selected_item):
@@ -314,7 +316,22 @@ class MainWindow(QMainWindow):
         header_font.setPixelSize(pixel_size)
         header_font.setBold(True)
         item.setFont(header_font)
+        item.setSizeHint(QSize(self.nav.width(), 36))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+        self.nav.addItem(item)
+        return item
+
+    def _add_account_navigation_item(self, account, page_index):
+        item = QListWidgetItem(account.name)
+        indent_icon = QPixmap(ACCOUNT_NAV_INDENT_WIDTH, 1)
+        indent_icon.fill(Qt.GlobalColor.transparent)
+        # Transparent decoration indents child rows without changing item text
+        item.setIcon(QIcon(indent_icon))
+        item_font = item.font()
+        item_font.setPixelSize(11)
+        item.setFont(item_font)
+        item.setSizeHint(QSize(self.nav.width(), 32))
+        item.setData(Qt.ItemDataRole.UserRole, page_index)
         self.nav.addItem(item)
         return item
 
@@ -342,19 +359,13 @@ class MainWindow(QMainWindow):
         for account_position, account in enumerate(self.accounts):
             if not account.on_budget:
                 continue
-            item = QListWidgetItem(account.name)
-            item.setSizeHint(item.sizeHint())
-            item.setData(Qt.ItemDataRole.UserRole, account_position + 2)
-            self.nav.addItem(item)
+            self._add_account_navigation_item(account, account_position + 2)
 
         self.off_budget_header_item = self._add_navigation_header("Off Budget", 11)
         for account_position, account in enumerate(self.accounts):
             if account.on_budget:
                 continue
-            item = QListWidgetItem(account.name)
-            item.setSizeHint(item.sizeHint())
-            item.setData(Qt.ItemDataRole.UserRole, account_position + 2)
-            self.nav.addItem(item)
+            self._add_account_navigation_item(account, account_position + 2)
 
         self.closed_account_items = []
         # Embedded Closed header stays visible even before first account closes
@@ -392,13 +403,10 @@ class MainWindow(QMainWindow):
 
         # Closed account rows navigate like normal account rows
         for account_position, account in enumerate(self.closed_accounts):
-            item = QListWidgetItem(account.name)
-            item.setSizeHint(item.sizeHint())
-            item.setData(
-                Qt.ItemDataRole.UserRole,
+            item = self._add_account_navigation_item(
+                account,
                 2 + len(self.accounts) + account_position,
             )
-            self.nav.addItem(item)
             self.closed_account_items.append(item)
         self.update_closed_accounts_visibility()
 

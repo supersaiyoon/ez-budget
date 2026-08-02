@@ -1009,10 +1009,17 @@ def test_empty_account_database_shows_account_header():
     ]
     assert window.accounts_header_item.text() == "Accounts"
     assert window.accounts_header_item.font().pixelSize() == 12
+    assert window.accounts_header_item.sizeHint().height() == 36
     assert not window.accounts_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert window.accounts_header_item.data(Qt.ItemDataRole.UserRole) is None
     assert window.on_budget_header_item.text() == "On Budget"
+    assert window.on_budget_header_item.font().pixelSize() == 11
+    assert window.on_budget_header_item.font().bold() is True
+    assert window.on_budget_header_item.sizeHint().height() == 36
     assert window.off_budget_header_item.text() == "Off Budget"
+    assert window.off_budget_header_item.font().pixelSize() == 11
+    assert window.off_budget_header_item.font().bold() is True
+    assert window.off_budget_header_item.sizeHint().height() == 36
     assert window.closed_accounts_button.text() == "▼ Closed"
     assert window.closed_accounts_button.font().pixelSize() == 11
     assert window.closed_accounts_button.font().bold() is True
@@ -1459,6 +1466,10 @@ def test_add_first_account_keeps_account_header():
         "Off Budget",
         "Closed",
     ]
+    checking_item = window.nav.item(nav_names.index("Checking"))
+    assert checking_item.icon().isNull() is False
+    assert checking_item.font().pixelSize() == 11
+    assert checking_item.sizeHint().height() == 32
     assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
     assert (

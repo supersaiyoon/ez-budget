@@ -9,10 +9,10 @@ QMainWindow {
     color: #f7fafc;
     border: 0;
     padding-top: 14px;
-    font-size: 15px;
+    font-size: 14px;
 }
 #navList::item {
-    padding: 14px 18px;
+    padding: 8px 12px;
 }
 /* Selected item needs stronger contrast than hover-only navigation. */
 #navList::item:selected {
