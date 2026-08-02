@@ -3,6 +3,7 @@ import pytest
 from datetime import date
 from decimal import Decimal
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox
 
 from budget_model import Account, Transaction
@@ -99,12 +100,17 @@ def test_short_date_input_stores_iso_and_displays_full_year():
     page = TransactionsPage(account, category_rows=[])
     current_year = date.today().year
     date_input = page.table.cellWidget(0, 0)
+    assert date_input.alignment() == Qt.AlignmentFlag.AlignCenter
 
     date_input.setText("7/21")
     date_input.editingFinished.emit()
 
     assert account.transactions[0].date == f"{current_year}-07-21"
-    assert page.table.cellWidget(0, 0).text() == f"7/21/{current_year}"
+    assert page.table.cellWidget(0, 0).text() == f"07/21/{current_year}"
+    assert (
+        page.table.cellWidget(0, 0).alignment()
+        == Qt.AlignmentFlag.AlignCenter
+    )
 
 
 def test_existing_transaction_date_edit_normalizes_storage_and_display():
@@ -118,13 +124,13 @@ def test_existing_transaction_date_edit_normalizes_storage_and_display():
     page = TransactionsPage(account, category_rows=[])
     date_input = page.table.cellWidget(0, 0)
 
-    assert date_input.text() == "7/21/2026"
+    assert date_input.text() == "07/21/2026"
 
     date_input.setText("8/5/2027")
     date_input.editingFinished.emit()
 
     assert transaction.date == "2027-08-05"
-    assert page.table.cellWidget(0, 0).text() == "8/5/2027"
+    assert page.table.cellWidget(0, 0).text() == "08/05/2027"
 
 
 def test_saved_money_inputs_expand_like_blank_row_inputs():
@@ -149,6 +155,10 @@ def test_saved_money_inputs_expand_like_blank_row_inputs():
     assert saved_outgoing.maximumWidth() == blank_outgoing.maximumWidth()
     assert saved_incoming.minimumWidth() == blank_incoming.minimumWidth()
     assert saved_incoming.maximumWidth() == blank_incoming.maximumWidth()
+    assert saved_outgoing.alignment() == Qt.AlignmentFlag.AlignRight
+    assert saved_incoming.alignment() == Qt.AlignmentFlag.AlignRight
+    assert blank_outgoing.alignment() == Qt.AlignmentFlag.AlignRight
+    assert blank_incoming.alignment() == Qt.AlignmentFlag.AlignRight
 
 
 def test_delete_button_reports_account_and_transaction(monkeypatch):

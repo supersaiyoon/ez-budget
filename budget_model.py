@@ -278,9 +278,9 @@ def parse_transaction_date(raw_value, current_date=None):
 
 
 def format_transaction_date(stored_date):
-    # Friendly display removes ISO padding while keeping full year visible
+    # Fixed-width parts keep centered date cells aligned
     parsed_date = date.fromisoformat(stored_date)
-    return f"{parsed_date.month}/{parsed_date.day}/{parsed_date.year}"
+    return f"{parsed_date.month:02}/{parsed_date.day:02}/{parsed_date.year}"
 
 
 def create_empty_budget():

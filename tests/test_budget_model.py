@@ -183,7 +183,7 @@ def test_parse_transaction_date_rejects_invalid_dates(raw_value):
 
 
 def test_format_transaction_date_uses_friendly_display():
-    assert format_transaction_date("2026-07-21") == "7/21/2026"
+    assert format_transaction_date("2026-07-21") == "07/21/2026"
 
 
 def test_sample_budgets_include_multiple_months():

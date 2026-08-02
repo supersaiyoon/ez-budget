@@ -742,7 +742,7 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     page = window.transaction_pages[0]
     current_year = date.today().year
     stored_date = f"{current_year}-07-21"
-    display_date = f"7/21/{current_year}"
+    display_date = f"07/21/{current_year}"
 
     # Short date creates partial transaction with normalized storage value
     date_input = page.table.cellWidget(0, 0)

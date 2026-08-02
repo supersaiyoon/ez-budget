@@ -272,6 +272,10 @@ class TransactionsPage(QWidget):
 
     def _set_new_transaction_input(self, row, column, money_column=None):
         input_field = QLineEdit()
+        if column == 0:
+            input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if money_column is not None:
+            input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         # Partial keeps the source editor available after Qt emits no useful value
         input_field.editingFinished.connect(partial(self.create_transaction_from_input, column, input_field, money_column))
@@ -365,6 +369,7 @@ class TransactionsPage(QWidget):
             display_date = transaction.date
 
         input_field = QLineEdit(display_date)
+        input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
         input_field.editingFinished.connect(
             lambda: self.apply_transaction_date(input_field, transaction)
         )
@@ -469,6 +474,7 @@ class TransactionsPage(QWidget):
     def _set_money_input(self, row, column, value, apply_value):
         # Zero shown blank so empty money cells stay quick to scan
         input_field = QLineEdit("" if value == 0 else format(value, ".2f"))
+        input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         # Default expanding policy fills same column width as blank entry fields
         input_field.editingFinished.connect(partial(self.apply_money_value, input_field, apply_value))
