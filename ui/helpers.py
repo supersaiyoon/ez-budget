@@ -13,11 +13,15 @@ def get_category(budget, category_name):
     raise KeyError(category_name)
 
 
+def numeric_font(bold=False):
+    # Monospace digits keep date and money columns easy to scan
+    weight = QFont.Weight.DemiBold if bold else QFont.Weight.Normal
+    return QFont("Consolas", 10, weight)
+
+
 def money_item(amount, bold=False):
     # Centralized money cells keep alignment and formatting consistent across tables
     item = QTableWidgetItem(format_money(amount))
     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-    if bold:
-        # Bold option reserved for subtotal rows that need stronger scan weight
-        item.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+    item.setFont(numeric_font(bold))
     return item

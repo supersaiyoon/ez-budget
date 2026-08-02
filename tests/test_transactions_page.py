@@ -3,11 +3,16 @@ import pytest
 from datetime import date
 from decimal import Decimal
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import QHeaderView, QMessageBox
 
 from budget_model import Account, Transaction
-from ui.transactions_page import TransactionsPage
+from ui.transactions_page import (
+    TRANSACTION_DATE_COLUMN_WIDTH,
+    TRANSACTION_DELETE_COLUMN_WIDTH,
+    TRANSACTION_MONEY_COLUMN_WIDTH,
+    TransactionsPage,
+)
 
 
 # TransactionsPage creates Qt editors and requires the shared application fixture
@@ -101,6 +106,7 @@ def test_short_date_input_stores_iso_and_displays_full_year():
     current_year = date.today().year
     date_input = page.table.cellWidget(0, 0)
     assert date_input.alignment() == Qt.AlignmentFlag.AlignCenter
+    assert date_input.font().family() == "Consolas"
 
     date_input.setText("7/21")
     date_input.editingFinished.emit()
@@ -159,6 +165,29 @@ def test_saved_money_inputs_expand_like_blank_row_inputs():
     assert saved_incoming.alignment() == Qt.AlignmentFlag.AlignRight
     assert blank_outgoing.alignment() == Qt.AlignmentFlag.AlignRight
     assert blank_incoming.alignment() == Qt.AlignmentFlag.AlignRight
+    assert saved_outgoing.font().family() == "Consolas"
+    assert blank_outgoing.font().family() == "Consolas"
+
+
+def test_numeric_transaction_columns_use_fixed_widths():
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+
+    assert (
+        page.table.horizontalHeader().sectionResizeMode(0)
+        == QHeaderView.ResizeMode.Fixed
+    )
+    assert page.table.columnWidth(0) == TRANSACTION_DATE_COLUMN_WIDTH
+    for column in (4, 5):
+        assert (
+            page.table.horizontalHeader().sectionResizeMode(column)
+            == QHeaderView.ResizeMode.Fixed
+        )
+        assert page.table.columnWidth(column) == TRANSACTION_MONEY_COLUMN_WIDTH
+    assert (
+        page.table.horizontalHeader().sectionResizeMode(7)
+        == QHeaderView.ResizeMode.Fixed
+    )
+    assert page.table.columnWidth(7) == TRANSACTION_DELETE_COLUMN_WIDTH
 
 
 def test_delete_button_reports_account_and_transaction(monkeypatch):
@@ -192,6 +221,24 @@ def test_delete_button_reports_account_and_transaction(monkeypatch):
 
     assert deletion_requests == [(account, transaction)]
     assert page.table.rowCount() == 1
+
+
+def test_delete_transaction_button_uses_trash_icon():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    account = Account("Checking", transactions=[transaction])
+    page = TransactionsPage(account, category_rows=[])
+    delete_button = page.table.cellWidget(0, 7)
+
+    assert delete_button.text() == ""
+    assert delete_button.icon().isNull() is False
+    assert delete_button.iconSize() == QSize(12, 12)
+    assert delete_button.size() == QSize(24, 24)
 
 
 def test_delete_button_cancel_keeps_transaction(monkeypatch):

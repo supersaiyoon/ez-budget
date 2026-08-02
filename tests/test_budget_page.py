@@ -346,7 +346,11 @@ def test_spending_values_display_as_negative_on_budget_page():
 
     assert f"Spent: {format_money(-budget.total_spent)}" in page.table.item(0, 1).text()
     assert page.table.item(master_row, 2).text() == format_money(-master_category.spent)
+    assert page.table.item(master_row, 2).font().family() == "Consolas"
+    assert page.table.item(master_row, 3).font().family() == "Consolas"
     assert page.table.item(subcategory_row, 2).text() == format_money(-subcategory.spent)
+    assert page.table.item(subcategory_row, 2).font().family() == "Consolas"
+    assert page.table.item(subcategory_row, 3).font().family() == "Consolas"
 
 
 def test_budgeted_cell_displays_current_subcategory_amount():
@@ -364,6 +368,7 @@ def test_budgeted_cell_displays_current_subcategory_amount():
     assert budgeted_input.text() == format(subcategory.budgeted, ".2f")
     assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
     assert budgeted_input.maximumWidth() == BUDGET_VALUE_COLUMN_WIDTH
+    assert budgeted_input.font().family() == "Consolas"
 
 
 def test_budget_value_columns_keep_fixed_width():

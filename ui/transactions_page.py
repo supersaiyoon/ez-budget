@@ -1,8 +1,9 @@
 from datetime import date
 from functools import partial
+from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPalette
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QColor, QIcon, QPalette
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -25,6 +26,7 @@ from budget_model import (
     parse_money,
     parse_transaction_date,
 )
+from ui.helpers import numeric_font
 
 
 TRANSACTION_COLUMNS = [
@@ -38,6 +40,12 @@ TRANSACTION_COLUMNS = [
     "Delete",
 ]
 INCOME_PAYEE_PLACEHOLDER = "Not needed for income"
+DELETE_ICON_PATH = (
+    Path(__file__).parent / "assets" / "icons" / "delete.svg"
+)
+TRANSACTION_DATE_COLUMN_WIDTH = 104
+TRANSACTION_MONEY_COLUMN_WIDTH = 88
+TRANSACTION_DELETE_COLUMN_WIDTH = 40
 
 
 class TransactionsPage(QWidget):
@@ -131,14 +139,18 @@ class TransactionsPage(QWidget):
         self.table.setHorizontalHeaderLabels(TRANSACTION_COLUMNS)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(0, TRANSACTION_DATE_COLUMN_WIDTH)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, TRANSACTION_MONEY_COLUMN_WIDTH)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(5, TRANSACTION_MONEY_COLUMN_WIDTH)
         self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(7, TRANSACTION_DELETE_COLUMN_WIDTH)
         layout.addWidget(self.table, 1)
 
         # Fixed feedback line keeps validation messages from resizing the page
@@ -274,8 +286,10 @@ class TransactionsPage(QWidget):
         input_field = QLineEdit()
         if column == 0:
             input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            input_field.setFont(numeric_font())
         if money_column is not None:
             input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
+            input_field.setFont(numeric_font())
 
         # Partial keeps the source editor available after Qt emits no useful value
         input_field.editingFinished.connect(partial(self.create_transaction_from_input, column, input_field, money_column))
@@ -370,6 +384,7 @@ class TransactionsPage(QWidget):
 
         input_field = QLineEdit(display_date)
         input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        input_field.setFont(numeric_font())
         input_field.editingFinished.connect(
             lambda: self.apply_transaction_date(input_field, transaction)
         )
@@ -475,6 +490,7 @@ class TransactionsPage(QWidget):
         # Zero shown blank so empty money cells stay quick to scan
         input_field = QLineEdit("" if value == 0 else format(value, ".2f"))
         input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
+        input_field.setFont(numeric_font())
 
         # Default expanding policy fills same column width as blank entry fields
         input_field.editingFinished.connect(partial(self.apply_money_value, input_field, apply_value))
@@ -518,8 +534,12 @@ class TransactionsPage(QWidget):
         self.refresh()
 
     def _set_delete_button(self, row, transaction):
-        delete_button = QPushButton("Delete")
+        delete_button = QPushButton()
         delete_button.setObjectName("deleteTransactionButton")
+        delete_button.setToolTip("Delete transaction")
+        delete_button.setIcon(QIcon(str(DELETE_ICON_PATH)))
+        delete_button.setIconSize(QSize(12, 12))
+        delete_button.setFixedSize(24, 24)
         delete_button.clicked.connect(
             lambda: self.request_transaction_deletion(transaction)
         )

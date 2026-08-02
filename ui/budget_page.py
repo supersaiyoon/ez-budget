@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from budget_model import create_next_month_budget, format_money, parse_money
-from ui.helpers import get_category, money_item
+from ui.helpers import get_category, money_item, numeric_font
 from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
@@ -586,6 +586,7 @@ class BudgetPage(QWidget):
             # Cell widget fills fixed Budgeted column instead of spilling over
             input_field.setMaximumWidth(BUDGET_VALUE_COLUMN_WIDTH)
             input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
+            input_field.setFont(numeric_font())
             input_field.editingFinished.connect(
                 partial(self.apply_adjustment, budget, category_name, subcategory_name, input_field)
             )
