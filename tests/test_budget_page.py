@@ -363,6 +363,7 @@ def test_budgeted_cell_displays_current_subcategory_amount():
 
     assert budgeted_input.text() == format(subcategory.budgeted, ".2f")
     assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
+    assert budgeted_input.maximumWidth() == BUDGET_VALUE_COLUMN_WIDTH
 
 
 def test_budget_value_columns_keep_fixed_width():

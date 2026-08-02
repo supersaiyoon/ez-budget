@@ -583,7 +583,8 @@ class BudgetPage(QWidget):
             if subcategory.budgeted != 0:
                 input_field.setText(format(subcategory.budgeted, ".2f"))
             input_field.setPlaceholderText("0.00")
-            input_field.setFixedWidth(116)
+            # Cell widget fills fixed Budgeted column instead of spilling over
+            input_field.setMaximumWidth(BUDGET_VALUE_COLUMN_WIDTH)
             input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
             input_field.editingFinished.connect(
                 partial(self.apply_adjustment, budget, category_name, subcategory_name, input_field)
