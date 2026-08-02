@@ -1,4 +1,5 @@
 INCOME_PAYEE_NAME = "Not needed for income"
+OPENING_BALANCE_PAYEE_NAME = "Opening Balance"
 
 
 def add_payee(con, name):
@@ -15,15 +16,15 @@ def add_payee(con, name):
 
 
 def list_payees(con):
-    # User list hides automatic income placeholder
+    # User list hides automatic system payees
     return con.execute(
         """
         SELECT id, name
         FROM payees
-        WHERE name != ?
+        WHERE name NOT IN (?, ?)
         ORDER BY LOWER(name), id
         """,
-        (INCOME_PAYEE_NAME,),
+        (INCOME_PAYEE_NAME, OPENING_BALANCE_PAYEE_NAME),
     ).fetchall()
 
 

@@ -31,7 +31,7 @@ from db import (
     settings as app_settings,
     transactions,
 )
-from ui import budget_page, reports_page, styles, transactions_page
+from ui import budget_page, payees_dialog, reports_page, styles, transactions_page
 
 
 CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
@@ -414,20 +414,13 @@ class MainWindow(QMainWindow):
         self.add_account_button = QPushButton("+ Add Account")
         self.add_account_button.setObjectName("addAccountButton")
         self.add_account_button.clicked.connect(self.prompt_for_account)
-        add_account_item = QListWidgetItem()
+        self._add_navigation_button(self.add_account_button)
 
-        # Extra height offsets nav item padding around embedded button
-        add_account_item.setSizeHint(
-            QSize(
-                self.nav.width(),
-                self.add_account_button.sizeHint().height() + 28,
-            )
-        )
-        add_account_item.setFlags(
-            add_account_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
-        )
-        self.nav.addItem(add_account_item)
-        self.nav.setItemWidget(add_account_item, self.add_account_button)
+        # Lower action area reserved for non-page management dialogs
+        self.payees_button = QPushButton("Payees")
+        self.payees_button.setObjectName("payeesButton")
+        self.payees_button.clicked.connect(self.open_payees_dialog)
+        self._add_navigation_button(self.payees_button)
 
         # Selection restoration avoids unexpected page jumps after rebuild
         if selected_page_index is not None:
@@ -439,6 +432,21 @@ class MainWindow(QMainWindow):
                     self.nav.setCurrentRow(row)
                     break
         self.nav.blockSignals(False)
+
+    def _add_navigation_button(self, button):
+        item = QListWidgetItem()
+
+        # Extra height offsets nav item padding around embedded button
+        item.setSizeHint(
+            QSize(
+                self.nav.width(),
+                button.sizeHint().height() + 28,
+            )
+        )
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+        self.nav.addItem(item)
+        self.nav.setItemWidget(item, button)
+        return item
 
     def toggle_closed_accounts(self):
         # Header button controls archived account visibility without page changes
@@ -547,6 +555,11 @@ class MainWindow(QMainWindow):
                 dialog.budget_radio.isChecked(),
                 opening_balance,
             )
+
+    def open_payees_dialog(self):
+        # Modal manager edits shared DB rows directly
+        dialog = payees_dialog.PayeesDialog(self.con, self)
+        dialog.exec()
 
     def submit_account_name(
         self,

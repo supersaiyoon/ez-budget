@@ -51,9 +51,10 @@ def test_get_or_create_payee_adds_missing_payee(con):
     assert payee["name"] == "Fuel Stop"
 
 
-def test_list_payees_excludes_income_placeholder(con):
+def test_list_payees_excludes_system_payees(con):
     payees.add_payee(con, "Grocery Store")
     payees.add_payee(con, payees.INCOME_PAYEE_NAME)
+    payees.add_payee(con, payees.OPENING_BALANCE_PAYEE_NAME)
     payees.add_payee(con, "Fuel Stop")
 
     payee_names = [payee["name"] for payee in payees.list_payees(con)]

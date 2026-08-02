@@ -13,11 +13,21 @@ from PyQt6.QtWidgets import (
 
 import budget_model
 from db import accounts, budgets, categories, database, payees, transactions
+from ui import payees_dialog
 from ui.main_window import AccountDialog, MainWindow
 
 
 # Every test in this module creates Qt widgets and requires the shared application
 pytestmark = pytest.mark.usefixtures("qapp")
+
+
+def navigation_text_rows(window):
+    # Embedded button rows have empty item text
+    return [
+        window.nav.item(row).text()
+        for row in range(window.nav.count())
+        if window.nav.item(row).text()
+    ]
 
 
 def test_new_window_leaves_account_table_empty():
@@ -1453,10 +1463,7 @@ def test_add_first_account_keeps_account_header():
 
     window.add_account("Checking")
 
-    nav_names = [
-        window.nav.item(row).text()
-        for row in range(window.nav.count() - 1)
-    ]
+    nav_names = navigation_text_rows(window)
     assert nav_names == [
         "Budget",
         "Reports",
@@ -1484,10 +1491,7 @@ def test_add_later_account_keeps_reports_before_account_pages():
 
     window.add_account("Savings")
 
-    nav_names = [
-        window.nav.item(row).text()
-        for row in range(window.nav.count() - 1)
-    ]
+    nav_names = navigation_text_rows(window)
     assert nav_names == [
         "Budget",
         "Reports",
@@ -1508,10 +1512,7 @@ def test_budget_account_is_inserted_before_off_budget_account():
 
     window.add_account("Checking")
 
-    nav_names = [
-        window.nav.item(row).text()
-        for row in range(window.nav.count() - 1)
-    ]
+    nav_names = navigation_text_rows(window)
     assert [account.name for account in window.accounts] == [
         "Checking",
         "House Value",
@@ -1541,12 +1542,50 @@ def test_add_account_button_follows_account_entries(qapp):
     window.show()
     qapp.processEvents()
 
-    button_item = window.nav.item(window.nav.count() - 1)
+    button_item = None
+    for row in range(window.nav.count()):
+        item = window.nav.item(row)
+        if window.nav.itemWidget(item) is window.add_account_button:
+            button_item = item
+            break
 
+    assert button_item is not None
     assert window.nav.itemWidget(button_item) is window.add_account_button
     assert window.add_account_button.text() == "+ Add Account"
     assert window.add_account_button.height() > 0
     assert not button_item.flags() & Qt.ItemFlag.ItemIsSelectable
+
+
+def test_payees_button_follows_add_account_button():
+    window = MainWindow(":memory:")
+
+    nav_widgets = [
+        window.nav.itemWidget(window.nav.item(row))
+        for row in range(window.nav.count())
+    ]
+
+    assert nav_widgets.index(window.payees_button) == (
+        nav_widgets.index(window.add_account_button) + 1
+    )
+    assert window.payees_button.text() == "Payees"
+
+
+def test_payees_button_opens_payees_dialog(monkeypatch):
+    window = MainWindow(":memory:")
+    opened_dialogs = []
+
+    class FakePayeesDialog:
+        def __init__(self, con, parent=None):
+            opened_dialogs.append((con, parent))
+
+        def exec(self):
+            opened_dialogs.append("exec")
+
+    monkeypatch.setattr(payees_dialog, "PayeesDialog", FakePayeesDialog)
+
+    window.payees_button.click()
+
+    assert opened_dialogs == [(window.con, window), "exec"]
 
 
 def test_navigation_ignores_rows_without_a_page():
