@@ -73,6 +73,43 @@ def test_transaction_page_reports_pending_and_saved_states():
     assert page.status.text() == "Transaction saved."
 
 
+def test_payee_input_autocompletes_saved_payees():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[],
+        payee_names=["Grocery Store", "Fuel Stop"],
+    )
+    payee_input = page.table.cellWidget(0, 1)
+
+    model = payee_input.completer().model()
+
+    assert [
+        model.index(row, 0).data()
+        for row in range(model.rowCount())
+    ] == ["Grocery Store", "Fuel Stop"]
+    assert (
+        payee_input.completer().caseSensitivity()
+        == Qt.CaseSensitivity.CaseInsensitive
+    )
+
+
+def test_payee_autocomplete_refreshes_open_editors():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[],
+        payee_names=["Grocery Store"],
+    )
+
+    page.set_payee_names(["Grocery Store", "Fuel Stop"])
+    payee_input = page.table.cellWidget(0, 1)
+    model = payee_input.completer().model()
+
+    assert [
+        model.index(row, 0).data()
+        for row in range(model.rowCount())
+    ] == ["Grocery Store", "Fuel Stop"]
+
+
 def test_closed_account_page_omits_blank_transaction_row():
     transaction = Transaction(
         date="2026-07-21",

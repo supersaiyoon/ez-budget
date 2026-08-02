@@ -7,6 +7,7 @@ from PyQt6.QtGui import QColor, QIcon, QPalette
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QCompleter,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -61,6 +62,7 @@ class TransactionsPage(QWidget):
         on_account_reopen_requested=None,
         on_account_delete_requested=None,
         allow_new_transactions=True,
+        payee_names=None,
     ):
         super().__init__()
 
@@ -95,6 +97,9 @@ class TransactionsPage(QWidget):
 
         # Closed account pages keep history visible without blank entry row
         self.allow_new_transactions = allow_new_transactions
+
+        # Payee suggestions stay optional so tests and UI-only pages can stay simple
+        self.payee_names = payee_names or []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -159,6 +164,11 @@ class TransactionsPage(QWidget):
         self.status.setFixedHeight(20)
         layout.addWidget(self.status)
 
+        self.refresh()
+
+    def set_payee_names(self, payee_names):
+        # Existing editors rebuild so suggestions reflect latest saved payees
+        self.payee_names = payee_names
         self.refresh()
 
     def refresh(self):
@@ -284,6 +294,8 @@ class TransactionsPage(QWidget):
 
     def _set_new_transaction_input(self, row, column, money_column=None):
         input_field = QLineEdit()
+        if column == 1:
+            self._add_payee_completer(input_field)
         if column == 0:
             input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
             input_field.setFont(numeric_font())
@@ -370,10 +382,17 @@ class TransactionsPage(QWidget):
 
     def _set_text_input(self, row, column, value, apply_value):
         input_field = QLineEdit(value)
+        if column == 1:
+            self._add_payee_completer(input_field)
         # Stored values trimmed to avoid accidental spaces in reports and filters
         input_field.editingFinished.connect(lambda: apply_value(input_field.text().strip()))
         self.table.setCellWidget(row, column, input_field)
         return input_field
+
+    def _add_payee_completer(self, input_field):
+        completer = QCompleter(self.payee_names, input_field)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        input_field.setCompleter(completer)
 
     def _set_date_input(self, row, transaction):
         try:

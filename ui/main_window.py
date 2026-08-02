@@ -484,7 +484,18 @@ class MainWindow(QMainWindow):
             on_account_reopen_requested=self.reopen_account,
             on_account_delete_requested=self.delete_account,
             allow_new_transactions=allow_new_transactions,
+            payee_names=self.payee_names(),
         )
+
+    def payee_names(self):
+        # Autocomplete uses same user-facing list as Payees dialog
+        return [payee["name"] for payee in payees.list_payees(self.con)]
+
+    def refresh_transaction_payees(self):
+        # New saved payees should appear in every open transaction editor
+        payee_names = self.payee_names()
+        for page in self.transaction_pages + self.closed_transaction_pages:
+            page.set_payee_names(payee_names)
 
     def show_closed_account(self, account):
         account_index = index_by_identity(self.closed_accounts, account)
@@ -1170,6 +1181,7 @@ class MainWindow(QMainWindow):
 
             # New assigned income may affect any generated Budget month
             self.refresh_budget_income()
+            self.refresh_transaction_payees()
             return True
 
         # Existing row id updates editable values without changing owning account
@@ -1188,6 +1200,7 @@ class MainWindow(QMainWindow):
 
         # Updated assignment may remove income from old month and add it elsewhere
         self.refresh_budget_income()
+        self.refresh_transaction_payees()
         return True
 
     def delete_transaction(self, account, transaction):

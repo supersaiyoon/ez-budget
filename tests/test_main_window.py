@@ -809,6 +809,35 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     assert reopened_window.accounts[0].cleared_balance == Decimal("-42.50")
 
 
+def test_saved_new_payee_refreshes_transaction_autocomplete(tmp_path):
+    db_path = tmp_path / "budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    categories.add_budget_category(con, master_category["id"], "Groceries")
+    con.close()
+
+    window = MainWindow(db_path)
+    window.add_account("Checking")
+    page = window.transaction_pages[0]
+    page.create_transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        outgoing=Decimal("42.50"),
+        category_database_id=categories.list_transaction_categories(
+            window.con
+        )[0]["id"],
+    )
+    payee_input = page.table.cellWidget(0, 1)
+    model = payee_input.completer().model()
+
+    assert [
+        model.index(row, 0).data()
+        for row in range(model.rowCount())
+    ] == ["Grocery Store"]
+
+
 def test_grid_income_without_payee_updates_budget_and_survives_restart(tmp_path):
     db_path = tmp_path / "budget.db"
     window = MainWindow(db_path)
