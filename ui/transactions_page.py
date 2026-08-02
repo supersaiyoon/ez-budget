@@ -37,7 +37,7 @@ TRANSACTION_COLUMNS = [
     "Outgoing",
     "Incoming",
     "Cleared",
-    "Delete",
+    "",  # Icon-only delete column
 ]
 INCOME_PAYEE_PLACEHOLDER = "Not needed for income"
 DELETE_ICON_PATH = (
@@ -543,7 +543,14 @@ class TransactionsPage(QWidget):
         delete_button.clicked.connect(
             lambda: self.request_transaction_deletion(transaction)
         )
-        self.table.setCellWidget(row, 7, delete_button)
+
+        # Center icon-only action inside its compact column
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(delete_button)
+        self.table.setCellWidget(row, 7, container)
 
     def request_transaction_deletion(self, transaction):
         if self.on_transaction_delete_requested is None:

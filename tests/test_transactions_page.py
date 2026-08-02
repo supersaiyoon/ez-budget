@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtWidgets import QHeaderView, QMessageBox
+from PyQt6.QtWidgets import QHeaderView, QMessageBox, QPushButton
 
 from budget_model import Account, Transaction
 from ui.transactions_page import (
@@ -190,6 +190,33 @@ def test_numeric_transaction_columns_use_fixed_widths():
     assert page.table.columnWidth(7) == TRANSACTION_DELETE_COLUMN_WIDTH
 
 
+def test_delete_transaction_column_header_is_blank():
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+
+    assert page.table.horizontalHeaderItem(7).text() == ""
+
+
+def test_delete_transaction_button_is_centered():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    page = TransactionsPage(
+        Account("Checking", transactions=[transaction]),
+        category_rows=[],
+    )
+    delete_container = page.table.cellWidget(0, 7)
+
+    assert delete_container.layout().alignment() == Qt.AlignmentFlag.AlignCenter
+    assert (
+        delete_container.findChild(QPushButton).objectName()
+        == "deleteTransactionButton"
+    )
+
+
 def test_delete_button_reports_account_and_transaction(monkeypatch):
     transaction = Transaction(
         date="2026-07-21",
@@ -217,7 +244,7 @@ def test_delete_button_reports_account_and_transaction(monkeypatch):
         lambda *args: QMessageBox.StandardButton.Yes,
     )
 
-    page.table.cellWidget(0, 7).click()
+    page.table.cellWidget(0, 7).findChild(QPushButton).click()
 
     assert deletion_requests == [(account, transaction)]
     assert page.table.rowCount() == 1
@@ -233,7 +260,7 @@ def test_delete_transaction_button_uses_trash_icon():
     )
     account = Account("Checking", transactions=[transaction])
     page = TransactionsPage(account, category_rows=[])
-    delete_button = page.table.cellWidget(0, 7)
+    delete_button = page.table.cellWidget(0, 7).findChild(QPushButton)
 
     assert delete_button.text() == ""
     assert delete_button.icon().isNull() is False
@@ -264,7 +291,7 @@ def test_delete_button_cancel_keeps_transaction(monkeypatch):
         lambda *args: QMessageBox.StandardButton.No,
     )
 
-    page.table.cellWidget(0, 7).click()
+    page.table.cellWidget(0, 7).findChild(QPushButton).click()
 
     assert deletion_requests == []
     assert account.transactions == [transaction]

@@ -428,7 +428,7 @@ def test_confirmed_transaction_delete_survives_restart(tmp_path, monkeypatch):
         lambda *args: QMessageBox.StandardButton.Yes,
     )
 
-    reopened_page.table.cellWidget(0, 7).click()
+    reopened_page.table.cellWidget(0, 7).findChild(QPushButton).click()
 
     assert reopened_account.transactions == []
     assert reopened_page.table.rowCount() == 1
