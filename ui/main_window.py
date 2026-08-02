@@ -390,44 +390,16 @@ class MainWindow(QMainWindow):
             self.closed_accounts_button,
         )
 
-        self.closed_account_reopen_buttons = []
-        self.closed_account_page_buttons = []
-
-        # Closed rows pair archived name with explicit non-destructive action
+        # Closed account rows navigate like normal account rows
         for account_position, account in enumerate(self.closed_accounts):
             item = QListWidgetItem(account.name)
+            item.setSizeHint(item.sizeHint())
             item.setData(
                 Qt.ItemDataRole.UserRole,
                 2 + len(self.accounts) + account_position,
             )
-            row_widget = QWidget()
-            row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(8, 0, 4, 0)
-            account_button = QPushButton(account.name)
-            account_button.setObjectName("closedAccountPageButton")
-            account_button.setStyleSheet(
-                "text-align: left; background: transparent; padding: 0;"
-            )
-            account_button.clicked.connect(
-                lambda checked=False, account=account: self.show_closed_account(
-                    account
-                )
-            )
-            row_layout.addWidget(account_button)
-            reopen_button = QPushButton("Reopen")
-            reopen_button.setObjectName("reopenAccountButton")
-            reopen_button.clicked.connect(
-                lambda checked=False, account=account: self.reopen_account(
-                    account
-                )
-            )
-            row_layout.addWidget(reopen_button)
-            item.setSizeHint(row_widget.sizeHint())
             self.nav.addItem(item)
-            self.nav.setItemWidget(item, row_widget)
             self.closed_account_items.append(item)
-            self.closed_account_reopen_buttons.append(reopen_button)
-            self.closed_account_page_buttons.append(account_button)
         self.update_closed_accounts_visibility()
 
         # Add action stays below every account group
@@ -493,6 +465,7 @@ class MainWindow(QMainWindow):
             on_transaction_delete_requested=self.delete_transaction,
             income_reference_date=self.budgets[0].month_date.isoformat(),
             on_account_close_requested=self.close_account,
+            on_account_reopen_requested=self.reopen_account,
             on_account_delete_requested=self.delete_account,
             allow_new_transactions=allow_new_transactions,
         )

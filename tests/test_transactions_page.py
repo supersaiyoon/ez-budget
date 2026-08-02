@@ -91,6 +91,7 @@ def test_closed_account_page_omits_blank_transaction_row():
     assert page.table.cellWidget(0, 1).text() == "Grocery Store"
     assert page.close_account_button.isHidden()
     assert page.delete_account_button.isHidden()
+    assert page.reopen_account_button.isHidden() is False
 
 
 def test_short_date_input_stores_iso_and_displays_full_year():
@@ -248,6 +249,21 @@ def test_close_account_button_cancel_keeps_account_active(monkeypatch):
     page.close_account_button.click()
 
     assert close_requests == []
+
+
+def test_reopen_account_button_reports_closed_account():
+    account = Account("Checking", closed=True)
+    reopen_requests = []
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_account_reopen_requested=reopen_requests.append,
+        allow_new_transactions=False,
+    )
+
+    page.reopen_account_button.click()
+
+    assert reopen_requests == [account]
 
 
 def test_delete_account_button_reports_account():

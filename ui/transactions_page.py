@@ -50,6 +50,7 @@ class TransactionsPage(QWidget):
         on_transaction_delete_requested=None,
         income_reference_date=None,
         on_account_close_requested=None,
+        on_account_reopen_requested=None,
         on_account_delete_requested=None,
         allow_new_transactions=True,
     ):
@@ -78,6 +79,9 @@ class TransactionsPage(QWidget):
         # Controller owns account collection and navigation changes
         self.on_account_close_requested = on_account_close_requested
 
+        # Closed pages expose the reverse account lifecycle action
+        self.on_account_reopen_requested = on_account_reopen_requested
+
         # Controller checks history before allowing permanent account deletion
         self.on_account_delete_requested = on_account_delete_requested
 
@@ -88,9 +92,17 @@ class TransactionsPage(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
+        heading_layout = QHBoxLayout()
         heading = QLabel(account.name)
         heading.setObjectName("pageTitle")
-        layout.addWidget(heading)
+        heading_layout.addWidget(heading)
+        self.reopen_account_button = QPushButton("Reopen")
+        self.reopen_account_button.setObjectName("reopenAccountButton")
+        self.reopen_account_button.clicked.connect(self.request_account_reopen)
+        self.reopen_account_button.setVisible(not self.allow_new_transactions)
+        heading_layout.addWidget(self.reopen_account_button)
+        heading_layout.addStretch()
+        layout.addLayout(heading_layout)
 
         # Account action stays separate from transaction-row actions
         account_actions = QHBoxLayout()
@@ -546,6 +558,10 @@ class TransactionsPage(QWidget):
             return
 
         self.on_account_close_requested(self.account)
+
+    def request_account_reopen(self):
+        if self.on_account_reopen_requested is not None:
+            self.on_account_reopen_requested(self.account)
 
     def request_account_delete(self):
         if self.on_account_delete_requested is None:

@@ -1233,9 +1233,10 @@ def test_reopen_account_control_survives_restart(tmp_path):
     window.add_account("Checking")
     account = window.accounts[0]
     window.close_account(account)
-    assert window.closed_account_reopen_buttons[0].text() == "Reopen"
+    closed_page = window.closed_transaction_pages[0]
+    assert closed_page.reopen_account_button.text() == "Reopen"
 
-    window.closed_account_reopen_buttons[0].click()
+    closed_page.reopen_account_button.click()
 
     reopened_row = accounts.get_account_by_name(window.con, "Checking")
     assert reopened_row["closed"] == False
@@ -1282,14 +1283,19 @@ def test_closed_account_history_page_survives_restart(tmp_path):
     reopened_window = MainWindow(db_path)
     closed_page = reopened_window.closed_transaction_pages[0]
 
-    reopened_window.closed_account_page_buttons[0].click()
+    closed_row = next(
+        row
+        for row in range(reopened_window.nav.count())
+        if reopened_window.nav.item(row).text() == "Checking"
+    )
+    reopened_window.nav.setCurrentRow(closed_row)
 
     assert reopened_window.stack.currentWidget() is closed_page
     assert closed_page.table.rowCount() == 1
     assert closed_page.table.cellWidget(0, 1).text() == "Grocery Store"
     assert closed_page.allow_new_transactions is False
 
-    reopened_window.closed_account_reopen_buttons[0].click()
+    closed_page.reopen_account_button.click()
 
     assert reopened_window.closed_transaction_pages == []
     assert reopened_window.transaction_pages[0].account.name == "Checking"
