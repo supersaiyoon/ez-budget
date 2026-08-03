@@ -2010,6 +2010,50 @@ def test_rename_master_category_updates_loaded_budgets_and_account_pages():
     )
 
 
+def test_reorder_master_categories_updates_loaded_budgets_and_account_pages():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    window.add_master_category("Monthly Bills")
+    window.add_master_category("Everyday Expenses")
+    window.add_master_category("Savings")
+    for master_category in window.budgets[0].master_categories:
+        window.add_subcategory(master_category.database_id, "Placeholder")
+    master_category_ids = [
+        category.database_id
+        for category in window.budgets[0].master_categories
+    ]
+
+    window.reorder_master_categories(
+        [
+            master_category_ids[2],
+            master_category_ids[0],
+            master_category_ids[1],
+        ]
+    )
+
+    saved_names = [
+        category["name"]
+        for category in categories.list_master_categories(window.con)
+    ]
+    loaded_names = [
+        category.name
+        for category in window.budgets[0].master_categories
+    ]
+    category_input = window.transaction_pages[0].table.cellWidget(0, 2)
+
+    assert saved_names == ["Savings", "Monthly Bills", "Everyday Expenses"]
+    assert loaded_names == ["Savings", "Monthly Bills", "Everyday Expenses"]
+    assert [category_input.itemText(index) for index in range(category_input.count())] == [
+        "",
+        "Savings",
+        "Placeholder",
+        "Monthly Bills",
+        "Placeholder",
+        "Everyday Expenses",
+        "Placeholder",
+    ]
+
+
 def test_rename_master_category_rejects_duplicate_name():
     window = MainWindow(":memory:")
     window.add_master_category("Monthly Bills")
@@ -2155,6 +2199,48 @@ def test_rename_subcategory_rejects_duplicate_name_within_master():
         window.budgets[0].master_categories[0].subcategories[0].name
         == "Groceries"
     )
+
+
+def test_reorder_subcategories_updates_loaded_budgets_and_account_pages():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    window.add_master_category("Everyday Expenses")
+    master_category_id = window.budgets[0].master_categories[0].database_id
+    window.add_subcategory(master_category_id, "Groceries")
+    window.add_subcategory(master_category_id, "Gas")
+    window.add_subcategory(master_category_id, "Dining Out")
+    subcategory_ids = [
+        subcategory.database_id
+        for subcategory in window.budgets[0].master_categories[0].subcategories
+    ]
+
+    window.reorder_subcategories(
+        master_category_id,
+        [subcategory_ids[2], subcategory_ids[0], subcategory_ids[1]],
+    )
+
+    saved_names = [
+        category["name"]
+        for category in categories.list_budget_categories(
+            window.con,
+            master_category_id,
+        )
+    ]
+    loaded_names = [
+        subcategory.name
+        for subcategory in window.budgets[0].master_categories[0].subcategories
+    ]
+    category_input = window.transaction_pages[0].table.cellWidget(0, 2)
+
+    assert saved_names == ["Dining Out", "Groceries", "Gas"]
+    assert loaded_names == ["Dining Out", "Groceries", "Gas"]
+    assert [category_input.itemText(index) for index in range(category_input.count())] == [
+        "",
+        "Everyday Expenses",
+        "Dining Out",
+        "Groceries",
+        "Gas",
+    ]
 
 
 def test_subcategory_rename_button_opens_prefilled_dialog(monkeypatch):

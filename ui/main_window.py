@@ -720,6 +720,26 @@ class MainWindow(QMainWindow):
         self.refresh_category_views()
         return True
 
+    def reorder_master_categories(self, ordered_master_category_ids):
+        # Drag order is persisted once, then mirrored into every loaded month
+        categories.reorder_master_categories(
+            self.con,
+            ordered_master_category_ids,
+        )
+        order_by_id = {
+            category_id: index
+            for index, category_id in enumerate(ordered_master_category_ids)
+        }
+        for budget in self.budgets:
+            budget.master_categories.sort(
+                key=lambda category: order_by_id.get(
+                    category.database_id,
+                    len(order_by_id),
+                )
+            )
+
+        self.refresh_category_views()
+
     def prompt_for_master_category_rename(self, master_category):
         name, accepted = QInputDialog.getText(
             self,
@@ -793,6 +813,35 @@ class MainWindow(QMainWindow):
 
         self.refresh_category_views()
         return True
+
+    def reorder_subcategories(
+        self,
+        master_category_id,
+        ordered_budget_category_ids,
+    ):
+        # Subcategory order stays scoped to one parent category
+        categories.reorder_budget_categories(
+            self.con,
+            master_category_id,
+            ordered_budget_category_ids,
+        )
+        order_by_id = {
+            category_id: index
+            for index, category_id in enumerate(ordered_budget_category_ids)
+        }
+        for budget in self.budgets:
+            for master_category in budget.master_categories:
+                if master_category.database_id != master_category_id:
+                    continue
+                master_category.subcategories.sort(
+                    key=lambda subcategory: order_by_id.get(
+                        subcategory.database_id,
+                        len(order_by_id),
+                    )
+                )
+                break
+
+        self.refresh_category_views()
 
     def prompt_for_subcategory_rename(
         self,
