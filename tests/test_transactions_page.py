@@ -159,19 +159,14 @@ def test_short_date_input_stores_iso_and_displays_full_year():
     )
 
 
-def test_blank_date_input_has_calendar_popup():
-    page = TransactionsPage(Account("Checking"), category_rows=[])
+def test_calendar_popup_can_create_transaction_date():
+    account = Account("Checking")
+    page = TransactionsPage(account, category_rows=[])
     date_input = page.table.cellWidget(0, 0)
 
     assert isinstance(date_input, DateInput)
     assert date_input.calendar_popup.minimumDate() == QDate(1, 1, 1)
     assert date_input.calendar_popup.maximumDate() == QDate(9999, 12, 31)
-
-
-def test_calendar_selection_creates_transaction_date():
-    account = Account("Checking")
-    page = TransactionsPage(account, category_rows=[])
-    date_input = page.table.cellWidget(0, 0)
 
     date_input.apply_calendar_date(QDate(2026, 7, 21))
 
@@ -246,7 +241,7 @@ def test_saved_money_inputs_expand_like_blank_row_inputs():
     assert blank_outgoing.font().family() == "Consolas"
 
 
-def test_numeric_transaction_columns_use_fixed_widths():
+def test_transaction_columns_use_stable_widths():
     page = TransactionsPage(Account("Checking"), category_rows=[])
 
     assert (
@@ -260,6 +255,16 @@ def test_numeric_transaction_columns_use_fixed_widths():
             == QHeaderView.ResizeMode.Fixed
         )
         assert page.table.columnWidth(column) == TRANSACTION_MONEY_COLUMN_WIDTH
+    assert (
+        page.table.horizontalHeader().sectionResizeMode(2)
+        == QHeaderView.ResizeMode.Fixed
+    )
+    assert page.table.columnWidth(2) == TRANSACTION_CATEGORY_COLUMN_WIDTH
+    assert (
+        page.table.horizontalHeader().sectionResizeMode(6)
+        == QHeaderView.ResizeMode.Fixed
+    )
+    assert page.table.columnWidth(6) == TRANSACTION_CLEARED_COLUMN_WIDTH
     assert (
         page.table.horizontalHeader().sectionResizeMode(7)
         == QHeaderView.ResizeMode.Fixed
@@ -288,21 +293,6 @@ def test_empty_and_populated_transaction_pages_use_same_column_widths():
         populated_page.table.columnWidth(column)
         for column in range(populated_page.table.columnCount())
     ]
-
-
-def test_category_and_cleared_columns_use_fixed_widths():
-    page = TransactionsPage(Account("Checking"), category_rows=[])
-
-    assert (
-        page.table.horizontalHeader().sectionResizeMode(2)
-        == QHeaderView.ResizeMode.Fixed
-    )
-    assert page.table.columnWidth(2) == TRANSACTION_CATEGORY_COLUMN_WIDTH
-    assert (
-        page.table.horizontalHeader().sectionResizeMode(6)
-        == QHeaderView.ResizeMode.Fixed
-    )
-    assert page.table.columnWidth(6) == TRANSACTION_CLEARED_COLUMN_WIDTH
 
 
 def test_delete_transaction_column_header_is_blank():
