@@ -1627,7 +1627,7 @@ def test_payees_and_settings_buttons_are_pinned_below_account_list():
     assert window.settings_button.size() == QSize(44, 44)
     assert window.settings_button.icon().isNull() is False
     assert window.settings_button.iconSize() == QSize(18, 18)
-    assert window.settings_button.isEnabled() is False
+    assert window.settings_button.isEnabled() is True
 
 
 def test_account_navigation_only_scrolls_vertically():

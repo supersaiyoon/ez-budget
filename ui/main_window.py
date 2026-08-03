@@ -293,7 +293,6 @@ class MainWindow(QMainWindow):
         self.settings_button.setIcon(QIcon(str(SETTINGS_ICON_PATH)))
         self.settings_button.setIconSize(QSize(18, 18))
         self.settings_button.setFixedSize(44, 44)
-        self.settings_button.setEnabled(False)
         actions_layout.addWidget(self.settings_button)
         actions_layout.addStretch()
 

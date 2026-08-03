@@ -93,8 +93,4 @@ QPushButton:hover {
 #settingsButton {
     padding: 0;
 }
-#settingsButton:disabled {
-    background: #4d5b6a;
-    color: #c8d1dc;
-}
 """
