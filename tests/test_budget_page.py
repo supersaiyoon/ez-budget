@@ -136,6 +136,105 @@ def test_budget_page_reports_subcategory_reorder():
     assert reordered == [(12, [24, 22, 23])]
 
 
+def test_budget_page_moves_ids_to_drop_index():
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    assert page.moved_ids([1, 2, 3], 1, 3) == [2, 3, 1]
+    assert page.moved_ids([1, 2, 3], 3, 0) == [3, 1, 2]
+
+
+def test_finishing_master_category_drag_reports_reordered_ids():
+    budgets = create_sample_budgets()
+    for index, master_category in enumerate(
+        budgets[0].master_categories,
+        start=1,
+    ):
+        master_category.database_id = index
+    reordered_ids = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_master_categories_reordered=reordered_ids.append,
+    )
+    page.drag_state = {
+        "kind": "master",
+        "master_category_id": 1,
+        "budget_category_id": None,
+        "active": True,
+    }
+    page.drop_target = {"target_index": 3}
+
+    page.finish_category_drag()
+
+    assert reordered_ids == [[2, 3, 1]]
+
+
+def test_finishing_subcategory_drag_reports_sibling_order():
+    budgets = create_sample_budgets()
+    master_category = budgets[0].master_categories[0]
+    master_category.database_id = 12
+    for index, subcategory in enumerate(master_category.subcategories, start=21):
+        subcategory.database_id = index
+    reordered = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_subcategories_reordered=(
+            lambda master_category_id, category_ids: reordered.append(
+                (master_category_id, category_ids)
+            )
+        ),
+    )
+    page.drag_state = {
+        "kind": "subcategory",
+        "master_category_id": 12,
+        "budget_category_id": 21,
+        "active": True,
+    }
+    page.drop_target = {"target_index": 4}
+
+    page.finish_category_drag()
+
+    assert reordered == [(12, [22, 23, 24, 21])]
+
+
+def test_subcategory_drag_ignores_drop_outside_own_master():
+    budgets = create_sample_budgets()
+    budgets[0].master_categories[0].database_id = 12
+    budgets[0].master_categories[1].database_id = 34
+    budgets[0].master_categories[0].subcategories[0].database_id = 21
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    page.drag_state = {
+        "kind": "subcategory",
+        "master_category_id": 12,
+        "budget_category_id": 21,
+        "active": True,
+    }
+    other_master_row = page.rows.index(("Everyday Spending", None)) + 2
+
+    page.update_subcategory_drop_target(
+        other_master_row,
+        page.table.rowViewportPosition(other_master_row) + 1,
+    )
+
+    assert page.drop_target is None
+    assert page.drop_indicator.isHidden() is True
+
+
 def test_master_category_error_is_shown_in_status():
     def reject_duplicate(name):
         raise ValueError("Master category already exists.")

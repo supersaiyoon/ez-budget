@@ -1,9 +1,11 @@
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QEvent, QSize, Qt
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
     QHeaderView,
     QHBoxLayout,
     QInputDialog,
@@ -114,6 +116,15 @@ class BudgetPage(QWidget):
             )
             self.table.setColumnWidth(column, BUDGET_VALUE_COLUMN_WIDTH)
         layout.addWidget(self.table, 1)
+        self.drop_indicator = QFrame(self.table.viewport())
+        self.drop_indicator.setObjectName("categoryDropIndicator")
+        self.drop_indicator.setFixedHeight(2)
+        self.drop_indicator.setStyleSheet(
+            "#categoryDropIndicator { background: #2f6f8f; }"
+        )
+        self.drop_indicator.hide()
+        self.drag_state = None
+        self.drop_target = None
 
         # Collapsible shell reserved for later hidden-category restore rows
         self.hidden_categories_expanded = False
@@ -475,6 +486,235 @@ class BudgetPage(QWidget):
                 ordered_budget_category_ids,
             )
 
+    def ordered_master_category_ids(self):
+        return [
+            category.database_id
+            for category in self.budgets[0].master_categories
+        ]
+
+    def ordered_subcategory_ids(self, master_category_id):
+        for master_category in self.budgets[0].master_categories:
+            if master_category.database_id == master_category_id:
+                return [
+                    subcategory.database_id
+                    for subcategory in master_category.subcategories
+                ]
+        return []
+
+    def moved_ids(self, ordered_ids, moved_id, target_index):
+        # Drop index is calculated against the original visible order
+        ids = list(ordered_ids)
+        source_index = ids.index(moved_id)
+        ids.pop(source_index)
+        if source_index < target_index:
+            target_index -= 1
+        ids.insert(target_index, moved_id)
+        return ids
+
+    def eventFilter(self, watched, event):
+        if watched.property("category_row_kind") is None:
+            return super().eventFilter(watched, event)
+
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self.start_category_drag(watched, event.globalPosition().toPoint())
+                return True
+        elif event.type() == QEvent.Type.MouseMove:
+            if self.drag_state is not None:
+                self.update_category_drag(event.globalPosition().toPoint())
+                return True
+        elif event.type() == QEvent.Type.MouseButtonRelease:
+            if self.drag_state is not None:
+                self.finish_category_drag()
+                return True
+
+        return super().eventFilter(watched, event)
+
+    def start_category_drag(self, widget, global_position):
+        self.drag_state = {
+            "kind": widget.property("category_row_kind"),
+            "master_category_id": widget.property("master_category_id"),
+            "budget_category_id": widget.property("budget_category_id"),
+            "press_position": global_position,
+            "active": False,
+        }
+        self.drop_target = None
+
+    def update_category_drag(self, global_position):
+        if self.drag_state is None:
+            return
+
+        if not self.drag_state["active"]:
+            distance = (
+                global_position - self.drag_state["press_position"]
+            ).manhattanLength()
+            if distance < QApplication.startDragDistance():
+                return
+            self.drag_state["active"] = True
+
+        table_position = self.table.viewport().mapFromGlobal(global_position)
+        self.update_drop_target(table_position)
+
+    def finish_category_drag(self):
+        drop_target = self.drop_target
+        drag_state = self.drag_state
+        self.clear_drop_indicator()
+        self.drag_state = None
+        self.drop_target = None
+        if drop_target is None or drag_state is None:
+            return
+
+        if drag_state["kind"] == "master":
+            ordered_ids = self.ordered_master_category_ids()
+            moved_id = drag_state["master_category_id"]
+            reordered_ids = self.moved_ids(
+                ordered_ids,
+                moved_id,
+                drop_target["target_index"],
+            )
+            if reordered_ids != ordered_ids:
+                self.request_master_category_reorder(reordered_ids)
+            return
+
+        ordered_ids = self.ordered_subcategory_ids(
+            drag_state["master_category_id"]
+        )
+        moved_id = drag_state["budget_category_id"]
+        reordered_ids = self.moved_ids(
+            ordered_ids,
+            moved_id,
+            drop_target["target_index"],
+        )
+        if reordered_ids != ordered_ids:
+            self.request_subcategory_reorder(
+                drag_state["master_category_id"],
+                reordered_ids,
+            )
+
+    def update_drop_target(self, table_position):
+        if self.drag_state is None:
+            return
+
+        row = self.table.rowAt(table_position.y())
+        if row < 2:
+            self.clear_drop_indicator()
+            return
+
+        if self.drag_state["kind"] == "master":
+            self.update_master_drop_target(row, table_position.y())
+        else:
+            self.update_subcategory_drop_target(row, table_position.y())
+
+    def update_master_drop_target(self, row, y_position):
+        row_metadata = self.row_metadata(row)
+        if row_metadata is None:
+            self.clear_drop_indicator()
+            return
+
+        ordered_ids = self.ordered_master_category_ids()
+        target_master_id = row_metadata["master_category_id"]
+        target_index = ordered_ids.index(target_master_id)
+        row_middle = self.table.rowViewportPosition(row) + (
+            self.table.rowHeight(row) / 2
+        )
+        insert_after = y_position > row_middle
+        if insert_after:
+            target_index += 1
+
+        indicator_row = self.master_group_last_row(target_master_id) if insert_after else self.master_group_first_row(target_master_id)
+        self.drop_target = {"target_index": target_index}
+        self.show_drop_indicator(indicator_row, after=insert_after)
+
+    def update_subcategory_drop_target(self, row, y_position):
+        row_metadata = self.row_metadata(row)
+        if (
+            row_metadata is None
+            or row_metadata["master_category_id"]
+            != self.drag_state["master_category_id"]
+        ):
+            self.clear_drop_indicator()
+            return
+
+        ordered_ids = self.ordered_subcategory_ids(
+            self.drag_state["master_category_id"]
+        )
+        if row_metadata["kind"] == "master":
+            target_index = 0
+            indicator_row = row
+            insert_after = True
+        else:
+            target_index = ordered_ids.index(row_metadata["budget_category_id"])
+            row_middle = self.table.rowViewportPosition(row) + (
+                self.table.rowHeight(row) / 2
+            )
+            insert_after = y_position > row_middle
+            if insert_after:
+                target_index += 1
+            indicator_row = row
+
+        self.drop_target = {"target_index": target_index}
+        self.show_drop_indicator(indicator_row, after=insert_after)
+
+    def row_metadata(self, row):
+        if row < 2 or row - 2 >= len(self.rows):
+            return None
+
+        category_name, subcategory_name = self.rows[row - 2]
+        master_category = get_category(self.budgets[0], category_name)
+        if subcategory_name is None:
+            return {
+                "kind": "master",
+                "master_category_id": master_category.database_id,
+            }
+
+        subcategory = self.budgets[0].get_subcategory(
+            category_name,
+            subcategory_name,
+        )
+        return {
+            "kind": "subcategory",
+            "master_category_id": master_category.database_id,
+            "budget_category_id": subcategory.database_id,
+        }
+
+    def master_group_first_row(self, master_category_id):
+        for row in range(2, self.table.rowCount()):
+            row_metadata = self.row_metadata(row)
+            if row_metadata["master_category_id"] == master_category_id:
+                return row
+        return 2
+
+    def master_group_last_row(self, master_category_id):
+        last_row = self.master_group_first_row(master_category_id)
+        for row in range(last_row, self.table.rowCount()):
+            row_metadata = self.row_metadata(row)
+            if row_metadata["master_category_id"] != master_category_id:
+                break
+            last_row = row
+        return last_row
+
+    def show_drop_indicator(self, row, after=False):
+        y_position = self.table.rowViewportPosition(row)
+        if after:
+            y_position += self.table.rowHeight(row)
+        self.drop_indicator.setGeometry(
+            0,
+            y_position - 1,
+            self.table.viewport().width(),
+            2,
+        )
+        self.drop_indicator.raise_()
+        self.drop_indicator.show()
+
+    def clear_drop_indicator(self):
+        self.drop_indicator.hide()
+        self.drop_target = None
+
+    def install_category_drag_filter(self, widget, label):
+        # Labels pass title-cell drags through while action buttons stay clickable
+        label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        widget.installEventFilter(self)
+
     def _set_master_row(self, row, category_name, budgets):
         master_category = get_category(budgets[0], category_name)
         category_cell = QWidget()
@@ -492,6 +732,7 @@ class BudgetPage(QWidget):
         title.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
         category_layout.addWidget(title)
         category_layout.addStretch()
+        self.install_category_drag_filter(category_cell, title)
 
         rename_button = QPushButton()
         rename_button.setObjectName("renameMasterCategoryButton")
@@ -579,6 +820,7 @@ class BudgetPage(QWidget):
         category_label.setObjectName("subcategoryNameLabel")
         category_layout.addWidget(category_label)
         category_layout.addStretch()
+        self.install_category_drag_filter(category_cell, category_label)
 
         rename_button = QPushButton()
         rename_button.setObjectName("renameSubcategoryButton")
