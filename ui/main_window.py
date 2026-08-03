@@ -40,6 +40,8 @@ CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
 ACCOUNT_NAV_INDENT_WIDTH = 12
 NAV_WIDTH = 170
 NAV_BUTTON_WIDTH = NAV_WIDTH - 24
+BUDGET_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "budget.svg"
+REPORTS_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "reports.svg"
 PAYEES_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "payees.svg"
 SETTINGS_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "settings.svg"
 
@@ -304,6 +306,7 @@ class MainWindow(QMainWindow):
         nav = QListWidget()
         nav.setObjectName("navList")
         nav.setFixedWidth(NAV_WIDTH)
+        nav.setIconSize(QSize(18, 18))
         nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.nav = nav
 
@@ -316,8 +319,14 @@ class MainWindow(QMainWindow):
             )
             == "true"
         )
-        for page_index, name in enumerate(["Budget", "Reports"]):
+        for page_index, (name, icon_path) in enumerate(
+            [
+                ("Budget", BUDGET_ICON_PATH),
+                ("Reports", REPORTS_ICON_PATH),
+            ]
+        ):
             item = QListWidgetItem(name)
+            item.setIcon(QIcon(str(icon_path)))
             item.setSizeHint(item.sizeHint())
             item.setData(Qt.ItemDataRole.UserRole, page_index)
             nav.addItem(item)

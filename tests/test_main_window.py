@@ -1630,6 +1630,16 @@ def test_payees_and_settings_buttons_are_pinned_below_account_list():
     assert window.settings_button.isEnabled() is True
 
 
+def test_budget_and_reports_nav_items_show_icons():
+    window = MainWindow(":memory:")
+
+    assert window.nav.iconSize() == QSize(18, 18)
+    assert window.nav.item(0).text() == "Budget"
+    assert window.nav.item(0).icon().isNull() is False
+    assert window.nav.item(1).text() == "Reports"
+    assert window.nav.item(1).icon().isNull() is False
+
+
 def test_account_navigation_only_scrolls_vertically():
     window = MainWindow(":memory:")
 
