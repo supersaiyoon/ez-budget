@@ -44,6 +44,10 @@ class BudgetAmountInput(QLineEdit):
         self.on_enter_pressed = on_enter_pressed
 
     def event(self, event):
+        if event.type() == QEvent.Type.ShortcutOverride:
+            if event.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
+                event.accept()
+                return True
         if event.type() == QEvent.Type.KeyPress:
             if event.key() == Qt.Key.Key_Tab:
                 self.on_tab_navigation(self, 1)
@@ -55,6 +59,11 @@ class BudgetAmountInput(QLineEdit):
                 self.on_enter_pressed(self)
                 return True
         return super().event(event)
+
+    def focusNextPrevChild(self, next_child):
+        # Qt routes real Tab traversal here before ordinary key handling
+        self.on_tab_navigation(self, 1 if next_child else -1)
+        return True
 
 
 class BudgetPage(QWidget):
@@ -210,10 +219,41 @@ class BudgetPage(QWidget):
         self.refresh()
 
     def focus_adjacent_budget_input(self, current_input, direction):
+        focus_target = self.adjacent_budget_focus_target(
+            current_input,
+            direction,
+        )
+        if focus_target is None:
+            return
+
+        self.commit_budget_input(current_input, focus_target)
+
+    def keep_current_budget_input_active(self, current_input):
+        focus_target = self.budget_focus_target(current_input)
+        if focus_target is None:
+            return
+
+        self.commit_budget_input(current_input, focus_target)
+
+    def budget_focus_target(self, input_field):
+        subcategory_id = input_field.property("budget_category_id")
+        month_date = input_field.property("budget_month_date")
+        if subcategory_id is None or month_date is None:
+            return {
+                "row": input_field.property("budget_row"),
+                "column": input_field.property("budget_column"),
+            }
+
+        return {
+            "budget_category_id": subcategory_id,
+            "budget_month_date": month_date,
+        }
+
+    def adjacent_budget_focus_target(self, current_input, direction):
         current_row = current_input.property("budget_row")
         current_column = current_input.property("budget_column")
         if current_row is None or current_column is None:
-            return
+            return None
 
         for row in range(
             current_row + direction,
@@ -222,31 +262,75 @@ class BudgetPage(QWidget):
         ):
             next_input = self.table.cellWidget(row, current_column)
             if isinstance(next_input, BudgetAmountInput):
-                self.pending_budget_focus = (row, current_column)
-                current_input.editingFinished.emit()
-                self.restore_pending_budget_focus()
-                return
-
-    def keep_current_budget_input_active(self, current_input):
-        current_row = current_input.property("budget_row")
-        current_column = current_input.property("budget_column")
-        if current_row is None or current_column is None:
-            return
-
-        self.pending_budget_focus = (current_row, current_column)
-        current_input.editingFinished.emit()
-        self.restore_pending_budget_focus()
+                return self.budget_focus_target(next_input)
+        return None
 
     def restore_pending_budget_focus(self):
         if self.pending_budget_focus is None:
             return
 
-        row, column = self.pending_budget_focus
-        self.pending_budget_focus = None
-        input_field = self.table.cellWidget(row, column)
+        input_field = self.pending_budget_focus_input()
         if isinstance(input_field, BudgetAmountInput):
             input_field.setFocus(Qt.FocusReason.TabFocusReason)
             input_field.selectAll()
+        self.pending_budget_focus = None
+
+    def pending_budget_focus_input(self):
+        target = self.pending_budget_focus
+        if target is None:
+            return None
+
+        if "budget_category_id" not in target:
+            return self.table.cellWidget(target["row"], target["column"])
+
+        for row in range(2, self.table.rowCount()):
+            for column in range(1, self.table.columnCount(), 3):
+                input_field = self.table.cellWidget(row, column)
+                if not isinstance(input_field, BudgetAmountInput):
+                    continue
+                if (
+                    input_field.property("budget_category_id")
+                    == target["budget_category_id"]
+                    and input_field.property("budget_month_date")
+                    == target["budget_month_date"]
+                ):
+                    return input_field
+        return None
+
+    def commit_budget_input(self, input_field, focus_target):
+        # Command commits replace the widget; suppress a second blur commit
+        will_refresh = self.budget_input_will_refresh(input_field)
+        input_field.blockSignals(True)
+        applied = self.apply_adjustment(
+            input_field.property("budget"),
+            input_field.property("category_name"),
+            input_field.property("subcategory_name"),
+            input_field,
+        )
+        if not will_refresh:
+            input_field.blockSignals(False)
+        if not applied:
+            return
+
+        self.pending_budget_focus = focus_target
+        self.restore_pending_budget_focus()
+
+    def budget_input_will_refresh(self, input_field):
+        raw_value = input_field.text().strip()
+        if not raw_value:
+            return False
+
+        try:
+            new_budgeted = parse_money(raw_value)
+        except ValueError:
+            return False
+
+        budget = input_field.property("budget")
+        subcategory = budget.get_subcategory(
+            input_field.property("category_name"),
+            input_field.property("subcategory_name"),
+        )
+        return new_budgeted != subcategory.budgeted
 
     def visible_budgets(self):
         # Active month plus neighbors, matching the comparison window width
@@ -936,6 +1020,17 @@ class BudgetPage(QWidget):
             )
             input_field.setProperty("budget_row", row)
             input_field.setProperty("budget_column", column)
+            input_field.setProperty(
+                "budget_category_id",
+                subcategory.database_id,
+            )
+            input_field.setProperty(
+                "budget_month_date",
+                budget.month_date.isoformat(),
+            )
+            input_field.setProperty("budget", budget)
+            input_field.setProperty("category_name", category_name)
+            input_field.setProperty("subcategory_name", subcategory_name)
             # Current assignment stays visible while cell remains editable
             if subcategory.budgeted != 0:
                 input_field.setText(format(subcategory.budgeted, ".2f"))
@@ -956,8 +1051,7 @@ class BudgetPage(QWidget):
     def apply_adjustment(self, budget, category_name, subcategory_name, input_field):
         raw_value = input_field.text().strip()
         if not raw_value:
-            self.restore_pending_budget_focus()
-            return
+            return True
 
         try:
             new_budgeted = parse_money(raw_value)
@@ -966,12 +1060,12 @@ class BudgetPage(QWidget):
             self.pending_budget_focus = None
             input_field.setFocus(Qt.FocusReason.OtherFocusReason)
             self.status.setText(str(exc))
-            return
+            return False
 
         subcategory = budget.get_subcategory(category_name, subcategory_name)
         if new_budgeted == subcategory.budgeted:
-            self.restore_pending_budget_focus()
-            return
+            input_field.setText(format(subcategory.budgeted, ".2f"))
+            return True
 
         # Displayed value is target total, so model receives only difference
         adjustment = new_budgeted - subcategory.budgeted
@@ -982,6 +1076,6 @@ class BudgetPage(QWidget):
         )
 
         self.refresh()
-        self.restore_pending_budget_focus()
         if self.on_allocation_changed is not None:
             self.on_allocation_changed(budget, subcategory)
+        return True

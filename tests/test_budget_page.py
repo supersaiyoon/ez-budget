@@ -540,6 +540,7 @@ def test_spending_values_display_as_negative_on_budget_page():
 
 def test_budgeted_cell_displays_current_subcategory_amount():
     budgets = create_sample_budgets()
+    budgets[0].master_categories[0].subcategories[0].database_id = 24
     page = BudgetPage(
         budgets,
         lambda: None,
@@ -554,14 +555,24 @@ def test_budgeted_cell_displays_current_subcategory_amount():
     assert isinstance(budgeted_input, BudgetAmountInput)
     assert budgeted_input.property("budget_row") == row
     assert budgeted_input.property("budget_column") == 1
+    assert budgeted_input.property("budget_category_id") == 24
+    assert budgeted_input.property("budget_month_date") == (
+        budgets[0].month_date.isoformat()
+    )
     assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
     assert budgeted_input.maximumWidth() == BUDGET_VALUE_COLUMN_WIDTH
     assert budgeted_input.font().family() == "Consolas"
 
 
 def test_tab_moves_budget_focus_to_next_budget_field(qapp):
+    budgets = create_sample_budgets()
+    for index, subcategory in enumerate(
+        budgets[0].master_categories[0].subcategories,
+        start=21,
+    ):
+        subcategory.database_id = index
     page = BudgetPage(
-        create_sample_budgets(),
+        budgets,
         lambda: None,
         lambda name: None,
         lambda master_category_id, name: None,
@@ -571,22 +582,41 @@ def test_tab_moves_budget_focus_to_next_budget_field(qapp):
     page.show()
     first_input.setFocus()
 
-    QApplication.sendEvent(
-        first_input,
-        QKeyEvent(
-            QKeyEvent.Type.KeyPress,
-            Qt.Key.Key_Tab,
-            Qt.KeyboardModifier.NoModifier,
-        )
-    )
+    first_input.focusNextPrevChild(True)
     qapp.processEvents()
 
     assert next_input.hasFocus()
 
 
-def test_shift_tab_moves_budget_focus_to_previous_budget_field(qapp):
+def test_budget_input_accepts_tab_shortcut_override():
     page = BudgetPage(
         create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    budgeted_input = page.table.cellWidget(3, 1)
+    event = QKeyEvent(
+        QKeyEvent.Type.ShortcutOverride,
+        Qt.Key.Key_Tab,
+        Qt.KeyboardModifier.NoModifier,
+    )
+
+    handled = budgeted_input.event(event)
+
+    assert handled is True
+    assert event.isAccepted()
+
+
+def test_shift_tab_moves_budget_focus_to_previous_budget_field(qapp):
+    budgets = create_sample_budgets()
+    for index, subcategory in enumerate(
+        budgets[0].master_categories[0].subcategories,
+        start=21,
+    ):
+        subcategory.database_id = index
+    page = BudgetPage(
+        budgets,
         lambda: None,
         lambda name: None,
         lambda master_category_id, name: None,
@@ -596,22 +626,19 @@ def test_shift_tab_moves_budget_focus_to_previous_budget_field(qapp):
     page.show()
     current_input.setFocus()
 
-    QApplication.sendEvent(
-        current_input,
-        QKeyEvent(
-            QKeyEvent.Type.KeyPress,
-            Qt.Key.Key_Backtab,
-            Qt.KeyboardModifier.ShiftModifier,
-        )
-    )
+    current_input.focusNextPrevChild(False)
     qapp.processEvents()
 
     assert previous_input.hasFocus()
 
 
 def test_tab_budget_navigation_skips_master_rows(qapp):
+    budgets = create_sample_budgets()
+    for index, master_category in enumerate(budgets[0].master_categories):
+        for offset, subcategory in enumerate(master_category.subcategories):
+            subcategory.database_id = (index * 10) + offset + 1
     page = BudgetPage(
-        create_sample_budgets(),
+        budgets,
         lambda: None,
         lambda name: None,
         lambda master_category_id, name: None,
@@ -621,14 +648,7 @@ def test_tab_budget_navigation_skips_master_rows(qapp):
     page.show()
     last_bill_input.setFocus()
 
-    QApplication.sendEvent(
-        last_bill_input,
-        QKeyEvent(
-            QKeyEvent.Type.KeyPress,
-            Qt.Key.Key_Tab,
-            Qt.KeyboardModifier.NoModifier,
-        )
-    )
+    last_bill_input.focusNextPrevChild(True)
     qapp.processEvents()
 
     assert first_spending_input.hasFocus()
@@ -636,6 +656,11 @@ def test_tab_budget_navigation_skips_master_rows(qapp):
 
 def test_tab_after_budget_edit_focuses_next_rebuilt_budget_field(qapp):
     budgets = create_sample_budgets()
+    for index, subcategory in enumerate(
+        budgets[0].master_categories[0].subcategories,
+        start=21,
+    ):
+        subcategory.database_id = index
     page = BudgetPage(
         budgets,
         lambda: None,
@@ -647,25 +672,23 @@ def test_tab_after_budget_edit_focuses_next_rebuilt_budget_field(qapp):
     first_input.setFocus()
     first_input.setText("2000.00")
 
-    QApplication.sendEvent(
-        first_input,
-        QKeyEvent(
-            QKeyEvent.Type.KeyPress,
-            Qt.Key.Key_Tab,
-            Qt.KeyboardModifier.NoModifier,
-        )
-    )
+    first_input.focusNextPrevChild(True)
     qapp.processEvents()
 
     rebuilt_next_input = page.table.cellWidget(4, 1)
     assert budgets[0].master_categories[0].subcategories[0].budgeted == (
         Decimal("2000.00")
     )
+    assert rebuilt_next_input.property("budget_category_id") == 22
+    assert rebuilt_next_input.property("budget_month_date") == (
+        budgets[0].month_date.isoformat()
+    )
     assert rebuilt_next_input.hasFocus()
 
 
 def test_enter_after_budget_edit_keeps_same_rebuilt_budget_field_active(qapp):
     budgets = create_sample_budgets()
+    budgets[0].master_categories[0].subcategories[0].database_id = 24
     page = BudgetPage(
         budgets,
         lambda: None,
@@ -691,6 +714,11 @@ def test_enter_after_budget_edit_keeps_same_rebuilt_budget_field_active(qapp):
     assert budgets[0].master_categories[0].subcategories[0].budgeted == (
         Decimal("2000.00")
     )
+    assert rebuilt_input.property("budget_category_id") == 24
+    assert rebuilt_input.property("budget_month_date") == (
+        budgets[0].month_date.isoformat()
+    )
+    assert rebuilt_input.text() == "2000.00"
     assert rebuilt_input.hasFocus()
 
 
