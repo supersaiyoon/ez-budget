@@ -501,6 +501,27 @@ def test_save_transaction_refreshes_income_after_insert():
     assert next_budget.monthly_income == Decimal("2000.00")
 
 
+def test_previous_month_navigation_loads_saved_income():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    previous_month = budget_model.previous_month(window.budgets[0].month_date)
+    transaction = budget_model.Transaction(
+        date=previous_month.isoformat(),
+        payee="Employer",
+        category="Income for this month",
+        notes="",
+        incoming=Decimal("2000.00"),
+        category_database_id=window.income_category_id,
+        income_month_date=previous_month.isoformat(),
+    )
+
+    window.save_transaction(window.accounts[0], transaction)
+    window.budget_page.month_scroller.previous_button.click()
+
+    assert window.budgets[0].month_date == previous_month
+    assert window.budgets[0].monthly_income == Decimal("2000.00")
+
+
 def test_save_transaction_updates_income_target_month():
     window = MainWindow(":memory:")
     window.add_account("Checking")

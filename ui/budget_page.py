@@ -16,7 +16,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from budget_model import create_next_month_budget, format_money, parse_money
+from budget_model import (
+    create_next_month_budget,
+    create_previous_month_budget,
+    format_money,
+    parse_money,
+)
 from ui.helpers import get_category, money_item, numeric_font
 from ui.widgets import MonthScroller, VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
@@ -270,13 +275,22 @@ class BudgetPage(QWidget):
         return range(start_index, start_index + VISIBLE_SCROLLER_MONTHS)
 
     def set_active_month(self, index):
-        # Clamp left edge so arrow clicks cannot ask for a negative month
-        self.active_index = max(index, 0)
-        created_future_month = self.ensure_visible_months()
+        created_month = False
+        if index < 0:
+            # Left navigation creates earlier months on demand
+            self.budgets.insert(
+                0,
+                create_previous_month_budget(self.budgets[0]),
+            )
+            self.active_index = 0
+            created_month = True
+        else:
+            self.active_index = index
+        created_month = self.ensure_visible_months() or created_month
         self.refresh()
 
         # Persist only when navigation forced new budget data into existence
-        if created_future_month:
+        if created_month:
             self.on_budget_changed()
 
     def ensure_visible_months(self):

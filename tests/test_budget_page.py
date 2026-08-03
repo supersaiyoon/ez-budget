@@ -38,6 +38,32 @@ def test_next_month_arrow_can_generate_future_months(qapp):
     assert change_count > 0
 
 
+def test_previous_month_arrow_can_generate_past_months(qapp):
+    budgets = create_sample_budgets()
+    change_count = 0
+
+    def on_budget_changed():
+        nonlocal change_count
+        change_count += 1
+
+    page = BudgetPage(
+        budgets,
+        on_budget_changed,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    for _ in range(3):
+        page.month_scroller.previous_button.click()
+        qapp.processEvents()
+
+    assert page.active_index == 0
+    assert page.month_scroller.active_index == 0
+    assert budgets[0].month_name == "December 2025"
+    assert len(budgets) >= 9
+    assert change_count == 3
+
+
 def test_master_category_name_is_sent_to_callback():
     added_names = []
     page = BudgetPage(

@@ -7,6 +7,7 @@ import budget_model
 from budget_model import (
     create_empty_budget,
     create_next_month_budget,
+    create_previous_month_budget,
     create_sample_accounts,
     create_sample_budget,
     create_sample_budgets,
@@ -247,6 +248,27 @@ def test_next_month_budget_starts_unbudgeted_and_unspent():
     assert next_budget.total_budgeted == Decimal("0.00")
     assert next_budget.total_spent == Decimal("0.00")
     assert next_budget.available_to_budget == next_budget.monthly_income
+
+
+def test_previous_month_budget_advances_backward_and_keeps_categories():
+    budgets = create_sample_budgets()
+    previous_budget = create_previous_month_budget(budgets[0])
+
+    # Generated prior month needs same budget shape for the table to keep working
+    assert previous_budget.month_name == "February 2026"
+    assert previous_budget.monthly_income == Decimal("0.00")
+    assert [category.name for category in previous_budget.master_categories] == [
+        category.name for category in budgets[0].master_categories
+    ]
+
+
+def test_previous_month_budget_starts_unbudgeted_and_unspent():
+    previous_budget = create_previous_month_budget(create_sample_budgets()[0])
+
+    # Old generated months start clean until saved data is reloaded
+    assert previous_budget.total_budgeted == Decimal("0.00")
+    assert previous_budget.total_spent == Decimal("0.00")
+    assert previous_budget.available_to_budget == previous_budget.monthly_income
 
 
 def test_sample_accounts_include_checking_and_credit_card():

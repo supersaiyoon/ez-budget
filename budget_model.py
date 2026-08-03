@@ -471,11 +471,44 @@ def create_next_month_budget(previous_budget):
     )
 
 
+def create_previous_month_budget(next_budget):
+    # Previous month inherits structure while leaving old dollars unassigned
+    month_date = previous_month(next_budget.month_date)
+    return Budget(
+        month_date=month_date,
+        month_name=format_month_name(month_date),
+        monthly_income=Decimal("0.00"),
+        master_categories=[
+            MasterCategory(
+                category.name,
+                [
+                    Subcategory(
+                        subcategory.name,
+                        Decimal("0.00"),
+                        Decimal("0.00"),
+                        database_id=subcategory.database_id,
+                    )
+                    for subcategory in category.subcategories
+                ],
+                database_id=category.database_id,
+            )
+            for category in next_budget.master_categories
+        ],
+    )
+
+
 def next_month(month_date):
     # December rollover handled directly so generated budgets stay calendar-valid
     if month_date.month == 12:
         return date(month_date.year + 1, 1, 1)
     return date(month_date.year, month_date.month + 1, 1)
+
+
+def previous_month(month_date):
+    # January rollover handled directly so generated budgets stay calendar-valid
+    if month_date.month == 1:
+        return date(month_date.year - 1, 12, 1)
+    return date(month_date.year, month_date.month - 1, 1)
 
 
 def income_target_month_dates(transaction_date):
