@@ -564,30 +564,6 @@ def test_budgeted_cell_displays_current_subcategory_amount():
     assert budgeted_input.font().family() == "Consolas"
 
 
-def test_tab_moves_budget_focus_to_next_budget_field(qapp):
-    budgets = create_sample_budgets()
-    for index, subcategory in enumerate(
-        budgets[0].master_categories[0].subcategories,
-        start=21,
-    ):
-        subcategory.database_id = index
-    page = BudgetPage(
-        budgets,
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-    first_input = page.table.cellWidget(3, 1)
-    next_input = page.table.cellWidget(4, 1)
-    page.show()
-    first_input.setFocus()
-
-    first_input.focusNextPrevChild(True)
-    qapp.processEvents()
-
-    assert next_input.hasFocus()
-
-
 def test_budget_input_accepts_tab_shortcut_override():
     page = BudgetPage(
         create_sample_budgets(),
@@ -608,31 +584,7 @@ def test_budget_input_accepts_tab_shortcut_override():
     assert event.isAccepted()
 
 
-def test_shift_tab_moves_budget_focus_to_previous_budget_field(qapp):
-    budgets = create_sample_budgets()
-    for index, subcategory in enumerate(
-        budgets[0].master_categories[0].subcategories,
-        start=21,
-    ):
-        subcategory.database_id = index
-    page = BudgetPage(
-        budgets,
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-    previous_input = page.table.cellWidget(3, 1)
-    current_input = page.table.cellWidget(4, 1)
-    page.show()
-    current_input.setFocus()
-
-    current_input.focusNextPrevChild(False)
-    qapp.processEvents()
-
-    assert previous_input.hasFocus()
-
-
-def test_tab_budget_navigation_skips_master_rows(qapp):
+def test_tab_navigation_moves_between_budget_fields(qapp):
     budgets = create_sample_budgets()
     for index, master_category in enumerate(budgets[0].master_categories):
         for offset, subcategory in enumerate(master_category.subcategories):
@@ -643,11 +595,24 @@ def test_tab_budget_navigation_skips_master_rows(qapp):
         lambda name: None,
         lambda master_category_id, name: None,
     )
+    page.show()
+
+    first_input = page.table.cellWidget(3, 1)
+    next_input = page.table.cellWidget(4, 1)
+    first_input.setFocus()
+    first_input.focusNextPrevChild(True)
+    qapp.processEvents()
+
+    assert next_input.hasFocus()
+
+    next_input.focusNextPrevChild(False)
+    qapp.processEvents()
+
+    assert first_input.hasFocus()
+
     last_bill_input = page.table.cellWidget(6, 1)
     first_spending_input = page.table.cellWidget(8, 1)
-    page.show()
     last_bill_input.setFocus()
-
     last_bill_input.focusNextPrevChild(True)
     qapp.processEvents()
 
