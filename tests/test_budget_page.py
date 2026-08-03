@@ -3,10 +3,15 @@ from decimal import Decimal
 import pytest
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtWidgets import QHeaderView, QLabel, QPushButton
+from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtWidgets import QApplication, QHeaderView, QLabel, QPushButton
 
 from budget_model import Subcategory, create_sample_budgets, format_money
-from ui.budget_page import BUDGET_VALUE_COLUMN_WIDTH, BudgetPage
+from ui.budget_page import (
+    BUDGET_VALUE_COLUMN_WIDTH,
+    BudgetAmountInput,
+    BudgetPage,
+)
 
 
 # Every test in this module creates Qt widgets and requires the shared application
@@ -546,9 +551,147 @@ def test_budgeted_cell_displays_current_subcategory_amount():
     budgeted_input = page.table.cellWidget(row, 1)
 
     assert budgeted_input.text() == format(subcategory.budgeted, ".2f")
+    assert isinstance(budgeted_input, BudgetAmountInput)
+    assert budgeted_input.property("budget_row") == row
+    assert budgeted_input.property("budget_column") == 1
     assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
     assert budgeted_input.maximumWidth() == BUDGET_VALUE_COLUMN_WIDTH
     assert budgeted_input.font().family() == "Consolas"
+
+
+def test_tab_moves_budget_focus_to_next_budget_field(qapp):
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    first_input = page.table.cellWidget(3, 1)
+    next_input = page.table.cellWidget(4, 1)
+    page.show()
+    first_input.setFocus()
+
+    QApplication.sendEvent(
+        first_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Tab,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    qapp.processEvents()
+
+    assert next_input.hasFocus()
+
+
+def test_shift_tab_moves_budget_focus_to_previous_budget_field(qapp):
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    previous_input = page.table.cellWidget(3, 1)
+    current_input = page.table.cellWidget(4, 1)
+    page.show()
+    current_input.setFocus()
+
+    QApplication.sendEvent(
+        current_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Backtab,
+            Qt.KeyboardModifier.ShiftModifier,
+        )
+    )
+    qapp.processEvents()
+
+    assert previous_input.hasFocus()
+
+
+def test_tab_budget_navigation_skips_master_rows(qapp):
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    last_bill_input = page.table.cellWidget(6, 1)
+    first_spending_input = page.table.cellWidget(8, 1)
+    page.show()
+    last_bill_input.setFocus()
+
+    QApplication.sendEvent(
+        last_bill_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Tab,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    qapp.processEvents()
+
+    assert first_spending_input.hasFocus()
+
+
+def test_tab_after_budget_edit_focuses_next_rebuilt_budget_field(qapp):
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    first_input = page.table.cellWidget(3, 1)
+    page.show()
+    first_input.setFocus()
+    first_input.setText("2000.00")
+
+    QApplication.sendEvent(
+        first_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Tab,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    qapp.processEvents()
+
+    rebuilt_next_input = page.table.cellWidget(4, 1)
+    assert budgets[0].master_categories[0].subcategories[0].budgeted == (
+        Decimal("2000.00")
+    )
+    assert rebuilt_next_input.hasFocus()
+
+
+def test_enter_after_budget_edit_keeps_same_rebuilt_budget_field_active(qapp):
+    budgets = create_sample_budgets()
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    budgeted_input = page.table.cellWidget(3, 1)
+    page.show()
+    budgeted_input.setFocus()
+    budgeted_input.setText("2000.00")
+
+    QApplication.sendEvent(
+        budgeted_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Return,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    qapp.processEvents()
+
+    rebuilt_input = page.table.cellWidget(3, 1)
+    assert budgets[0].master_categories[0].subcategories[0].budgeted == (
+        Decimal("2000.00")
+    )
+    assert rebuilt_input.hasFocus()
 
 
 def test_budget_value_columns_keep_fixed_width():

@@ -37,6 +37,26 @@ DELETE_ICON_PATH = (
 BUDGET_VALUE_COLUMN_WIDTH = 96
 
 
+class BudgetAmountInput(QLineEdit):
+    def __init__(self, on_tab_navigation, on_enter_pressed):
+        super().__init__()
+        self.on_tab_navigation = on_tab_navigation
+        self.on_enter_pressed = on_enter_pressed
+
+    def event(self, event):
+        if event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Tab:
+                self.on_tab_navigation(self, 1)
+                return True
+            if event.key() == Qt.Key.Key_Backtab:
+                self.on_tab_navigation(self, -1)
+                return True
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.on_enter_pressed(self)
+                return True
+        return super().event(event)
+
+
 class BudgetPage(QWidget):
     def __init__(
         self,
@@ -88,6 +108,7 @@ class BudgetPage(QWidget):
         self.hidden_master_category_rows = []
         self.hidden_subcategory_rows = []
         self.active_index = 0
+        self.pending_budget_focus = None
 
         # For matching visual rows back to category names
         self.rows = []
@@ -105,6 +126,7 @@ class BudgetPage(QWidget):
         self.table.horizontalHeader().setVisible(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
+        self.table.setTabKeyNavigation(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -186,6 +208,45 @@ class BudgetPage(QWidget):
         layout.addWidget(self.status)
 
         self.refresh()
+
+    def focus_adjacent_budget_input(self, current_input, direction):
+        current_row = current_input.property("budget_row")
+        current_column = current_input.property("budget_column")
+        if current_row is None or current_column is None:
+            return
+
+        for row in range(
+            current_row + direction,
+            1 if direction < 0 else self.table.rowCount(),
+            direction,
+        ):
+            next_input = self.table.cellWidget(row, current_column)
+            if isinstance(next_input, BudgetAmountInput):
+                self.pending_budget_focus = (row, current_column)
+                current_input.editingFinished.emit()
+                self.restore_pending_budget_focus()
+                return
+
+    def keep_current_budget_input_active(self, current_input):
+        current_row = current_input.property("budget_row")
+        current_column = current_input.property("budget_column")
+        if current_row is None or current_column is None:
+            return
+
+        self.pending_budget_focus = (current_row, current_column)
+        current_input.editingFinished.emit()
+        self.restore_pending_budget_focus()
+
+    def restore_pending_budget_focus(self):
+        if self.pending_budget_focus is None:
+            return
+
+        row, column = self.pending_budget_focus
+        self.pending_budget_focus = None
+        input_field = self.table.cellWidget(row, column)
+        if isinstance(input_field, BudgetAmountInput):
+            input_field.setFocus(Qt.FocusReason.TabFocusReason)
+            input_field.selectAll()
 
     def visible_budgets(self):
         # Active month plus neighbors, matching the comparison window width
@@ -869,7 +930,12 @@ class BudgetPage(QWidget):
             subcategory = budget.get_subcategory(category_name, subcategory_name)
             column = 1 + (month_index * 3)
 
-            input_field = QLineEdit()
+            input_field = BudgetAmountInput(
+                self.focus_adjacent_budget_input,
+                self.keep_current_budget_input_active,
+            )
+            input_field.setProperty("budget_row", row)
+            input_field.setProperty("budget_column", column)
             # Current assignment stays visible while cell remains editable
             if subcategory.budgeted != 0:
                 input_field.setText(format(subcategory.budgeted, ".2f"))
@@ -890,17 +956,21 @@ class BudgetPage(QWidget):
     def apply_adjustment(self, budget, category_name, subcategory_name, input_field):
         raw_value = input_field.text().strip()
         if not raw_value:
+            self.restore_pending_budget_focus()
             return
 
         try:
             new_budgeted = parse_money(raw_value)
         except ValueError as exc:
             # Keep bad input in place so user can fix it without retyping
+            self.pending_budget_focus = None
+            input_field.setFocus(Qt.FocusReason.OtherFocusReason)
             self.status.setText(str(exc))
             return
 
         subcategory = budget.get_subcategory(category_name, subcategory_name)
         if new_budgeted == subcategory.budgeted:
+            self.restore_pending_budget_focus()
             return
 
         # Displayed value is target total, so model receives only difference
@@ -912,5 +982,6 @@ class BudgetPage(QWidget):
         )
 
         self.refresh()
+        self.restore_pending_budget_focus()
         if self.on_allocation_changed is not None:
             self.on_allocation_changed(budget, subcategory)
