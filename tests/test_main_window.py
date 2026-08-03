@@ -1617,6 +1617,72 @@ def test_payees_button_opens_payees_dialog(monkeypatch):
     assert opened_dialogs == [(window.con, window), "exec"]
 
 
+def test_payees_dialog_refreshes_transaction_autocomplete(monkeypatch):
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+
+    class FakePayeesDialog:
+        def __init__(self, con, parent=None):
+            self.con = con
+
+        def exec(self):
+            payees.add_payee(self.con, "Safeway")
+
+    monkeypatch.setattr(payees_dialog, "PayeesDialog", FakePayeesDialog)
+
+    window.open_payees_dialog()
+
+    payee_input = window.transaction_pages[0].table.cellWidget(0, 1)
+    model = payee_input.completer().model()
+    assert [
+        model.index(row, 0).data()
+        for row in range(model.rowCount())
+    ] == ["Safeway"]
+
+
+def test_payees_dialog_refreshes_open_transaction_payee_names(monkeypatch):
+    window = MainWindow(":memory:")
+    master_category = categories.add_master_category(
+        window.con,
+        "Everyday Expenses",
+    )
+    category = categories.add_budget_category(
+        window.con,
+        master_category["id"],
+        "Groceries",
+    )
+    window.add_account("Checking")
+    page = window.transaction_pages[0]
+    page.create_transaction(
+        date="2026-07-21",
+        payee="food 4 less",
+        category="Groceries",
+        outgoing=Decimal("42.50"),
+        category_database_id=category["id"],
+    )
+
+    class FakePayeesDialog:
+        def __init__(self, con, parent=None):
+            self.con = con
+
+        def exec(self):
+            payee = payees.get_payee_by_name(self.con, "food 4 less")
+            payees.rename_payee(self.con, payee["id"], "Food 4 Less")
+
+    monkeypatch.setattr(payees_dialog, "PayeesDialog", FakePayeesDialog)
+
+    window.open_payees_dialog()
+
+    payee_input = page.table.cellWidget(0, 1)
+    model = payee_input.completer().model()
+    assert page.account.transactions[0].payee == "Food 4 Less"
+    assert payee_input.text() == "Food 4 Less"
+    assert [
+        model.index(row, 0).data()
+        for row in range(model.rowCount())
+    ] == ["Food 4 Less"]
+
+
 def test_navigation_ignores_rows_without_a_page():
     window = MainWindow(":memory:")
     window.stack.setCurrentIndex(1)

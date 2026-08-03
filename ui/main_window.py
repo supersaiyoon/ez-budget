@@ -497,6 +497,30 @@ class MainWindow(QMainWindow):
         for page in self.transaction_pages + self.closed_transaction_pages:
             page.set_payee_names(payee_names)
 
+    def refresh_transaction_pages(self):
+        # Payee management can change joined transaction display names
+        for account, page in zip(self.accounts, self.transaction_pages):
+            account.transactions = [
+                budget_model.transaction_from_database_row(transaction_row)
+                for transaction_row in transactions.list_transactions(
+                    self.con,
+                    account.database_id,
+                )
+            ]
+            page.refresh()
+        for account, page in zip(
+            self.closed_accounts,
+            self.closed_transaction_pages,
+        ):
+            account.transactions = [
+                budget_model.transaction_from_database_row(transaction_row)
+                for transaction_row in transactions.list_transactions(
+                    self.con,
+                    account.database_id,
+                )
+            ]
+            page.refresh()
+
     def show_closed_account(self, account):
         account_index = index_by_identity(self.closed_accounts, account)
         if account_index is None:
@@ -571,6 +595,8 @@ class MainWindow(QMainWindow):
         # Modal manager edits shared DB rows directly
         dialog = payees_dialog.PayeesDialog(self.con, self)
         dialog.exec()
+        self.refresh_transaction_pages()
+        self.refresh_transaction_payees()
 
     def submit_account_name(
         self,
