@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS payees (
 CREATE TABLE IF NOT EXISTS master_budget_categories (
     id                  INTEGER PRIMARY KEY,
     name                TEXT NOT NULL UNIQUE,
-    hidden              BOOLEAN NOT NULL DEFAULT FALSE
+    hidden              BOOLEAN NOT NULL DEFAULT FALSE,
+    display_order       INT NOT NULL DEFAULT 0
 );
 
 -- Budgets and transactions can share labels
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS budget_categories (
     master_budget_category_id   INT NOT NULL REFERENCES master_budget_categories(id),
     name                        TEXT NOT NULL,
     hidden                      BOOLEAN NOT NULL DEFAULT FALSE,
+    display_order               INT NOT NULL DEFAULT 0,
     UNIQUE (master_budget_category_id, name)
 );
 

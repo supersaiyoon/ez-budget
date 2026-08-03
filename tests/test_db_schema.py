@@ -73,6 +73,68 @@ def test_budget_allocations_require_month_and_category_relationships():
     assert foreign_keys["budget_category_id"]["to"] == "id"
 
 
+def test_category_tables_include_display_order():
+    con = database.connect(":memory:")
+    database.initialize_database(con)
+
+    master_columns = {
+        column["name"]: column
+        for column in con.execute("PRAGMA table_info(master_budget_categories)")
+    }
+    category_columns = {
+        column["name"]: column
+        for column in con.execute("PRAGMA table_info(budget_categories)")
+    }
+
+    assert master_columns["display_order"]["notnull"] == True
+    assert category_columns["display_order"]["notnull"] == True
+
+
+def test_initialize_database_migrates_category_display_order_columns():
+    con = database.connect(":memory:")
+    con.executescript(
+        """
+        CREATE TABLE master_budget_categories (
+            id                  INTEGER PRIMARY KEY,
+            name                TEXT NOT NULL UNIQUE,
+            hidden              BOOLEAN NOT NULL DEFAULT FALSE
+        );
+        CREATE TABLE budget_categories (
+            id                          INTEGER PRIMARY KEY,
+            master_budget_category_id   INT NOT NULL,
+            name                        TEXT NOT NULL,
+            hidden                      BOOLEAN NOT NULL DEFAULT FALSE,
+            UNIQUE (master_budget_category_id, name)
+        );
+        INSERT INTO master_budget_categories (name) VALUES ('Monthly Bills');
+        INSERT INTO master_budget_categories (name) VALUES ('Everyday Expenses');
+        INSERT INTO budget_categories (master_budget_category_id, name)
+        VALUES (1, 'Rent');
+        INSERT INTO budget_categories (master_budget_category_id, name)
+        VALUES (1, 'Electricity');
+        """
+    )
+
+    database.initialize_database(con)
+
+    master_rows = con.execute(
+        """
+        SELECT id, display_order
+        FROM master_budget_categories
+        ORDER BY id
+        """
+    ).fetchall()
+    category_rows = con.execute(
+        """
+        SELECT id, display_order
+        FROM budget_categories
+        ORDER BY id
+        """
+    ).fetchall()
+    assert [row["display_order"] for row in master_rows] == [1, 2]
+    assert [row["display_order"] for row in category_rows] == [1, 2]
+
+
 def test_budget_allocations_reject_duplicate_month_and_category():
     con = database.connect(":memory:")
     database.initialize_database(con)

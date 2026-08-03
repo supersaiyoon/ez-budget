@@ -26,4 +26,49 @@ def initialize_database(con):
         sql = f.read()
 
     con.executescript(sql)
+    migrate_database(con)
     con.commit()
+
+
+def migrate_database(con):
+    # Existing project databases need ordering columns without a full migration tool
+    ensure_column(
+        con,
+        "master_budget_categories",
+        "display_order",
+        "INT NOT NULL DEFAULT 0",
+    )
+    ensure_column(
+        con,
+        "budget_categories",
+        "display_order",
+        "INT NOT NULL DEFAULT 0",
+    )
+    con.execute(
+        """
+        UPDATE master_budget_categories
+        SET display_order = id
+        WHERE display_order = 0
+        """
+    )
+    con.execute(
+        """
+        UPDATE budget_categories
+        SET display_order = id
+        WHERE display_order = 0
+        """
+    )
+
+
+def ensure_column(con, table_name, column_name, column_definition):
+    # PRAGMA metadata keeps repeat initialization idempotent
+    columns = {
+        column["name"]
+        for column in con.execute(f"PRAGMA table_info({table_name})")
+    }
+    if column_name in columns:
+        return
+
+    con.execute(
+        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+    )

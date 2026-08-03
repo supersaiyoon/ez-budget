@@ -1,11 +1,12 @@
 def add_master_category(con, name, hidden=False):
+    display_order = next_display_order(con, "master_budget_categories")
     row = con.execute(
         """
-        INSERT INTO master_budget_categories (name, hidden)
-        VALUES (?, ?)
-        RETURNING id, name, hidden
+        INSERT INTO master_budget_categories (name, hidden, display_order)
+        VALUES (?, ?, ?)
+        RETURNING id, name, hidden, display_order
         """,
-        (name, hidden),
+        (name, hidden, display_order),
     ).fetchone()
     con.commit()
     return row
@@ -14,10 +15,10 @@ def add_master_category(con, name, hidden=False):
 def list_master_categories(con):
     return con.execute(
         """
-        SELECT id, name, hidden
+        SELECT id, name, hidden, display_order
         FROM master_budget_categories
         WHERE hidden = FALSE
-        ORDER BY id
+        ORDER BY display_order, id
         """
     ).fetchall()
 
@@ -26,11 +27,11 @@ def list_hidden_master_categories(con):
     # Reserved system group never appears in user-facing Hidden section
     return con.execute(
         """
-        SELECT id, name, hidden
+        SELECT id, name, hidden, display_order
         FROM master_budget_categories
         WHERE hidden = TRUE
           AND name != '__System__'
-        ORDER BY id
+        ORDER BY display_order, id
         """
     ).fetchall()
 
@@ -38,10 +39,10 @@ def list_hidden_master_categories(con):
 def get_master_category_by_name(con, name):
     return con.execute(
         """
-        SELECT id, name, hidden
+        SELECT id, name, hidden, display_order
         FROM master_budget_categories
         WHERE LOWER(name) = LOWER(?)
-        ORDER BY id
+        ORDER BY display_order, id
         LIMIT 1
         """,
         (name,),
@@ -61,7 +62,7 @@ def rename_master_category(con, master_category_id, name):
               WHERE LOWER(existing_category.name) = LOWER(?)
                 AND existing_category.id != master_budget_categories.id
           )
-        RETURNING id, name, hidden
+        RETURNING id, name, hidden, display_order
         """,
         (name, master_category_id, name),
     ).fetchone()
@@ -107,7 +108,7 @@ def delete_master_category(con, master_category_id):
         """
         DELETE FROM master_budget_categories
         WHERE id = ?
-        RETURNING id, name, hidden
+        RETURNING id, name, hidden, display_order
         """,
         (master_category_id,),
     ).fetchone()
@@ -122,7 +123,7 @@ def set_master_category_hidden(con, master_category_id, hidden):
         UPDATE master_budget_categories
         SET hidden = ?
         WHERE id = ?
-        RETURNING id, name, hidden
+        RETURNING id, name, hidden, display_order
         """,
         (hidden, master_category_id),
     ).fetchone()
@@ -131,13 +132,19 @@ def set_master_category_hidden(con, master_category_id, hidden):
 
 
 def add_budget_category(con, master_category_id, name, hidden=False):
+    display_order = next_budget_category_order(con, master_category_id)
     row = con.execute(
         """
-        INSERT INTO budget_categories (master_budget_category_id, name, hidden)
-        VALUES (?, ?, ?)
-        RETURNING id, master_budget_category_id, name, hidden
+        INSERT INTO budget_categories (
+            master_budget_category_id,
+            name,
+            hidden,
+            display_order
+        )
+        VALUES (?, ?, ?, ?)
+        RETURNING id, master_budget_category_id, name, hidden, display_order
         """,
-        (master_category_id, name, hidden),
+        (master_category_id, name, hidden, display_order),
     ).fetchone()
     con.commit()
     return row
@@ -146,11 +153,11 @@ def add_budget_category(con, master_category_id, name, hidden=False):
 def list_budget_categories(con, master_category_id):
     return con.execute(
         """
-        SELECT id, master_budget_category_id, name, hidden
+        SELECT id, master_budget_category_id, name, hidden, display_order
         FROM budget_categories
         WHERE master_budget_category_id = ?
           AND hidden = FALSE
-        ORDER BY id
+        ORDER BY display_order, id
         """,
         (master_category_id,),
     ).fetchall()
@@ -165,6 +172,7 @@ def list_hidden_budget_categories(con):
             budget_categories.master_budget_category_id,
             budget_categories.name,
             budget_categories.hidden,
+            budget_categories.display_order,
             master_budget_categories.name AS master_category_name
         FROM budget_categories
         JOIN master_budget_categories
@@ -172,7 +180,11 @@ def list_hidden_budget_categories(con):
              = budget_categories.master_budget_category_id
         WHERE budget_categories.hidden = TRUE
           AND master_budget_categories.hidden = FALSE
-        ORDER BY master_budget_categories.id, budget_categories.id
+        ORDER BY
+            master_budget_categories.display_order,
+            master_budget_categories.id,
+            budget_categories.display_order,
+            budget_categories.id
         """
     ).fetchall()
 
@@ -190,7 +202,11 @@ def list_transaction_categories(con):
             ON master_budget_categories.id = budget_categories.master_budget_category_id
         WHERE budget_categories.hidden = FALSE
           AND master_budget_categories.hidden = FALSE
-        ORDER BY master_budget_categories.id, budget_categories.id
+        ORDER BY
+            master_budget_categories.display_order,
+            master_budget_categories.id,
+            budget_categories.display_order,
+            budget_categories.id
         """
     ).fetchall()
 
@@ -198,11 +214,11 @@ def list_transaction_categories(con):
 def get_budget_category_by_name(con, master_category_id, name):
     return con.execute(
         """
-        SELECT id, master_budget_category_id, name, hidden
+        SELECT id, master_budget_category_id, name, hidden, display_order
         FROM budget_categories
         WHERE master_budget_category_id = ?
           AND LOWER(name) = LOWER(?)
-        ORDER BY id
+        ORDER BY display_order, id
         LIMIT 1
         """,
         (master_category_id, name),
@@ -224,7 +240,7 @@ def rename_budget_category(con, budget_category_id, name):
                 AND LOWER(existing_category.name) = LOWER(?)
                 AND existing_category.id != budget_categories.id
           )
-        RETURNING id, master_budget_category_id, name, hidden
+        RETURNING id, master_budget_category_id, name, hidden, display_order
         """,
         (name, budget_category_id, name),
     ).fetchone()
@@ -257,7 +273,7 @@ def delete_budget_category(con, budget_category_id):
         """
         DELETE FROM budget_categories
         WHERE id = ?
-        RETURNING id, master_budget_category_id, name, hidden
+        RETURNING id, master_budget_category_id, name, hidden, display_order
         """,
         (budget_category_id,),
     ).fetchone()
@@ -272,7 +288,7 @@ def set_budget_category_hidden(con, budget_category_id, hidden):
         UPDATE budget_categories
         SET hidden = ?
         WHERE id = ?
-        RETURNING id, master_budget_category_id, name, hidden
+        RETURNING id, master_budget_category_id, name, hidden, display_order
         """,
         (hidden, budget_category_id),
     ).fetchone()
@@ -300,3 +316,59 @@ def get_or_create_income_category(con):
         "Income",
         hidden=True,
     )
+
+
+def next_display_order(con, table_name):
+    # New rows appear after existing rows in the same visible sequence
+    row = con.execute(
+        f"SELECT COALESCE(MAX(display_order), 0) + 1 FROM {table_name}"
+    ).fetchone()
+    return row[0]
+
+
+def next_budget_category_order(con, master_category_id):
+    # Subcategory ordering is scoped to one master category
+    row = con.execute(
+        """
+        SELECT COALESCE(MAX(display_order), 0) + 1
+        FROM budget_categories
+        WHERE master_budget_category_id = ?
+        """,
+        (master_category_id,),
+    ).fetchone()
+    return row[0]
+
+
+def reorder_master_categories(con, ordered_master_category_ids):
+    # Drag UI supplies the full desired visible master-category sequence
+    for display_order, master_category_id in enumerate(
+        ordered_master_category_ids,
+        start=1,
+    ):
+        con.execute(
+            """
+            UPDATE master_budget_categories
+            SET display_order = ?
+            WHERE id = ?
+            """,
+            (display_order, master_category_id),
+        )
+    con.commit()
+
+
+def reorder_budget_categories(con, master_category_id, ordered_budget_category_ids):
+    # Subcategory drag is constrained to siblings under one master category
+    for display_order, budget_category_id in enumerate(
+        ordered_budget_category_ids,
+        start=1,
+    ):
+        con.execute(
+            """
+            UPDATE budget_categories
+            SET display_order = ?
+            WHERE id = ?
+              AND master_budget_category_id = ?
+            """,
+            (display_order, budget_category_id, master_category_id),
+        )
+    con.commit()

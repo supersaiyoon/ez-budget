@@ -23,6 +23,25 @@ def test_list_master_categories_returns_visible_categories_in_id_order(con):
     ]
 
 
+def test_reorder_master_categories_changes_visible_order(con):
+    monthly_bills = categories.add_master_category(con, "Monthly Bills")
+    everyday_expenses = categories.add_master_category(con, "Everyday Expenses")
+    savings = categories.add_master_category(con, "Savings")
+
+    categories.reorder_master_categories(
+        con,
+        [savings["id"], monthly_bills["id"], everyday_expenses["id"]],
+    )
+
+    category_rows = categories.list_master_categories(con)
+
+    assert [category["name"] for category in category_rows] == [
+        "Savings",
+        "Monthly Bills",
+        "Everyday Expenses",
+    ]
+
+
 def test_list_hidden_master_categories_excludes_system_group(con):
     categories.get_or_create_income_category(con)
     hidden_user_category = categories.add_master_category(
@@ -230,6 +249,61 @@ def test_list_budget_categories_returns_visible_categories_for_master_in_id_orde
     category_rows = categories.list_budget_categories(con, expenses["id"])
 
     assert [category["name"] for category in category_rows] == ["Groceries", "Gas"]
+
+
+def test_reorder_budget_categories_changes_sibling_order(con):
+    master_category = categories.add_master_category(con, "Everyday Expenses")
+    groceries = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Groceries",
+    )
+    gas = categories.add_budget_category(con, master_category["id"], "Gas")
+    dining = categories.add_budget_category(
+        con,
+        master_category["id"],
+        "Dining Out",
+    )
+
+    categories.reorder_budget_categories(
+        con,
+        master_category["id"],
+        [dining["id"], groceries["id"], gas["id"]],
+    )
+
+    category_rows = categories.list_budget_categories(
+        con,
+        master_category["id"],
+    )
+
+    assert [category["name"] for category in category_rows] == [
+        "Dining Out",
+        "Groceries",
+        "Gas",
+    ]
+
+
+def test_reorder_budget_categories_does_not_move_other_master_children(con):
+    expenses = categories.add_master_category(con, "Everyday Expenses")
+    savings = categories.add_master_category(con, "Savings")
+    groceries = categories.add_budget_category(con, expenses["id"], "Groceries")
+    gas = categories.add_budget_category(con, expenses["id"], "Gas")
+    vacation = categories.add_budget_category(con, savings["id"], "Vacation")
+
+    categories.reorder_budget_categories(
+        con,
+        expenses["id"],
+        [vacation["id"], gas["id"], groceries["id"]],
+    )
+
+    expense_rows = categories.list_budget_categories(con, expenses["id"])
+    savings_rows = categories.list_budget_categories(con, savings["id"])
+
+    assert [category["name"] for category in expense_rows] == [
+        "Gas",
+        "Groceries",
+    ]
+    assert [category["name"] for category in savings_rows] == ["Vacation"]
 
 
 def test_list_hidden_budget_categories_excludes_hidden_master_groups(con):
