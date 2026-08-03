@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import QHeaderView, QMessageBox, QPushButton
 
 from budget_model import Account, Transaction
 from ui.transactions_page import (
+    TRANSACTION_CATEGORY_COLUMN_WIDTH,
+    TRANSACTION_CLEARED_COLUMN_WIDTH,
     TRANSACTION_DATE_COLUMN_WIDTH,
     TRANSACTION_DELETE_COLUMN_WIDTH,
     TRANSACTION_MONEY_COLUMN_WIDTH,
@@ -225,6 +227,44 @@ def test_numeric_transaction_columns_use_fixed_widths():
         == QHeaderView.ResizeMode.Fixed
     )
     assert page.table.columnWidth(7) == TRANSACTION_DELETE_COLUMN_WIDTH
+
+
+def test_empty_and_populated_transaction_pages_use_same_column_widths():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        outgoing=Decimal("42.50"),
+    )
+    empty_page = TransactionsPage(Account("Checking"), category_rows=[])
+    populated_page = TransactionsPage(
+        Account("Checking", transactions=[transaction]),
+        category_rows=[],
+    )
+
+    assert [
+        empty_page.table.columnWidth(column)
+        for column in range(empty_page.table.columnCount())
+    ] == [
+        populated_page.table.columnWidth(column)
+        for column in range(populated_page.table.columnCount())
+    ]
+
+
+def test_category_and_cleared_columns_use_fixed_widths():
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+
+    assert (
+        page.table.horizontalHeader().sectionResizeMode(2)
+        == QHeaderView.ResizeMode.Fixed
+    )
+    assert page.table.columnWidth(2) == TRANSACTION_CATEGORY_COLUMN_WIDTH
+    assert (
+        page.table.horizontalHeader().sectionResizeMode(6)
+        == QHeaderView.ResizeMode.Fixed
+    )
+    assert page.table.columnWidth(6) == TRANSACTION_CLEARED_COLUMN_WIDTH
 
 
 def test_delete_transaction_column_header_is_blank():

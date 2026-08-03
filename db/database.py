@@ -1,7 +1,15 @@
 import sqlite3
+import sys
+from pathlib import Path
 
 
-SCHEMA_PATH = "db/schema.sql"
+def resource_path(*parts):
+    # PyInstaller extracts bundled files under sys._MEIPASS at runtime
+    base_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    return base_path.joinpath(*parts)
+
+
+SCHEMA_PATH = resource_path("db", "schema.sql")
 
 
 def connect(db_path):
@@ -14,7 +22,7 @@ def connect(db_path):
 
 
 def initialize_database(con):
-    with open(SCHEMA_PATH) as f:
+    with open(SCHEMA_PATH, encoding="utf-8") as f:
         sql = f.read()
 
     con.executescript(sql)
