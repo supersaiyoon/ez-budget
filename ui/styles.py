@@ -4,6 +4,10 @@ QMainWindow {
     background: #f5f7f9;
 }
 /* Dark rail gives page navigation clear separation from work area. */
+#navigationSidebar,
+#navigationActions {
+    background: #26323f;
+}
 #navList {
     background: #26323f;
     color: #f7fafc;
@@ -84,5 +88,13 @@ QPushButton {
 }
 QPushButton:hover {
     background: #255d78;
+}
+#payeesButton,
+#settingsButton {
+    padding: 0;
+}
+#settingsButton:disabled {
+    background: #4d5b6a;
+    color: #c8d1dc;
 }
 """

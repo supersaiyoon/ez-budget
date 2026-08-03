@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QIcon, QPixmap
@@ -18,6 +19,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QStackedWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -36,6 +38,10 @@ from ui import budget_page, payees_dialog, reports_page, styles, transactions_pa
 
 CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
 ACCOUNT_NAV_INDENT_WIDTH = 12
+NAV_WIDTH = 170
+NAV_BUTTON_WIDTH = NAV_WIDTH - 24
+PAYEES_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "payees.svg"
+SETTINGS_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "settings.svg"
 
 
 def index_by_identity(items, selected_item):
@@ -122,8 +128,8 @@ class MainWindow(QMainWindow):
         shell_layout.setContentsMargins(0, 0, 0, 0)
         shell_layout.setSpacing(0)
 
-        self.nav = self.create_navigation_list()
-        shell_layout.addWidget(self.nav)
+        self.navigation_sidebar = self.create_navigation_sidebar()
+        shell_layout.addWidget(self.navigation_sidebar)
 
         # Stack lets navigation swap full workflows without rebuilding windows
         self.stack = QStackedWidget()
@@ -254,11 +260,52 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(page)
         return pages
 
+    def create_navigation_sidebar(self):
+        # Account list scrolls independently from pinned bottom actions
+        sidebar = QWidget()
+        sidebar.setObjectName("navigationSidebar")
+        sidebar.setFixedWidth(NAV_WIDTH)
+        layout = QVBoxLayout(sidebar)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.nav = self.create_navigation_list()
+        layout.addWidget(self.nav, 1)
+
+        actions = QWidget()
+        actions.setObjectName("navigationActions")
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(8, 8, 8, 10)
+        actions_layout.setSpacing(8)
+
+        self.payees_button = QPushButton()
+        self.payees_button.setObjectName("payeesButton")
+        self.payees_button.setToolTip("Payees")
+        self.payees_button.setIcon(QIcon(str(PAYEES_ICON_PATH)))
+        self.payees_button.setIconSize(QSize(18, 18))
+        self.payees_button.setFixedSize(44, 44)
+        self.payees_button.clicked.connect(self.open_payees_dialog)
+        actions_layout.addWidget(self.payees_button)
+
+        self.settings_button = QPushButton()
+        self.settings_button.setObjectName("settingsButton")
+        self.settings_button.setToolTip("Settings coming later")
+        self.settings_button.setIcon(QIcon(str(SETTINGS_ICON_PATH)))
+        self.settings_button.setIconSize(QSize(18, 18))
+        self.settings_button.setFixedSize(44, 44)
+        self.settings_button.setEnabled(False)
+        actions_layout.addWidget(self.settings_button)
+        actions_layout.addStretch()
+
+        layout.addWidget(actions)
+        return sidebar
+
     def create_navigation_list(self):
         # Left rail kept fixed so page switching stays predictable
         nav = QListWidget()
         nav.setObjectName("navList")
-        nav.setFixedWidth(170)
+        nav.setFixedWidth(NAV_WIDTH)
+        nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.nav = nav
 
         # Missing first-run preference keeps Closed section discoverable
@@ -318,7 +365,7 @@ class MainWindow(QMainWindow):
         header_font.setPixelSize(pixel_size)
         header_font.setBold(True)
         item.setFont(header_font)
-        item.setSizeHint(QSize(self.nav.width(), 36))
+        item.setSizeHint(QSize(NAV_WIDTH, 36))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         self.nav.addItem(item)
         return item
@@ -332,7 +379,7 @@ class MainWindow(QMainWindow):
         item_font = item.font()
         item_font.setPixelSize(11)
         item.setFont(item_font)
-        item.setSizeHint(QSize(self.nav.width(), 32))
+        item.setSizeHint(QSize(NAV_WIDTH, 32))
         item.setData(Qt.ItemDataRole.UserRole, page_index)
         self.nav.addItem(item)
         return item
@@ -378,6 +425,8 @@ class MainWindow(QMainWindow):
         closed_header_font.setBold(True)
         self.closed_accounts_button.setFont(closed_header_font)
         self.closed_accounts_button.setStyleSheet("text-align: left;")
+        self.closed_accounts_button.setFixedWidth(NAV_BUTTON_WIDTH)
+        self.closed_accounts_button.setFixedHeight(36)
         self.closed_accounts_button.clicked.connect(
             self.toggle_closed_accounts
         )
@@ -387,8 +436,8 @@ class MainWindow(QMainWindow):
         # Full nav padding prevents embedded button from collapsing into a bar
         self.closed_accounts_header_item.setSizeHint(
             QSize(
-                self.nav.width(),
-                56,
+                NAV_WIDTH,
+                42,
             )
         )
 
@@ -415,14 +464,9 @@ class MainWindow(QMainWindow):
         # Add action stays below every account group
         self.add_account_button = QPushButton("+ Add Account")
         self.add_account_button.setObjectName("addAccountButton")
+        self.add_account_button.setFixedHeight(36)
         self.add_account_button.clicked.connect(self.prompt_for_account)
         self._add_navigation_button(self.add_account_button)
-
-        # Lower action area reserved for non-page management dialogs
-        self.payees_button = QPushButton("Payees")
-        self.payees_button.setObjectName("payeesButton")
-        self.payees_button.clicked.connect(self.open_payees_dialog)
-        self._add_navigation_button(self.payees_button)
 
         # Selection restoration avoids unexpected page jumps after rebuild
         if selected_page_index is not None:
@@ -438,13 +482,8 @@ class MainWindow(QMainWindow):
     def _add_navigation_button(self, button):
         item = QListWidgetItem()
 
-        # Extra height offsets nav item padding around embedded button
-        item.setSizeHint(
-            QSize(
-                self.nav.width(),
-                button.sizeHint().height() + 28,
-            )
-        )
+        button.setFixedWidth(NAV_BUTTON_WIDTH)
+        item.setSizeHint(QSize(NAV_WIDTH, button.height() + 12))
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         self.nav.addItem(item)
         self.nav.setItemWidget(item, button)

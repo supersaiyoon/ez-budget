@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QInputDialog,
@@ -1083,7 +1083,7 @@ def test_empty_account_database_shows_account_header():
     assert window.closed_accounts_button.text() == "▼ Closed"
     assert window.closed_accounts_button.font().pixelSize() == 11
     assert window.closed_accounts_button.font().bold() is True
-    assert window.closed_accounts_header_item.sizeHint().height() == 56
+    assert window.closed_accounts_header_item.sizeHint().height() == 42
     assert not window.on_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert not window.off_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
@@ -1602,22 +1602,42 @@ def test_add_account_button_follows_account_entries(qapp):
     assert button_item is not None
     assert window.nav.itemWidget(button_item) is window.add_account_button
     assert window.add_account_button.text() == "+ Add Account"
-    assert window.add_account_button.height() > 0
+    assert window.add_account_button.height() == 36
+    assert window.add_account_button.width() <= window.nav.width()
     assert not button_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
 
-def test_payees_button_follows_add_account_button():
+def test_payees_and_settings_buttons_are_pinned_below_account_list():
     window = MainWindow(":memory:")
 
-    nav_widgets = [
-        window.nav.itemWidget(window.nav.item(row))
-        for row in range(window.nav.count())
-    ]
+    action_panel = window.navigation_sidebar.layout().itemAt(1).widget()
+    action_layout = action_panel.layout()
 
-    assert nav_widgets.index(window.payees_button) == (
-        nav_widgets.index(window.add_account_button) + 1
+    assert window.navigation_sidebar.layout().itemAt(0).widget() is window.nav
+    assert action_panel.objectName() == "navigationActions"
+    assert action_layout.itemAt(0).widget() is window.payees_button
+    assert action_layout.itemAt(1).widget() is window.settings_button
+    assert window.payees_button.text() == ""
+    assert window.payees_button.toolTip() == "Payees"
+    assert window.payees_button.size() == QSize(44, 44)
+    assert window.payees_button.icon().isNull() is False
+    assert window.payees_button.iconSize() == QSize(18, 18)
+    assert window.settings_button.text() == ""
+    assert window.settings_button.toolTip() == "Settings coming later"
+    assert window.settings_button.size() == QSize(44, 44)
+    assert window.settings_button.icon().isNull() is False
+    assert window.settings_button.iconSize() == QSize(18, 18)
+    assert window.settings_button.isEnabled() is False
+
+
+def test_account_navigation_only_scrolls_vertically():
+    window = MainWindow(":memory:")
+
+    assert (
+        window.nav.horizontalScrollBarPolicy()
+        == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
     )
-    assert window.payees_button.text() == "Payees"
+    assert window.closed_accounts_button.height() == 36
 
 
 def test_payees_button_opens_payees_dialog(monkeypatch):
