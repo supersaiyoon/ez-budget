@@ -51,6 +51,8 @@ class BudgetPage(QWidget):
         hidden_subcategory_rows=None,
         on_master_category_restore_requested=None,
         on_subcategory_restore_requested=None,
+        on_master_categories_reordered=None,
+        on_subcategories_reordered=None,
     ):
         super().__init__()
         # Shared list so generated months and edits stay visible to other pages
@@ -79,6 +81,8 @@ class BudgetPage(QWidget):
         self.on_subcategory_restore_requested = (
             on_subcategory_restore_requested
         )
+        self.on_master_categories_reordered = on_master_categories_reordered
+        self.on_subcategories_reordered = on_subcategories_reordered
         self.hidden_master_category_rows = []
         self.hidden_subcategory_rows = []
         self.active_index = 0
@@ -454,10 +458,32 @@ class BudgetPage(QWidget):
                 subcategory,
             )
 
+    def request_master_category_reorder(self, ordered_master_category_ids):
+        # Page supplies model IDs while controller owns persistence
+        if self.on_master_categories_reordered is not None:
+            self.on_master_categories_reordered(ordered_master_category_ids)
+
+    def request_subcategory_reorder(
+        self,
+        master_category_id,
+        ordered_budget_category_ids,
+    ):
+        # Subcategory moves stay scoped to their parent master category
+        if self.on_subcategories_reordered is not None:
+            self.on_subcategories_reordered(
+                master_category_id,
+                ordered_budget_category_ids,
+            )
+
     def _set_master_row(self, row, category_name, budgets):
         master_category = get_category(budgets[0], category_name)
         category_cell = QWidget()
         category_cell.setObjectName("masterCategoryCell")
+        category_cell.setProperty("category_row_kind", "master")
+        category_cell.setProperty(
+            "master_category_id",
+            master_category.database_id,
+        )
         category_cell.setStyleSheet("#masterCategoryCell { background: lightgray; }")
         category_layout = QHBoxLayout(category_cell)
         category_layout.setContentsMargins(8, 0, 4, 0)
@@ -538,6 +564,15 @@ class BudgetPage(QWidget):
         )
         category_cell = QWidget()
         category_cell.setObjectName("subcategoryCell")
+        category_cell.setProperty("category_row_kind", "subcategory")
+        category_cell.setProperty(
+            "master_category_id",
+            master_category.database_id,
+        )
+        category_cell.setProperty(
+            "budget_category_id",
+            subcategory.database_id,
+        )
         category_layout = QHBoxLayout(category_cell)
         category_layout.setContentsMargins(20, 0, 4, 0)
         category_label = QLabel(subcategory_name)

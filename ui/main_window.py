@@ -229,6 +229,8 @@ class MainWindow(QMainWindow):
                 self.restore_master_category
             ),
             on_subcategory_restore_requested=self.restore_subcategory,
+            on_master_categories_reordered=self.reorder_master_categories,
+            on_subcategories_reordered=self.reorder_subcategories,
         )
 
     def create_transaction_pages(self, account_list):

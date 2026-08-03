@@ -81,6 +81,61 @@ def test_master_category_name_is_sent_to_callback():
     assert added_names == ["Savings"]
 
 
+def test_budget_category_title_cells_keep_reorder_metadata():
+    budgets = create_sample_budgets()
+    budgets[0].master_categories[0].database_id = 12
+    budgets[0].master_categories[0].subcategories[0].database_id = 24
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    master_cell = page.table.cellWidget(2, 0)
+    subcategory_cell = page.table.cellWidget(3, 0)
+
+    assert master_cell.property("category_row_kind") == "master"
+    assert master_cell.property("master_category_id") == 12
+    assert subcategory_cell.property("category_row_kind") == "subcategory"
+    assert subcategory_cell.property("master_category_id") == 12
+    assert subcategory_cell.property("budget_category_id") == 24
+
+
+def test_budget_page_reports_master_category_reorder():
+    reordered_ids = []
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_master_categories_reordered=reordered_ids.append,
+    )
+
+    page.request_master_category_reorder([3, 1, 2])
+
+    assert reordered_ids == [[3, 1, 2]]
+
+
+def test_budget_page_reports_subcategory_reorder():
+    reordered = []
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        on_subcategories_reordered=(
+            lambda master_category_id, category_ids: reordered.append(
+                (master_category_id, category_ids)
+            )
+        ),
+    )
+
+    page.request_subcategory_reorder(12, [24, 22, 23])
+
+    assert reordered == [(12, [24, 22, 23])]
+
+
 def test_master_category_error_is_shown_in_status():
     def reject_duplicate(name):
         raise ValueError("Master category already exists.")

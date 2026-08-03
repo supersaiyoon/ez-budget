@@ -2054,6 +2054,19 @@ def test_reorder_master_categories_updates_loaded_budgets_and_account_pages():
     ]
 
 
+def test_budget_page_reorder_callbacks_are_wired_to_main_window():
+    window = MainWindow(":memory:")
+
+    assert (
+        window.budget_page.on_master_categories_reordered
+        == window.reorder_master_categories
+    )
+    assert (
+        window.budget_page.on_subcategories_reordered
+        == window.reorder_subcategories
+    )
+
+
 def test_rename_master_category_rejects_duplicate_name():
     window = MainWindow(":memory:")
     window.add_master_category("Monthly Bills")
