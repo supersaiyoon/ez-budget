@@ -3,7 +3,7 @@ import pytest
 from datetime import date
 from decimal import Decimal
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QDate, QSize, Qt
 from PyQt6.QtWidgets import QHeaderView, QMessageBox, QPushButton
 
 from budget_model import Account, Transaction
@@ -13,6 +13,7 @@ from ui.transactions_page import (
     TRANSACTION_DATE_COLUMN_WIDTH,
     TRANSACTION_DELETE_COLUMN_WIDTH,
     TRANSACTION_MONEY_COLUMN_WIDTH,
+    DateInput,
     TransactionsPage,
 )
 
@@ -158,6 +159,26 @@ def test_short_date_input_stores_iso_and_displays_full_year():
     )
 
 
+def test_blank_date_input_has_calendar_popup():
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+    date_input = page.table.cellWidget(0, 0)
+
+    assert isinstance(date_input, DateInput)
+    assert date_input.calendar_popup.minimumDate() == QDate(1, 1, 1)
+    assert date_input.calendar_popup.maximumDate() == QDate(9999, 12, 31)
+
+
+def test_calendar_selection_creates_transaction_date():
+    account = Account("Checking")
+    page = TransactionsPage(account, category_rows=[])
+    date_input = page.table.cellWidget(0, 0)
+
+    date_input.apply_calendar_date(QDate(2026, 7, 21))
+
+    assert account.transactions[0].date == "2026-07-21"
+    assert page.table.cellWidget(0, 0).text() == "07/21/2026"
+
+
 def test_existing_transaction_date_edit_normalizes_storage_and_display():
     transaction = Transaction(
         date="2026-07-21",
@@ -173,6 +194,23 @@ def test_existing_transaction_date_edit_normalizes_storage_and_display():
 
     date_input.setText("8/5/2027")
     date_input.editingFinished.emit()
+
+    assert transaction.date == "2027-08-05"
+    assert page.table.cellWidget(0, 0).text() == "08/05/2027"
+
+
+def test_calendar_selection_updates_existing_transaction_date():
+    transaction = Transaction(
+        date="2026-07-21",
+        payee="Grocery Store",
+        category="",
+        notes="",
+    )
+    account = Account("Checking", transactions=[transaction])
+    page = TransactionsPage(account, category_rows=[])
+    date_input = page.table.cellWidget(0, 0)
+
+    date_input.apply_calendar_date(QDate(2027, 8, 5))
 
     assert transaction.date == "2027-08-05"
     assert page.table.cellWidget(0, 0).text() == "08/05/2027"

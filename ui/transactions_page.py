@@ -2,9 +2,10 @@ from datetime import date
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QDate, QSize, Qt
 from PyQt6.QtGui import QColor, QIcon, QPalette
 from PyQt6.QtWidgets import (
+    QCalendarWidget,
     QCheckBox,
     QComboBox,
     QCompleter,
@@ -49,6 +50,48 @@ TRANSACTION_CATEGORY_COLUMN_WIDTH = 148
 TRANSACTION_MONEY_COLUMN_WIDTH = 88
 TRANSACTION_CLEARED_COLUMN_WIDTH = 68
 TRANSACTION_DELETE_COLUMN_WIDTH = 40
+
+
+class DateInput(QLineEdit):
+    def __init__(self, text="", on_calendar_date_selected=None):
+        super().__init__(text)
+        self.on_calendar_date_selected = on_calendar_date_selected
+        self.calendar_popup = QCalendarWidget(self)
+        self.calendar_popup.setWindowFlags(Qt.WindowType.Popup)
+        self.calendar_popup.setMinimumDate(QDate(1, 1, 1))
+        self.calendar_popup.setMaximumDate(QDate(9999, 12, 31))
+        self.calendar_popup.clicked.connect(self.apply_calendar_date)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.show_calendar()
+
+    def show_calendar(self):
+        # Current text seeds the popup while invalid/blank values fall back to today
+        selected_date = QDate.currentDate()
+        try:
+            parsed_date = date.fromisoformat(parse_transaction_date(self.text()))
+            selected_date = QDate(
+                parsed_date.year,
+                parsed_date.month,
+                parsed_date.day,
+            )
+        except ValueError:
+            pass
+
+        self.calendar_popup.setSelectedDate(selected_date)
+        self.calendar_popup.move(self.mapToGlobal(self.rect().bottomLeft()))
+        self.calendar_popup.show()
+
+    def apply_calendar_date(self, selected_date):
+        self.setText(
+            f"{selected_date.month():02}/{selected_date.day():02}/"
+            f"{selected_date.year():04}"
+        )
+        self.calendar_popup.hide()
+        if self.on_calendar_date_selected is not None:
+            self.on_calendar_date_selected()
 
 
 class TransactionsPage(QWidget):
@@ -297,7 +340,17 @@ class TransactionsPage(QWidget):
         self.table.setRowHeight(row, 30)
 
     def _set_new_transaction_input(self, row, column, money_column=None):
-        input_field = QLineEdit()
+        input_field = (
+            DateInput(
+                on_calendar_date_selected=lambda: self.create_transaction_from_input(
+                    column,
+                    input_field,
+                    money_column,
+                )
+            )
+            if column == 0
+            else QLineEdit()
+        )
         if column == 1:
             self._add_payee_completer(input_field)
         if column == 0:
@@ -405,7 +458,12 @@ class TransactionsPage(QWidget):
             # Legacy non-ISO values remain editable instead of blocking page load
             display_date = transaction.date
 
-        input_field = QLineEdit(display_date)
+        input_field = DateInput(
+            display_date,
+            on_calendar_date_selected=(
+                lambda: self.apply_transaction_date(input_field, transaction)
+            ),
+        )
         input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
         input_field.setFont(numeric_font())
         input_field.editingFinished.connect(
