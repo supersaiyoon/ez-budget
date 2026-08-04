@@ -162,7 +162,7 @@ def test_hidden_master_restore_button_restores_group(tmp_path):
     assert window.transaction_pages[0].category_rows[0][
         "category_name"
     ] == "Old Goal"
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Restored master category "Archived Goals".'
     )
 
@@ -206,7 +206,7 @@ def test_hidden_subcategory_restore_button_restores_category(tmp_path):
     assert window.transaction_pages[0].category_rows[0][
         "category_name"
     ] == "Groceries"
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Restored subcategory "Groceries".'
     )
 
@@ -2144,7 +2144,7 @@ def test_master_category_rename_button_opens_prefilled_dialog(monkeypatch):
         )["id"]
         == master_category.database_id
     )
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Renamed master category to "Weekly Spending".'
     )
 
@@ -2321,7 +2321,7 @@ def test_subcategory_rename_button_opens_prefilled_dialog(monkeypatch):
         )["id"]
         == subcategory.database_id
     )
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Renamed subcategory to "Food".'
     )
 
@@ -2361,7 +2361,7 @@ def test_master_category_delete_button_removes_unused_group(monkeypatch):
         for budget in window.budgets
     )
     assert window.transaction_pages[0].category_rows == []
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Deleted master category "Everyday Expenses".'
     )
 
@@ -2429,7 +2429,7 @@ def test_master_category_delete_button_hides_group_with_transactions(
     assert window.budgets[0].total_budgeted == Decimal("1000.00")
     assert window.budgets[0].total_spent == Decimal("1000.00")
     assert window.transaction_pages[0].category_rows == []
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Hidden master category "Everyday Expenses".'
     )
 
@@ -2462,7 +2462,7 @@ def test_subcategory_delete_button_removes_unused_category(monkeypatch):
         master_category.database_id,
     ) == []
     assert master_category.subcategories == []
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Deleted subcategory "Groceries".'
     )
 
@@ -2522,7 +2522,7 @@ def test_subcategory_delete_button_hides_category_with_transactions(
     assert window.budgets[0].hidden_spent == Decimal("1000.00")
     assert window.budgets[0].total_budgeted == Decimal("1000.00")
     assert window.budgets[0].total_spent == Decimal("1000.00")
-    assert window.budget_page.status.text() == (
+    assert window.budget_page.feedback.text() == (
         'Hidden subcategory "Groceries".'
     )
     assert window.budget_page.feedback.text() == (

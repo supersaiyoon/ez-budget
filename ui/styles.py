@@ -32,11 +32,16 @@ QMainWindow {
     color: #4d5b6a;
 }
 #feedbackMessage {
-    padding: 8px 10px;
+    padding: 4px 8px;
     border-radius: 4px;
     border: 1px solid #c8d1dc;
     background: #eef2f6;
     color: #26323f;
+}
+#feedbackMessage[feedbackKind="empty"] {
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
 }
 #feedbackMessage[feedbackKind="success"] {
     background: #e7f3ec;

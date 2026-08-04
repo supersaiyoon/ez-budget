@@ -2,7 +2,7 @@ from datetime import date
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QDate, QSize, Qt
+from PyQt6.QtCore import QDate, QTimer, QSize, Qt
 from PyQt6.QtGui import QColor, QIcon, QPalette
 from PyQt6.QtWidgets import (
     QCalendarWidget,
@@ -51,6 +51,8 @@ TRANSACTION_MONEY_COLUMN_WIDTH = 88
 TRANSACTION_CLEARED_COLUMN_WIDTH = 68
 TRANSACTION_DELETE_COLUMN_WIDTH = 40
 FEEDBACK_KIND_PROPERTY = "feedbackKind"
+EMPTY_FEEDBACK_KIND = "empty"
+SUCCESS_FEEDBACK_TIMEOUT_MS = 5000
 
 
 class DateInput(QLineEdit):
@@ -187,7 +189,9 @@ class TransactionsPage(QWidget):
         self.feedback = QLabel()
         self.feedback.setObjectName("feedbackMessage")
         self.feedback.setWordWrap(True)
-        self.feedback.setVisible(False)
+        self.feedback.setFixedHeight(30)
+        self.feedback_generation = 0
+        self.clear_feedback()
         layout.addWidget(self.feedback)
 
         # Spreadsheet layout fits repeated transaction entry better than form pages
@@ -212,7 +216,7 @@ class TransactionsPage(QWidget):
         self.table.setColumnWidth(7, TRANSACTION_DELETE_COLUMN_WIDTH)
         layout.addWidget(self.table, 1)
 
-        # Fixed feedback line keeps validation messages from resizing the page
+        # Instruction line stays separate from transient save feedback
         self.status = QLabel("Edit transaction cells directly. Use Outgoing for payments and Incoming for refunds or income.")
         self.status.setObjectName("statusText")
         self.status.setFixedHeight(20)
@@ -221,12 +225,27 @@ class TransactionsPage(QWidget):
         self.refresh()
 
     def show_feedback(self, message, kind="info"):
-        self.status.setText(message)
+        self.feedback_generation += 1
         self.feedback.setText(message)
         self.feedback.setProperty(FEEDBACK_KIND_PROPERTY, kind)
         self.feedback.style().unpolish(self.feedback)
         self.feedback.style().polish(self.feedback)
-        self.feedback.setVisible(True)
+        if kind == "success":
+            generation = self.feedback_generation
+            QTimer.singleShot(
+                SUCCESS_FEEDBACK_TIMEOUT_MS,
+                lambda: self.clear_success_feedback(generation),
+            )
+
+    def clear_success_feedback(self, generation):
+        if generation == self.feedback_generation:
+            self.clear_feedback()
+
+    def clear_feedback(self):
+        self.feedback.setText("")
+        self.feedback.setProperty(FEEDBACK_KIND_PROPERTY, EMPTY_FEEDBACK_KIND)
+        self.feedback.style().unpolish(self.feedback)
+        self.feedback.style().polish(self.feedback)
 
     def set_payee_names(self, payee_names):
         # Existing editors rebuild so suggestions reflect latest saved payees

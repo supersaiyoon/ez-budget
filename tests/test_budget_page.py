@@ -240,7 +240,21 @@ def test_subcategory_drag_ignores_drop_outside_own_master():
     assert page.drop_indicator.isHidden() is True
 
 
-def test_master_category_error_is_shown_in_status():
+def test_feedback_space_is_reserved_before_message():
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    assert page.feedback.height() == 30
+    assert page.feedback.text() == ""
+    assert page.feedback.property("feedbackKind") == "empty"
+    assert page.feedback.isHidden() is False
+
+
+def test_master_category_error_is_shown_in_feedback():
     def reject_duplicate(name):
         raise ValueError("Master category already exists.")
 
@@ -253,13 +267,12 @@ def test_master_category_error_is_shown_in_status():
 
     page.submit_master_category_name("Savings")
 
-    assert page.status.text() == "Master category already exists."
     assert page.feedback.text() == "Master category already exists."
     assert page.feedback.property("feedbackKind") == "warning"
     assert page.feedback.isHidden() is False
 
 
-def test_subcategory_error_is_shown_in_status():
+def test_subcategory_error_is_shown_in_feedback():
     submitted_categories = []
 
     def reject_duplicate(master_category_id, name):
@@ -276,11 +289,27 @@ def test_subcategory_error_is_shown_in_status():
     page.submit_subcategory_name(12, " Groceries ")
 
     assert submitted_categories == [(12, "Groceries")]
-    assert page.status.text() == "Subcategory already exists in this master category."
     assert page.feedback.text() == (
         "Subcategory already exists in this master category."
     )
     assert page.feedback.property("feedbackKind") == "warning"
+
+
+def test_success_feedback_can_clear_to_reserved_space():
+    page = BudgetPage(
+        create_sample_budgets(),
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    page.show_feedback('Added master category "Savings".', "success")
+    generation = page.feedback_generation
+    page.clear_success_feedback(generation)
+
+    assert page.feedback.text() == ""
+    assert page.feedback.property("feedbackKind") == "empty"
+    assert page.feedback.height() == 30
 
 
 def test_negative_available_month_summary_is_red():

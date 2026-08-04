@@ -2,7 +2,7 @@ from functools import partial
 from html import escape
 from pathlib import Path
 
-from PyQt6.QtCore import QEvent, QSize, Qt
+from PyQt6.QtCore import QEvent, QTimer, QSize, Qt
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -37,6 +37,8 @@ DELETE_ICON_PATH = (
 )
 BUDGET_VALUE_COLUMN_WIDTH = 96
 FEEDBACK_KIND_PROPERTY = "feedbackKind"
+EMPTY_FEEDBACK_KIND = "empty"
+SUCCESS_FEEDBACK_TIMEOUT_MS = 5000
 
 
 class BudgetAmountInput(QLineEdit):
@@ -134,7 +136,9 @@ class BudgetPage(QWidget):
         self.feedback = QLabel()
         self.feedback.setObjectName("feedbackMessage")
         self.feedback.setWordWrap(True)
-        self.feedback.setVisible(False)
+        self.feedback.setFixedHeight(30)
+        self.feedback_generation = 0
+        self.clear_feedback()
         layout.addWidget(self.feedback)
 
         # Side-by-side month comparison
@@ -227,12 +231,27 @@ class BudgetPage(QWidget):
         self.refresh()
 
     def show_feedback(self, message, kind="info"):
-        self.status.setText(message)
+        self.feedback_generation += 1
         self.feedback.setText(message)
         self.feedback.setProperty(FEEDBACK_KIND_PROPERTY, kind)
         self.feedback.style().unpolish(self.feedback)
         self.feedback.style().polish(self.feedback)
-        self.feedback.setVisible(True)
+        if kind == "success":
+            generation = self.feedback_generation
+            QTimer.singleShot(
+                SUCCESS_FEEDBACK_TIMEOUT_MS,
+                lambda: self.clear_success_feedback(generation),
+            )
+
+    def clear_success_feedback(self, generation):
+        if generation == self.feedback_generation:
+            self.clear_feedback()
+
+    def clear_feedback(self):
+        self.feedback.setText("")
+        self.feedback.setProperty(FEEDBACK_KIND_PROPERTY, EMPTY_FEEDBACK_KIND)
+        self.feedback.style().unpolish(self.feedback)
+        self.feedback.style().polish(self.feedback)
 
     def focus_adjacent_budget_input(self, current_input, direction):
         focus_target = self.adjacent_budget_focus_target(

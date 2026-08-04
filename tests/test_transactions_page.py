@@ -54,6 +54,10 @@ def test_transaction_editors_report_new_and_changed_transactions():
 
 def test_transaction_page_reports_pending_and_saved_states():
     account = Account("Checking")
+    instruction = (
+        "Edit transaction cells directly. Use Outgoing for payments and "
+        "Incoming for refunds or income."
+    )
     save_results = iter([False, True])
     page = TransactionsPage(
         account,
@@ -61,24 +65,34 @@ def test_transaction_page_reports_pending_and_saved_states():
         on_transaction_changed=lambda *args: next(save_results),
     )
 
+    assert page.feedback.height() == 30
+    assert page.feedback.text() == ""
+    assert page.feedback.property("feedbackKind") == "empty"
+    assert page.status.text() == instruction
+
     date_input = page.table.cellWidget(0, 0)
     date_input.setText("2026-07-21")
     date_input.editingFinished.emit()
 
-    assert page.status.text() == (
+    assert page.feedback.text() == (
         "Not saved yet: enter payee, category, and one amount."
     )
-    assert page.feedback.text() == page.status.text()
     assert page.feedback.property("feedbackKind") == "warning"
     assert page.feedback.isHidden() is False
+    assert page.status.text() == instruction
 
     payee_input = page.table.cellWidget(0, 1)
     payee_input.setText("Grocery Store")
     payee_input.editingFinished.emit()
 
-    assert page.status.text() == "Transaction saved."
     assert page.feedback.text() == "Transaction saved."
     assert page.feedback.property("feedbackKind") == "success"
+    assert page.status.text() == instruction
+
+    page.clear_success_feedback(page.feedback_generation)
+
+    assert page.feedback.text() == ""
+    assert page.feedback.property("feedbackKind") == "empty"
 
 
 def test_payee_input_autocompletes_saved_payees():
