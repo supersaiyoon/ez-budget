@@ -2076,11 +2076,11 @@ def test_reorder_master_categories_updates_loaded_budgets_and_account_pages():
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
         "",
         "Savings",
-        "Placeholder",
+        "Placeholder (Savings)",
         "Monthly Bills",
-        "Placeholder",
+        "Placeholder (Monthly Bills)",
         "Everyday Expenses",
-        "Placeholder",
+        "Placeholder (Everyday Expenses)",
     ]
 
 
@@ -2468,6 +2468,7 @@ def test_subcategory_delete_button_removes_unused_category(monkeypatch):
 
 
 def test_subcategory_delete_button_hides_category_with_transactions(
+    qapp,
     monkeypatch,
 ):
     window = MainWindow(":memory:")
@@ -2504,6 +2505,7 @@ def test_subcategory_delete_button_hides_category_with_transactions(
     )
 
     delete_button.click()
+    qapp.processEvents()
 
     assert master_category.subcategories == []
     assert [
@@ -2523,6 +2525,16 @@ def test_subcategory_delete_button_hides_category_with_transactions(
     assert window.budget_page.status.text() == (
         'Hidden subcategory "Groceries".'
     )
+    assert window.budget_page.feedback.text() == (
+        'Hidden subcategory "Groceries".'
+    )
+    assert window.budget_page.feedback.property("feedbackKind") == "success"
+
+    restore_button = window.budget_page.findChild(
+        QPushButton,
+        "restoreSubcategoryButton",
+    )
+    assert restore_button is not None
 
 
 def test_add_subcategory_rejects_duplicate_name_within_master():

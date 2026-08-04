@@ -254,6 +254,9 @@ def test_master_category_error_is_shown_in_status():
     page.submit_master_category_name("Savings")
 
     assert page.status.text() == "Master category already exists."
+    assert page.feedback.text() == "Master category already exists."
+    assert page.feedback.property("feedbackKind") == "warning"
+    assert page.feedback.isHidden() is False
 
 
 def test_subcategory_error_is_shown_in_status():
@@ -274,6 +277,27 @@ def test_subcategory_error_is_shown_in_status():
 
     assert submitted_categories == [(12, "Groceries")]
     assert page.status.text() == "Subcategory already exists in this master category."
+    assert page.feedback.text() == (
+        "Subcategory already exists in this master category."
+    )
+    assert page.feedback.property("feedbackKind") == "warning"
+
+
+def test_negative_available_month_summary_is_red():
+    budgets = create_sample_budgets()
+    budgets[0].monthly_income = Decimal("100.00")
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+
+    month_item = page.table.item(0, 1)
+    month_label = page.table.cellWidget(0, 1)
+
+    assert "Available: -" in month_item.text()
+    assert '<span style="color: #c62828;">Available: -' in month_label.text()
 
 
 def test_hidden_categories_section_toggles_open_and_closed():

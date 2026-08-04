@@ -66,14 +66,19 @@ def test_transaction_page_reports_pending_and_saved_states():
     date_input.editingFinished.emit()
 
     assert page.status.text() == (
-        "Not saved yet: enter date, payee, category, and one amount."
+        "Not saved yet: enter payee, category, and one amount."
     )
+    assert page.feedback.text() == page.status.text()
+    assert page.feedback.property("feedbackKind") == "warning"
+    assert page.feedback.isHidden() is False
 
     payee_input = page.table.cellWidget(0, 1)
     payee_input.setText("Grocery Store")
     payee_input.editingFinished.emit()
 
     assert page.status.text() == "Transaction saved."
+    assert page.feedback.text() == "Transaction saved."
+    assert page.feedback.property("feedbackKind") == "success"
 
 
 def test_payee_input_autocompletes_saved_payees():
@@ -534,6 +539,44 @@ def test_dated_transaction_row_selects_income_target_month():
     assert transaction.category_database_id == 7
     assert transaction.income_month_date is None
     assert transaction.payee == "Employer"
+
+
+def test_duplicate_category_names_show_master_context():
+    transaction = Transaction(
+        date="2026-07-25",
+        payee="Grocery Store",
+        category="",
+        notes="",
+    )
+    page = TransactionsPage(
+        Account("Checking", transactions=[transaction]),
+        category_rows=[
+            {
+                "id": 7,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            },
+            {
+                "id": 8,
+                "master_category_name": "Bulk Shopping",
+                "category_name": "Groceries",
+            },
+        ],
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    assert [category_input.itemText(index) for index in range(category_input.count())] == [
+        "",
+        "Everyday Expenses",
+        "Groceries (Everyday Expenses)",
+        "Bulk Shopping",
+        "Groceries (Bulk Shopping)",
+    ]
+
+    category_input.setCurrentText("Groceries (Bulk Shopping)")
+
+    assert transaction.category == "Groceries"
+    assert transaction.category_database_id == 8
 
 
 def test_income_category_autofills_and_clears_placeholder_payee():

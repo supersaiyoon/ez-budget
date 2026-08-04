@@ -1,4 +1,5 @@
 from functools import partial
+from html import escape
 from pathlib import Path
 
 from PyQt6.QtCore import QEvent, QSize, Qt
@@ -35,6 +36,7 @@ DELETE_ICON_PATH = (
     Path(__file__).parent / "assets" / "icons" / "delete.svg"
 )
 BUDGET_VALUE_COLUMN_WIDTH = 96
+FEEDBACK_KIND_PROPERTY = "feedbackKind"
 
 
 class BudgetAmountInput(QLineEdit):
@@ -129,6 +131,12 @@ class BudgetPage(QWidget):
         self.month_scroller = MonthScroller(self.set_active_month)
         layout.addWidget(self.month_scroller, 0, Qt.AlignmentFlag.AlignTop)
 
+        self.feedback = QLabel()
+        self.feedback.setObjectName("feedbackMessage")
+        self.feedback.setWordWrap(True)
+        self.feedback.setVisible(False)
+        layout.addWidget(self.feedback)
+
         # Side-by-side month comparison
         self.table = QTableWidget()
         self.table.setColumnCount(1 + (VISIBLE_MONTHS * 3))
@@ -217,6 +225,14 @@ class BudgetPage(QWidget):
         layout.addWidget(self.status)
 
         self.refresh()
+
+    def show_feedback(self, message, kind="info"):
+        self.status.setText(message)
+        self.feedback.setText(message)
+        self.feedback.setProperty(FEEDBACK_KIND_PROPERTY, kind)
+        self.feedback.style().unpolish(self.feedback)
+        self.feedback.style().polish(self.feedback)
+        self.feedback.setVisible(True)
 
     def focus_adjacent_budget_input(self, current_input, direction):
         focus_target = self.adjacent_budget_focus_target(
@@ -519,17 +535,16 @@ class BudgetPage(QWidget):
         for month_index, budget in enumerate(budgets):
             # Month group owns three child columns, keeping totals close to inputs
             column = 1 + (month_index * 3)
-            month = QTableWidgetItem(
-                f"{budget.month_name}\n"
-                f"Income: {format_money(budget.monthly_income)}\n"
-                f"Available: {format_money(budget.available_to_budget)}\n"
-                f"Budgeted: {format_money(budget.total_budgeted)}\n"
-                # Negative display shows money leaving budget without changing model math
-                f"Spent: {format_money(-budget.total_spent)}"
-            )
+            summary_text = self.month_summary_text(budget)
+            month = QTableWidgetItem(summary_text)
             month.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
             month.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(0, column, month)
+            self.table.setCellWidget(
+                0,
+                column,
+                self.month_summary_label(budget, summary_text),
+            )
             self.table.setSpan(0, column, 1, 3)
 
             # Comparing months side by side
@@ -541,6 +556,33 @@ class BudgetPage(QWidget):
 
         self.table.setRowHeight(0, 98)
         self.table.setRowHeight(1, 30)
+
+    def month_summary_text(self, budget):
+        # Negative spent display shows money leaving budget without changing model math
+        return (
+            f"{budget.month_name}\n"
+            f"Income: {format_money(budget.monthly_income)}\n"
+            f"Available: {format_money(budget.available_to_budget)}\n"
+            f"Budgeted: {format_money(budget.total_budgeted)}\n"
+            f"Spent: {format_money(-budget.total_spent)}"
+        )
+
+    def month_summary_label(self, budget, summary_text):
+        label = QLabel()
+        label.setObjectName("monthSummaryHeader")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        available_color = "#c62828" if budget.available_to_budget < 0 else "#000000"
+        lines = summary_text.splitlines()
+        label.setText(
+            "<br>".join(
+                escape(line)
+                if not line.startswith("Available:")
+                else f'<span style="color: {available_color};">{escape(line)}</span>'
+                for line in lines
+            )
+        )
+        return label
 
     def prompt_for_master_category(self):
         name, accepted = QInputDialog.getText(
@@ -563,30 +605,30 @@ class BudgetPage(QWidget):
     def submit_master_category_name(self, name):
         name = name.strip()
         if not name:
-            self.status.setText("Enter a master category name.")
+            self.show_feedback("Enter a master category name.", "warning")
             return
 
         try:
             self.on_master_category_added(name)
         except ValueError as exc:
-            self.status.setText(str(exc))
+            self.show_feedback(str(exc), "warning")
             return
 
-        self.status.setText(f'Added master category "{name}".')
+        self.show_feedback(f'Added master category "{name}".', "success")
 
     def submit_subcategory_name(self, master_category_id, name):
         name = name.strip()
         if not name:
-            self.status.setText("Enter a subcategory name.")
+            self.show_feedback("Enter a subcategory name.", "warning")
             return
 
         try:
             self.on_subcategory_added(master_category_id, name)
         except ValueError as exc:
-            self.status.setText(str(exc))
+            self.show_feedback(str(exc), "warning")
             return
 
-        self.status.setText(f'Added subcategory "{name}".')
+        self.show_feedback(f'Added subcategory "{name}".', "success")
 
     def request_master_category_rename(self, master_category):
         # Page reports selected model while controller owns persistence
@@ -1059,7 +1101,7 @@ class BudgetPage(QWidget):
             # Keep bad input in place so user can fix it without retyping
             self.pending_budget_focus = None
             input_field.setFocus(Qt.FocusReason.OtherFocusReason)
-            self.status.setText(str(exc))
+            self.show_feedback(str(exc), "warning")
             return False
 
         subcategory = budget.get_subcategory(category_name, subcategory_name)
@@ -1070,9 +1112,10 @@ class BudgetPage(QWidget):
         # Displayed value is target total, so model receives only difference
         adjustment = new_budgeted - subcategory.budgeted
         budget.apply_adjustment(category_name, subcategory_name, str(adjustment))
-        self.status.setText(
+        self.show_feedback(
             f"{budget.month_name}: budgeted {format_money(new_budgeted)} for {subcategory_name}. "
-            f"Available: {format_money(budget.available_to_budget)}"
+            f"Available: {format_money(budget.available_to_budget)}",
+            "success" if budget.available_to_budget >= 0 else "warning",
         )
 
         self.refresh()

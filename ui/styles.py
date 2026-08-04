@@ -31,6 +31,23 @@ QMainWindow {
 #statusText {
     color: #4d5b6a;
 }
+#feedbackMessage {
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid #c8d1dc;
+    background: #eef2f6;
+    color: #26323f;
+}
+#feedbackMessage[feedbackKind="success"] {
+    background: #e7f3ec;
+    border-color: #8fc6a3;
+    color: #24543a;
+}
+#feedbackMessage[feedbackKind="warning"] {
+    background: #fff3df;
+    border-color: #e0a64b;
+    color: #7a4b00;
+}
 /* Month buttons use dynamic active property from MonthScroller. */
 #monthButton {
     background: #ffffff;

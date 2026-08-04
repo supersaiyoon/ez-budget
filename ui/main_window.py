@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QTimer, QSize, Qt
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QDialog,
@@ -806,12 +806,13 @@ class MainWindow(QMainWindow):
                 name,
             )
         except ValueError as exc:
-            self.budget_page.status.setText(str(exc))
+            self.budget_page.show_feedback(str(exc), "warning")
             return False
 
         if renamed:
-            self.budget_page.status.setText(
-                f'Renamed master category to "{name.strip()}".'
+            self.budget_page.show_feedback(
+                f'Renamed master category to "{name.strip()}".',
+                "success",
             )
         return renamed
 
@@ -914,12 +915,13 @@ class MainWindow(QMainWindow):
                 name,
             )
         except ValueError as exc:
-            self.budget_page.status.setText(str(exc))
+            self.budget_page.show_feedback(str(exc), "warning")
             return False
 
         if renamed:
-            self.budget_page.status.setText(
-                f'Renamed subcategory to "{name.strip()}".'
+            self.budget_page.show_feedback(
+                f'Renamed subcategory to "{name.strip()}".',
+                "success",
             )
         return renamed
 
@@ -1002,8 +1004,9 @@ class MainWindow(QMainWindow):
         self.refresh_budget_allocations()
         self.refresh_budget_spending()
         self.refresh_hidden_category_views()
-        self.budget_page.status.setText(
-            f'{action} master category "{master_category.name}".'
+        self.budget_page.show_feedback(
+            f'{action} master category "{master_category.name}".',
+            "success",
         )
         return True
 
@@ -1043,8 +1046,9 @@ class MainWindow(QMainWindow):
         self.refresh_budget_allocations()
         self.refresh_budget_spending()
         self.refresh_hidden_category_views()
-        self.budget_page.status.setText(
-            f'Restored master category "{restored_row["name"]}".'
+        self.budget_page.show_feedback(
+            f'Restored master category "{restored_row["name"]}".',
+            "success",
         )
         return True
 
@@ -1080,8 +1084,9 @@ class MainWindow(QMainWindow):
         self.refresh_budget_allocations()
         self.refresh_budget_spending()
         self.refresh_hidden_category_views()
-        self.budget_page.status.setText(
-            f'Restored subcategory "{restored_row["name"]}".'
+        self.budget_page.show_feedback(
+            f'Restored subcategory "{restored_row["name"]}".',
+            "success",
         )
         return True
 
@@ -1157,8 +1162,9 @@ class MainWindow(QMainWindow):
         self.refresh_budget_allocations()
         self.refresh_budget_spending()
         self.refresh_hidden_category_views()
-        self.budget_page.status.setText(
-            f'{action} subcategory "{subcategory.name}".'
+        self.budget_page.show_feedback(
+            f'{action} subcategory "{subcategory.name}".',
+            "success",
         )
         return True
 
@@ -1170,7 +1176,8 @@ class MainWindow(QMainWindow):
     def refresh_hidden_category_views(self):
         # Hidden list must reload after hide or restore
         self.refresh_hidden_category_rows()
-        self.refresh_category_views()
+        self.refresh_transaction_categories()
+        QTimer.singleShot(0, self.budget_page.refresh)
 
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices

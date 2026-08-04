@@ -50,6 +50,7 @@ TRANSACTION_CATEGORY_COLUMN_WIDTH = 148
 TRANSACTION_MONEY_COLUMN_WIDTH = 88
 TRANSACTION_CLEARED_COLUMN_WIDTH = 68
 TRANSACTION_DELETE_COLUMN_WIDTH = 40
+FEEDBACK_KIND_PROPERTY = "feedbackKind"
 
 
 class DateInput(QLineEdit):
@@ -183,6 +184,12 @@ class TransactionsPage(QWidget):
         self.summary.setObjectName("statusText")
         layout.addWidget(self.summary)
 
+        self.feedback = QLabel()
+        self.feedback.setObjectName("feedbackMessage")
+        self.feedback.setWordWrap(True)
+        self.feedback.setVisible(False)
+        layout.addWidget(self.feedback)
+
         # Spreadsheet layout fits repeated transaction entry better than form pages
         self.table = QTableWidget()
         self.table.setColumnCount(len(TRANSACTION_COLUMNS))
@@ -212,6 +219,14 @@ class TransactionsPage(QWidget):
         layout.addWidget(self.status)
 
         self.refresh()
+
+    def show_feedback(self, message, kind="info"):
+        self.status.setText(message)
+        self.feedback.setText(message)
+        self.feedback.setProperty(FEEDBACK_KIND_PROPERTY, kind)
+        self.feedback.style().unpolish(self.feedback)
+        self.feedback.style().polish(self.feedback)
+        self.feedback.setVisible(True)
 
     def set_payee_names(self, payee_names):
         # Existing editors rebuild so suggestions reflect latest saved payees
@@ -375,7 +390,7 @@ class TransactionsPage(QWidget):
                 amount = parse_money(value)
             except ValueError as exc:
                 # Bad money value left in place so user can correct it
-                self.status.setText(str(exc))
+                self.show_feedback(str(exc), "warning")
                 return
             self.create_transaction(**{money_column: amount})
             return
@@ -385,7 +400,7 @@ class TransactionsPage(QWidget):
                 value = parse_transaction_date(value)
             except ValueError as exc:
                 # Invalid date stays visible in blank row for direct correction
-                self.status.setText(str(exc))
+                self.show_feedback(str(exc), "warning")
                 return
 
         fields = {
@@ -429,13 +444,36 @@ class TransactionsPage(QWidget):
 
         saved = self.on_transaction_changed(self.account, transaction)
         if saved:
-            self.status.setText("Transaction saved.")
+            self.show_feedback("Transaction saved.", "success")
             return
 
         # Partial row remains editable while status makes pending state explicit
-        self.status.setText(
-            "Not saved yet: enter date, payee, category, and one amount."
-        )
+        self.show_feedback(self.incomplete_transaction_message(transaction), "warning")
+
+    def incomplete_transaction_message(self, transaction):
+        missing = []
+        if not transaction.date.strip():
+            missing.append("date")
+        if not transaction.payee.strip():
+            missing.append("payee")
+        if transaction.category_database_id is None:
+            missing.append("category")
+
+        has_outgoing = transaction.outgoing != 0
+        has_incoming = transaction.incoming != 0
+        if has_outgoing and has_incoming:
+            return "Not saved yet: use either Outgoing or Incoming, not both."
+        if not has_outgoing and not has_incoming:
+            missing.append("one amount")
+
+        if not missing:
+            return "Not saved yet: check the transaction fields."
+
+        if len(missing) == 1:
+            missing_text = missing[0]
+        else:
+            missing_text = ", ".join(missing[:-1]) + f", and {missing[-1]}"
+        return f"Not saved yet: enter {missing_text}."
 
     def _set_text_input(self, row, column, value, apply_value):
         input_field = QLineEdit(value)
@@ -476,7 +514,7 @@ class TransactionsPage(QWidget):
             stored_date = parse_transaction_date(input_field.text())
         except ValueError as exc:
             # Invalid edit stays visible without replacing last valid model value
-            self.status.setText(str(exc))
+            self.show_feedback(str(exc), "warning")
             return
 
         self._update_transaction_field(transaction, "date", stored_date)
@@ -524,7 +562,7 @@ class TransactionsPage(QWidget):
                 current_master_name = master_name
 
             category.addItem(
-                category_row["category_name"],
+                self.category_display_name(category_row),
                 {
                     "database_id": category_row["id"],
                     "name": category_row["category_name"],
@@ -589,12 +627,26 @@ class TransactionsPage(QWidget):
             amount = parse_money(raw_value)
         except ValueError as exc:
             # Keep invalid text visible so correction is direct
-            self.status.setText(str(exc))
+            self.show_feedback(str(exc), "warning")
             return
 
         apply_value(amount)
         # Refresh needed because balances depend on both money columns
         self.refresh()
+
+    def category_display_name(self, category_row):
+        category_name = category_row["category_name"]
+        duplicate_count = sum(
+            1
+            for existing_row in self.category_rows
+            if existing_row["category_name"].casefold() == category_name.casefold()
+        )
+        if duplicate_count <= 1:
+            return category_name
+        return (
+            f"{category_name} "
+            f'({category_row["master_category_name"]})'
+        )
 
     def _set_cleared_input(self, row, transaction):
         checkbox = QCheckBox()
