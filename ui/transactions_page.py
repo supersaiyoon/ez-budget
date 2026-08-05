@@ -116,6 +116,7 @@ class DateInput(QLineEdit):
         self.calendar_popup.move(self.mapToGlobal(self.rect().bottomLeft()))
         self.calendar_popup.show()
         self.setFocus(Qt.FocusReason.MouseFocusReason)
+        self.selectAll()
 
     def apply_calendar_date(self, selected_date):
         self.setText(
@@ -408,6 +409,7 @@ class TransactionsPage(QWidget):
         self.on_payee_category_requested = on_payee_category_requested
         self.on_category_added = on_category_added
         self.master_category_rows = master_category_rows or []
+        self.focus_blank_payee_after_refresh = allow_new_transactions
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -530,6 +532,28 @@ class TransactionsPage(QWidget):
             self._set_transaction_row(row, transaction)
         if self.allow_new_transactions:
             self._set_blank_row(len(self.account.transactions))
+        if self.focus_blank_payee_after_refresh:
+            self.focus_blank_payee_after_refresh = False
+            QTimer.singleShot(0, self.focus_blank_payee)
+
+    def default_transaction_date(self):
+        return date.today().isoformat()
+
+    def default_transaction_date_display(self):
+        return format_transaction_date(self.default_transaction_date())
+
+    def focus_blank_payee(self):
+        if not self.allow_new_transactions or self.table.rowCount() == 0:
+            return
+
+        row = self.table.rowCount() - 1
+        payee_input = self.table.cellWidget(row, 1)
+        if payee_input is None:
+            return
+
+        self.table.setCurrentCell(row, 1)
+        payee_input.setFocus(Qt.FocusReason.OtherFocusReason)
+        payee_input.setCursorPosition(len(payee_input.text()))
 
     def set_category_rows(self, category_rows):
         # Rebuild dropdowns when persistent category choices change at runtime
@@ -607,7 +631,11 @@ class TransactionsPage(QWidget):
 
     def _set_blank_row(self, row):
         # Blank row creates a transaction from whichever field user starts with
-        self._set_new_transaction_input(row, 0)
+        self._set_new_transaction_input(
+            row,
+            0,
+            text=self.default_transaction_date_display(),
+        )
         self._set_new_transaction_input(row, 1)
 
         self._set_blank_category_input(row)
@@ -636,9 +664,10 @@ class TransactionsPage(QWidget):
         )
         self.table.setCellWidget(row, 2, category_input)
 
-    def _set_new_transaction_input(self, row, column, money_column=None):
+    def _set_new_transaction_input(self, row, column, money_column=None, text=""):
         if column == 0:
             input_field = DateInput(
+                text,
                 on_calendar_date_selected=lambda: self.create_transaction_from_input(
                     column,
                     input_field,
@@ -707,7 +736,7 @@ class TransactionsPage(QWidget):
 
         # Missing fields allowed so quick entry can start from any column
         transaction = Transaction(
-            date=values.get("date", ""),
+            date=values.get("date", self.default_transaction_date()),
             payee=values.get("payee", ""),
             category=values.get("category", ""),
             notes=values.get("notes", ""),
@@ -725,20 +754,22 @@ class TransactionsPage(QWidget):
     def _update_transaction_field(self, transaction, field, value):
         # Central update path ensures every editor reports the same model change
         setattr(transaction, field, value)
-        self._notify_transaction_changed(transaction)
+        return self._notify_transaction_changed(transaction)
 
     def _notify_transaction_changed(self, transaction):
         # Tests and MainWindow can react without TransactionsPage knowing why
         if self.on_transaction_changed is None:
-            return
+            return False
 
         saved = self.on_transaction_changed(self.account, transaction)
         if saved:
             self.show_feedback("Transaction saved.", "success")
-            return
+            self.focus_blank_payee_after_refresh = True
+            return True
 
         # Partial row remains editable while status makes pending state explicit
         self.show_feedback(self.incomplete_transaction_message(transaction), "warning")
+        return False
 
     def incomplete_transaction_message(self, transaction):
         missing = []
@@ -781,7 +812,7 @@ class TransactionsPage(QWidget):
 
     def apply_text_value(self, column, input_field, apply_value):
         value = input_field.text().strip()
-        apply_value(value)
+        saved = apply_value(value)
         if column == 1:
             row = input_field.property("transaction_row")
             if row is None or row >= len(self.account.transactions):
@@ -789,6 +820,9 @@ class TransactionsPage(QWidget):
             transaction = self.account.transactions[row]
             if transaction.category_database_id is None:
                 self.apply_latest_category_for_payee(transaction, value)
+                return
+        if saved:
+            self.refresh()
 
     def _set_date_input(self, row, transaction):
         try:

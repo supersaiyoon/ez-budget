@@ -467,6 +467,51 @@ def test_closed_account_page_omits_blank_transaction_row():
     assert page.reopen_account_button.isHidden() is False
 
 
+def test_blank_transaction_row_defaults_to_today_and_focuses_payee(qapp):
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+    page.show()
+    qapp.processEvents()
+    today = date.today()
+
+    assert page.table.cellWidget(0, 0).text() == (
+        f"{today.month:02}/{today.day:02}/{today.year:04}"
+    )
+    assert page.table.cellWidget(0, 1).hasFocus() is True
+
+
+def test_saved_transaction_moves_focus_to_next_payee(qapp):
+    transaction = Transaction(
+        date=date.today().isoformat(),
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        category_database_id=7,
+    )
+    account = Account("Checking", transactions=[transaction])
+    page = TransactionsPage(
+        account,
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+        on_transaction_changed=lambda *args: True,
+    )
+    page.show()
+    qapp.processEvents()
+    outgoing_input = page.table.cellWidget(0, 4)
+
+    outgoing_input.setText("12.34")
+    outgoing_input.editingFinished.emit()
+    qapp.processEvents()
+
+    assert transaction.outgoing == Decimal("12.34")
+    assert page.table.cellWidget(1, 1).hasFocus() is True
+
+
 def test_short_date_input_stores_iso_and_displays_full_year():
     account = Account("Checking")
     page = TransactionsPage(account, category_rows=[])
