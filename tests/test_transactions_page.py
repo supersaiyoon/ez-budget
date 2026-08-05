@@ -21,6 +21,8 @@ from ui.transactions_page import (
     TRANSACTION_DATE_COLUMN_WIDTH,
     TRANSACTION_DELETE_COLUMN_WIDTH,
     TRANSACTION_MONEY_COLUMN_WIDTH,
+    TRANSACTION_NOTES_COLUMN_WIDTH,
+    TRANSACTION_PAYEE_COLUMN_WIDTH,
     DateInput,
     TransactionsPage,
 )
@@ -578,17 +580,22 @@ def test_transaction_columns_use_stable_widths():
         == QHeaderView.ResizeMode.Fixed
     )
     assert page.table.columnWidth(0) == TRANSACTION_DATE_COLUMN_WIDTH
+    for column, width in (
+        (1, TRANSACTION_PAYEE_COLUMN_WIDTH),
+        (2, TRANSACTION_CATEGORY_COLUMN_WIDTH),
+        (3, TRANSACTION_NOTES_COLUMN_WIDTH),
+    ):
+        assert (
+            page.table.horizontalHeader().sectionResizeMode(column)
+            == QHeaderView.ResizeMode.Interactive
+        )
+        assert page.table.columnWidth(column) == width
     for column in (4, 5):
         assert (
             page.table.horizontalHeader().sectionResizeMode(column)
             == QHeaderView.ResizeMode.Fixed
         )
         assert page.table.columnWidth(column) == TRANSACTION_MONEY_COLUMN_WIDTH
-    assert (
-        page.table.horizontalHeader().sectionResizeMode(2)
-        == QHeaderView.ResizeMode.Fixed
-    )
-    assert page.table.columnWidth(2) == TRANSACTION_CATEGORY_COLUMN_WIDTH
     assert (
         page.table.horizontalHeader().sectionResizeMode(6)
         == QHeaderView.ResizeMode.Fixed

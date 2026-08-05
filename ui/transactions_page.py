@@ -50,7 +50,9 @@ DELETE_ICON_PATH = (
     Path(__file__).parent / "assets" / "icons" / "delete.svg"
 )
 TRANSACTION_DATE_COLUMN_WIDTH = 104
+TRANSACTION_PAYEE_COLUMN_WIDTH = 220
 TRANSACTION_CATEGORY_COLUMN_WIDTH = 148
+TRANSACTION_NOTES_COLUMN_WIDTH = 260
 TRANSACTION_MONEY_COLUMN_WIDTH = 88
 TRANSACTION_CLEARED_COLUMN_WIDTH = 68
 TRANSACTION_DELETE_COLUMN_WIDTH = 40
@@ -427,10 +429,12 @@ class TransactionsPage(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, TRANSACTION_DATE_COLUMN_WIDTH)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(1, TRANSACTION_PAYEE_COLUMN_WIDTH)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
         self.table.setColumnWidth(2, TRANSACTION_CATEGORY_COLUMN_WIDTH)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(3, TRANSACTION_NOTES_COLUMN_WIDTH)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(4, TRANSACTION_MONEY_COLUMN_WIDTH)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
