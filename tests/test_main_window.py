@@ -272,19 +272,13 @@ def test_new_window_loads_saved_transactions_into_account(tmp_path):
     assert loaded_transaction.database_id == saved_transaction["id"]
     assert window.transaction_pages[0].table.rowCount() == 2
     category_input = window.transaction_pages[0].table.cellWidget(0, 2)
-    # Dated rows prepend virtual income choices before normal categories
+    # Dated rows include virtual income choices before normal category suggestions
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
-        "",
         "Income for this month",
         "Income for next month",
-        "Everyday Expenses",
         "Groceries",
-        "Savings",
         "Vacation",
     ]
-    # Master rows group the list but cannot become a transaction category
-    assert category_input.model().item(3).isEnabled() is False
-    assert category_input.model().item(5).isEnabled() is False
     assert category_input.currentText() == "Groceries"
     assert category_input.currentData()["database_id"] == category["id"]
 
@@ -2074,12 +2068,8 @@ def test_reorder_master_categories_updates_loaded_budgets_and_account_pages():
     assert saved_names == ["Savings", "Monthly Bills", "Everyday Expenses"]
     assert loaded_names == ["Savings", "Monthly Bills", "Everyday Expenses"]
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
-        "",
-        "Savings",
         "Placeholder (Savings)",
-        "Monthly Bills",
         "Placeholder (Monthly Bills)",
-        "Everyday Expenses",
         "Placeholder (Everyday Expenses)",
     ]
 
@@ -2172,10 +2162,31 @@ def test_add_subcategory_persists_and_updates_loaded_budgets():
     assert loaded_ids == [saved_subcategory["id"]] * len(window.budgets)
     category_input = window.transaction_pages[0].table.cellWidget(0, 2)
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
-        "",
-        "Everyday Expenses",
         "Groceries",
     ]
+
+
+def test_transaction_category_add_does_not_rebuild_active_page():
+    window = MainWindow(":memory:")
+    window.add_account("Checking")
+    window.add_master_category("Eating Out")
+    page = window.transaction_pages[0]
+    category_input = page.table.cellWidget(0, 2)
+    master_category_id = window.budgets[0].master_categories[0].database_id
+
+    category_row = window.add_transaction_subcategory(
+        master_category_id,
+        "Fast Food",
+    )
+
+    assert page.table.cellWidget(0, 2) is category_input
+    assert category_row["category_name"] == "Fast Food"
+    assert category_row["master_category_name"] == "Eating Out"
+    assert categories.get_budget_category_by_name(
+        window.con,
+        master_category_id,
+        "Fast Food",
+    )["id"] == category_row["id"]
 
 
 def test_rename_subcategory_updates_loaded_budgets_and_transactions():
@@ -2278,8 +2289,6 @@ def test_reorder_subcategories_updates_loaded_budgets_and_account_pages():
     assert saved_names == ["Dining Out", "Groceries", "Gas"]
     assert loaded_names == ["Dining Out", "Groceries", "Gas"]
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
-        "",
-        "Everyday Expenses",
         "Dining Out",
         "Groceries",
         "Gas",

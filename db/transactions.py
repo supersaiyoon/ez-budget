@@ -177,6 +177,30 @@ def get_monthly_income_total(con, income_month_date):
     return row["total_income"]
 
 
+def get_latest_category_for_payee(con, payee_id):
+    # Recent ordinary spending predicts recurring bills without storing defaults
+    return con.execute(
+        """
+        SELECT
+            budget_categories.id,
+            budget_categories.name AS category_name,
+            master_budget_categories.name AS master_category_name
+        FROM transactions
+        JOIN budget_categories
+          ON budget_categories.id = transactions.budget_category_id
+        JOIN master_budget_categories
+          ON master_budget_categories.id = budget_categories.master_budget_category_id
+        WHERE transactions.payee_id = ?
+          AND transactions.income_month_date IS NULL
+          AND budget_categories.hidden = FALSE
+          AND master_budget_categories.hidden = FALSE
+        ORDER BY transactions.transaction_date DESC, transactions.id DESC
+        LIMIT 1
+        """,
+        (payee_id,),
+    ).fetchone()
+
+
 def has_transactions(con):
     row = con.execute("SELECT COUNT(*) FROM transactions").fetchone()
     return row[0] > 0

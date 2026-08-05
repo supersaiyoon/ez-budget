@@ -195,6 +195,7 @@ def list_transaction_categories(con):
         """
         SELECT
             budget_categories.id,
+            budget_categories.master_budget_category_id,
             master_budget_categories.name AS master_category_name,
             budget_categories.name AS category_name
         FROM budget_categories

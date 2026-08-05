@@ -4,9 +4,10 @@ from datetime import date
 from decimal import Decimal
 
 from PyQt6.QtCore import QDate, QSize, Qt
-from PyQt6.QtWidgets import QHeaderView, QMessageBox, QPushButton
+from PyQt6.QtWidgets import QDialog, QHeaderView, QMessageBox, QPushButton
 
 from budget_model import Account, Transaction
+from ui import transactions_page
 from ui.transactions_page import (
     TRANSACTION_CATEGORY_COLUMN_WIDTH,
     TRANSACTION_CLEARED_COLUMN_WIDTH,
@@ -130,6 +131,172 @@ def test_payee_autocomplete_refreshes_open_editors():
         model.index(row, 0).data()
         for row in range(model.rowCount())
     ] == ["Grocery Store", "Fuel Stop"]
+
+
+def test_category_input_uses_text_field_with_placeholder():
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+    category_input = page.table.cellWidget(0, 2)
+
+    assert category_input.placeholderText() == "Select budget category"
+    assert category_input.text() == ""
+
+
+def test_category_input_exact_suggestion_assigns_category():
+    transaction = Transaction(
+        date="2026-07-25",
+        payee="Grocery Store",
+        category="",
+        notes="",
+    )
+    page = TransactionsPage(
+        Account("Checking", transactions=[transaction]),
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    category_input.setCurrentText("Groceries")
+
+    assert transaction.category == "Groceries"
+    assert transaction.category_database_id == 7
+
+
+def test_unmatched_category_text_does_not_assign_category():
+    transaction = Transaction(
+        date="2026-07-25",
+        payee="Grocery Store",
+        category="Groceries",
+        notes="",
+        category_database_id=7,
+    )
+    page = TransactionsPage(
+        Account("Checking", transactions=[transaction]),
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    category_input.setText("Unknown")
+    category_input.editingFinished.emit()
+
+    assert transaction.category == ""
+    assert transaction.category_database_id is None
+    assert page.feedback.text() == (
+        "Choose a category from the suggestions or add a new category."
+    )
+
+
+def test_payee_entry_autofills_latest_category():
+    account = Account("Checking")
+    page = TransactionsPage(
+        account,
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+        on_transaction_changed=lambda *args: False,
+        on_payee_category_requested=lambda payee_name: {
+            "id": 7,
+            "category_name": "Groceries",
+            "master_category_name": "Everyday Expenses",
+        },
+    )
+    payee_input = page.table.cellWidget(0, 1)
+
+    payee_input.setText("Grocery Store")
+    payee_input.editingFinished.emit()
+
+    assert account.transactions[0].payee == "Grocery Store"
+    assert account.transactions[0].category == "Groceries"
+    assert account.transactions[0].category_database_id == 7
+
+
+def test_new_payee_keeps_category_placeholder():
+    account = Account("Checking")
+    page = TransactionsPage(
+        account,
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Everyday Expenses",
+                "category_name": "Groceries",
+            }
+        ],
+        on_transaction_changed=lambda *args: False,
+        on_payee_category_requested=lambda payee_name: None,
+    )
+    payee_input = page.table.cellWidget(0, 1)
+
+    payee_input.setText("New Store")
+    payee_input.editingFinished.emit()
+
+    category_input = page.table.cellWidget(0, 2)
+    assert account.transactions[0].category_database_id is None
+    assert category_input.text() == ""
+    assert category_input.placeholderText() == "Select budget category"
+
+
+def test_add_category_suggestion_creates_and_selects_category(monkeypatch):
+    account = Account("Checking")
+    added_categories = []
+
+    class FakeAddCategoryDialog:
+        def __init__(self, master_category_rows, category_name, parent=None):
+            self.category_name_input = category_name
+
+        def exec(self):
+            return QDialog.DialogCode.Accepted
+
+        def selected_master_category_id(self):
+            return 3
+
+        def category_name(self):
+            return self.category_name_input
+
+    def add_category(master_category_id, category_name):
+        added_categories.append((master_category_id, category_name))
+        return {"id": 9, "name": category_name}
+
+    monkeypatch.setattr(
+        transactions_page,
+        "AddTransactionCategoryDialog",
+        FakeAddCategoryDialog,
+    )
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        master_category_rows=[{"id": 3, "name": "Everyday Expenses"}],
+        on_category_added=add_category,
+        on_transaction_changed=lambda *args: False,
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    category_input.refresh_add_suggestion("Utilities")
+
+    assert category_input.itemText(category_input.count() - 1) == 'Add "Utilities"...'
+
+    category_input.apply_suggestion('Add "Utilities"...')
+
+    assert added_categories == [(3, "Utilities")]
+    assert account.transactions[0].category == "Utilities"
+    assert account.transactions[0].category_database_id == 9
 
 
 def test_closed_account_page_omits_blank_transaction_row():
@@ -580,10 +747,7 @@ def test_duplicate_category_names_show_master_context():
     category_input = page.table.cellWidget(0, 2)
 
     assert [category_input.itemText(index) for index in range(category_input.count())] == [
-        "",
-        "Everyday Expenses",
         "Groceries (Everyday Expenses)",
-        "Bulk Shopping",
         "Groceries (Bulk Shopping)",
     ]
 

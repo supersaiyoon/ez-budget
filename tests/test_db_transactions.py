@@ -448,6 +448,82 @@ def test_get_monthly_income_total_sums_only_eligible_incoming_amounts(con):
     assert september_income == 0
 
 
+def test_get_latest_category_for_payee_returns_most_recent_visible_category(con):
+    checking, grocery_payee, groceries = _create_transaction_dependencies(con)
+    monthly = categories.add_master_category(con, "Monthly")
+    rent = categories.add_budget_category(con, monthly["id"], "Rent")
+
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_payee["id"],
+        groceries["id"],
+        "2026-07-13",
+        -4250,
+    )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_payee["id"],
+        rent["id"],
+        "2026-08-01",
+        -100000,
+    )
+
+    latest_category = transactions.get_latest_category_for_payee(
+        con,
+        grocery_payee["id"],
+    )
+
+    assert latest_category["id"] == rent["id"]
+    assert latest_category["category_name"] == "Rent"
+    assert latest_category["master_category_name"] == "Monthly"
+
+
+def test_get_latest_category_for_payee_ignores_income_and_hidden_categories(con):
+    checking, grocery_payee, groceries = _create_transaction_dependencies(con)
+    income_category = categories.get_or_create_income_category(con)
+    hidden_master = categories.add_master_category(con, "Hidden", hidden=True)
+    hidden_category = categories.add_budget_category(
+        con,
+        hidden_master["id"],
+        "Hidden Category",
+    )
+
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_payee["id"],
+        groceries["id"],
+        "2026-07-13",
+        -4250,
+    )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_payee["id"],
+        income_category["id"],
+        "2026-08-01",
+        200000,
+        income_month_date="2026-08-01",
+    )
+    transactions.add_transaction(
+        con,
+        checking["id"],
+        grocery_payee["id"],
+        hidden_category["id"],
+        "2026-09-01",
+        -1000,
+    )
+
+    latest_category = transactions.get_latest_category_for_payee(
+        con,
+        grocery_payee["id"],
+    )
+
+    assert latest_category["id"] == groceries["id"]
+
+
 def test_list_category_transaction_totals_excludes_off_budget_accounts(con):
     checking, payee, category = _create_transaction_dependencies(con)
     tracking = accounts.create_account(con, "Tracking", on_budget=False)

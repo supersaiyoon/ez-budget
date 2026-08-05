@@ -2,13 +2,16 @@ from datetime import date
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QDate, QTimer, QSize, Qt
+from PyQt6.QtCore import QDate, QStringListModel, QTimer, QSize, Qt
 from PyQt6.QtGui import QColor, QIcon, QPalette
 from PyQt6.QtWidgets import (
     QCalendarWidget,
     QCheckBox,
-    QComboBox,
     QCompleter,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -53,6 +56,8 @@ TRANSACTION_DELETE_COLUMN_WIDTH = 40
 FEEDBACK_KIND_PROPERTY = "feedbackKind"
 EMPTY_FEEDBACK_KIND = "empty"
 SUCCESS_FEEDBACK_TIMEOUT_MS = 5000
+CATEGORY_PLACEHOLDER_TEXT = "Select budget category"
+ADD_CATEGORY_SUFFIX = "..."
 
 
 class DateInput(QLineEdit):
@@ -97,6 +102,148 @@ class DateInput(QLineEdit):
             self.on_calendar_date_selected()
 
 
+class AddTransactionCategoryDialog(QDialog):
+    def __init__(self, master_category_rows, category_name="", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Category")
+        self.master_category_rows = master_category_rows
+
+        layout = QFormLayout(self)
+        self.master_category_input = QComboBox()
+        for row in master_category_rows:
+            self.master_category_input.addItem(row["name"], row["id"])
+        layout.addRow("Master category:", self.master_category_input)
+
+        self.category_name_input = QLineEdit(category_name)
+        layout.addRow("Subcategory name:", self.category_name_input)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def selected_master_category_id(self):
+        return self.master_category_input.currentData()
+
+    def category_name(self):
+        return self.category_name_input.text().strip()
+
+
+class CategoryInput(QLineEdit):
+    def __init__(
+        self,
+        category_options,
+        apply_category,
+        add_category,
+        transaction_date=None,
+        text="",
+    ):
+        super().__init__(text)
+        self.category_options = category_options
+        self.apply_category = apply_category
+        self.add_category = add_category
+        self.transaction_date = transaction_date
+        self.option_by_display_name = {
+            option["display_name"].casefold(): option
+            for option in category_options
+        }
+        self.adding_category = False
+        self.completer_model = QStringListModel(self.suggestion_names())
+        self.completer = QCompleter(self.completer_model, self)
+        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.completer.activated[str].connect(self.apply_suggestion)
+        self.setCompleter(self.completer)
+        self.setPlaceholderText(CATEGORY_PLACEHOLDER_TEXT)
+        self.textEdited.connect(self.refresh_add_suggestion)
+        self.editingFinished.connect(self.apply_typed_category)
+
+    def suggestion_names(self):
+        return [option["display_name"] for option in self.category_options]
+
+    def refresh_add_suggestion(self, text):
+        suggestions = self.suggestion_names()
+        name = text.strip()
+        if name and name.casefold() not in self.option_by_display_name:
+            suggestions.append(self.add_category_display_name(name))
+        self.completer_model.setStringList(suggestions)
+
+    def add_category_display_name(self, name):
+        return f'Add "{name}"{ADD_CATEGORY_SUFFIX}'
+
+    def add_category_name_from_display(self, display_name):
+        prefix = 'Add "'
+        if not display_name.startswith(prefix) or not display_name.endswith(
+            ADD_CATEGORY_SUFFIX
+        ):
+            return None
+        return display_name[len(prefix) : -len('"' + ADD_CATEGORY_SUFFIX)]
+
+    def apply_suggestion(self, display_name):
+        category_name = self.add_category_name_from_display(display_name)
+        if category_name is not None:
+            self.adding_category = True
+            try:
+                self.add_category(self, category_name)
+            finally:
+                self.adding_category = False
+            return
+
+        option = self.option_by_display_name.get(display_name.casefold())
+        if option is None:
+            return
+        self.setText(option["display_name"])
+        self.apply_category(option)
+
+    def apply_typed_category(self):
+        if self.adding_category:
+            return
+
+        typed_name = self.text().strip()
+        if not typed_name:
+            self.apply_category(None)
+            return
+
+        option = self.option_by_display_name.get(typed_name.casefold())
+        if option is None:
+            self.apply_category(None)
+            return
+
+        self.setText(option["display_name"])
+        self.apply_category(option)
+
+    def count(self):
+        return self.completer_model.rowCount()
+
+    def itemText(self, index):
+        return self.completer_model.stringList()[index]
+
+    def currentText(self):
+        return self.text()
+
+    def setCurrentText(self, text):
+        self.setText(text)
+        self.apply_typed_category()
+
+    def findText(self, text):
+        try:
+            return self.completer_model.stringList().index(text)
+        except ValueError:
+            return -1
+
+    def setCurrentIndex(self, index):
+        if index < 0:
+            return
+        self.setCurrentText(self.itemText(index))
+
+    def currentData(self):
+        return self.option_by_display_name.get(self.text().strip().casefold())
+
+
 class TransactionsPage(QWidget):
     def __init__(
         self,
@@ -111,6 +258,9 @@ class TransactionsPage(QWidget):
         on_account_delete_requested=None,
         allow_new_transactions=True,
         payee_names=None,
+        on_payee_category_requested=None,
+        on_category_added=None,
+        master_category_rows=None,
     ):
         super().__init__()
 
@@ -148,6 +298,9 @@ class TransactionsPage(QWidget):
 
         # Payee suggestions stay optional so tests and UI-only pages can stay simple
         self.payee_names = payee_names or []
+        self.on_payee_category_requested = on_payee_category_requested
+        self.on_category_added = on_category_added
+        self.master_category_rows = master_category_rows or []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -348,14 +501,7 @@ class TransactionsPage(QWidget):
         self._set_new_transaction_input(row, 0)
         self._set_new_transaction_input(row, 1)
 
-        category = QComboBox()
-        self._populate_category_input(category)
-
-        # Category alone can be useful for starting an incomplete transaction
-        category.currentIndexChanged.connect(
-            lambda: self.create_transaction_from_category(category)
-        )
-        self.table.setCellWidget(row, 2, category)
+        self._set_blank_category_input(row)
 
         self._set_new_transaction_input(row, 3)
         self._set_new_transaction_input(row, 4, money_column="outgoing")
@@ -372,6 +518,14 @@ class TransactionsPage(QWidget):
         layout.addWidget(checkbox)
         self.table.setCellWidget(row, 6, container)
         self.table.setRowHeight(row, 30)
+
+    def _set_blank_category_input(self, row):
+        category_input = CategoryInput(
+            self.category_options(),
+            lambda option: self.create_transaction_from_category_option(option),
+            self.add_category_from_input,
+        )
+        self.table.setCellWidget(row, 2, category_input)
 
     def _set_new_transaction_input(self, row, column, money_column=None):
         input_field = (
@@ -427,6 +581,13 @@ class TransactionsPage(QWidget):
             1: "payee",
             3: "notes",
         }
+        if column == 1:
+            self.create_transaction(
+                payee=value,
+                **self.latest_category_values_for_payee(value),
+            )
+            return
+
         # Column map keeps generic editor code from knowing transaction names
         self.create_transaction(**{fields[column]: value})
 
@@ -445,6 +606,7 @@ class TransactionsPage(QWidget):
             incoming=values.get("incoming", parse_money("0")),
             cleared=values.get("cleared", False),
             category_database_id=values.get("category_database_id"),
+            income_month_date=values.get("income_month_date"),
         )
         self.account.transactions.append(transaction)
         self._notify_transaction_changed(transaction)
@@ -496,12 +658,26 @@ class TransactionsPage(QWidget):
 
     def _set_text_input(self, row, column, value, apply_value):
         input_field = QLineEdit(value)
+        input_field.setProperty("transaction_row", row)
         if column == 1:
             self._add_payee_completer(input_field)
         # Stored values trimmed to avoid accidental spaces in reports and filters
-        input_field.editingFinished.connect(lambda: apply_value(input_field.text().strip()))
+        input_field.editingFinished.connect(
+            lambda: self.apply_text_value(column, input_field, apply_value)
+        )
         self.table.setCellWidget(row, column, input_field)
         return input_field
+
+    def apply_text_value(self, column, input_field, apply_value):
+        value = input_field.text().strip()
+        apply_value(value)
+        if column == 1:
+            row = input_field.property("transaction_row")
+            if row is None or row >= len(self.account.transactions):
+                return
+            transaction = self.account.transactions[row]
+            if transaction.category_database_id is None:
+                self.apply_latest_category_for_payee(transaction, value)
 
     def _add_payee_completer(self, input_field):
         completer = QCompleter(self.payee_names, input_field)
@@ -541,66 +717,72 @@ class TransactionsPage(QWidget):
         self.refresh()
 
     def _set_category_input(self, row, transaction):
-        category = QComboBox()
-        self._populate_category_input(category, transaction.date)
-        # Stable id and target month distinguish both virtual Income choices
-        for index in range(category.count()):
-            category_option = category.itemData(index)
-            if category_option is None:
-                continue
-            if category_option["database_id"] != transaction.category_database_id:
-                continue
-            if category_option.get("income_month_date") != transaction.income_month_date:
-                continue
-            category.setCurrentIndex(index)
-            break
-        category.currentIndexChanged.connect(
-            lambda: self.update_transaction_category(transaction, category)
+        category_input = CategoryInput(
+            self.category_options(transaction.date),
+            lambda option: self.update_transaction_category(transaction, option),
+            self.add_category_from_input,
+            transaction.date,
+            self.category_text_for_transaction(transaction),
         )
-        self.table.setCellWidget(row, 2, category)
+        self.table.setCellWidget(row, 2, category_input)
 
-    def _populate_category_input(self, category, transaction_date=None):
-        # Build one grouped list shared by saved rows and the blank entry row
-        # Blank row supports incomplete entry before a category is selected
-        category.addItem("", None)
-        # Dated rows receive virtual choices before normal Budget categories
+    def category_text_for_transaction(self, transaction):
+        for option in self.category_options(transaction.date):
+            if option["database_id"] != transaction.category_database_id:
+                continue
+            if option.get("income_month_date") != transaction.income_month_date:
+                continue
+            return option["display_name"]
+        return transaction.category
+
+    def category_options(self, transaction_date=None):
+        # Build one suggestion list shared by saved rows and the blank entry row
+        options = []
         for income_option in self.income_category_options(transaction_date):
-            category.addItem(income_option["name"], income_option)
-
-        current_master_name = None
+            options.append(
+                {
+                    **income_option,
+                    "display_name": income_option["name"],
+                }
+            )
         for category_row in self.category_rows:
-            master_name = category_row["master_category_name"]
-            if master_name != current_master_name:
-                # Disabled bold rows visually group choices without being selectable
-                category.addItem(master_name, None)
-                header_item = category.model().item(category.count() - 1)
-                header_item.setEnabled(False)
-                header_font = header_item.font()
-                header_font.setBold(True)
-                header_item.setFont(header_font)
-                current_master_name = master_name
-
-            category.addItem(
-                self.category_display_name(category_row),
+            master_category_id = self.category_row_value(
+                category_row,
+                "master_budget_category_id",
+            )
+            options.append(
                 {
                     "database_id": category_row["id"],
                     "name": category_row["category_name"],
+                    "display_name": self.category_display_name(category_row),
+                    "master_category_name": category_row["master_category_name"],
+                    "master_budget_category_id": master_category_id,
                 },
             )
+        return options
 
-    def create_transaction_from_category(self, category_input):
+    def category_row_value(self, category_row, key):
+        try:
+            return category_row[key]
+        except (KeyError, IndexError):
+            return None
+
+    def create_transaction_from_category_option(self, category_option):
         # A blank-row selection starts a partial transaction with a stable category id
-        category_option = category_input.currentData()
         if category_option is None:
+            self.show_feedback(
+                "Choose a category from the suggestions or add a new category.",
+                "warning",
+            )
             return
         self.create_transaction(
             category=category_option["name"],
             category_database_id=category_option["database_id"],
+            income_month_date=category_option.get("income_month_date"),
         )
 
-    def update_transaction_category(self, transaction, category_input):
+    def update_transaction_category(self, transaction, category_option):
         # Keep the display name and database relationship synchronized after selection
-        category_option = category_input.currentData()
         if category_option is None:
             transaction.category = ""
             transaction.category_database_id = None
@@ -608,6 +790,10 @@ class TransactionsPage(QWidget):
             if transaction.payee == INCOME_PAYEE_PLACEHOLDER:
                 transaction.payee = ""
             self._notify_transaction_changed(transaction)
+            self.show_feedback(
+                "Choose a category from the suggestions or add a new category.",
+                "warning",
+            )
             self.refresh()
             return
 
@@ -622,6 +808,120 @@ class TransactionsPage(QWidget):
             # Automatic value should not follow transaction back to spending
             transaction.payee = ""
         self._notify_transaction_changed(transaction)
+        self.refresh()
+
+    def latest_category_values_for_payee(self, payee_name):
+        category_option = self.latest_category_option_for_payee(payee_name)
+        if category_option is None:
+            return {}
+        return {
+            "category": category_option["name"],
+            "category_database_id": category_option["database_id"],
+        }
+
+    def latest_category_option_for_payee(self, payee_name):
+        if self.on_payee_category_requested is None:
+            return None
+        category_row = self.on_payee_category_requested(payee_name)
+        if category_row is None:
+            return None
+        for option in self.category_options():
+            if option["database_id"] == category_row["id"]:
+                return option
+        return None
+
+    def apply_latest_category_for_payee(self, transaction, payee_name):
+        category_option = self.latest_category_option_for_payee(payee_name)
+        if category_option is None:
+            return
+        transaction.category = category_option["name"]
+        transaction.category_database_id = category_option["database_id"]
+        transaction.income_month_date = None
+        self._notify_transaction_changed(transaction)
+        self.refresh()
+
+    def add_category_from_input(self, category_input, category_name):
+        apply_category = category_input.apply_category
+        if self.on_category_added is None:
+            self.show_feedback(
+                "Choose a category from the suggestions or add a new category.",
+                "warning",
+            )
+            return
+
+        master_rows = self.master_category_rows
+        if not master_rows:
+            self.show_feedback("Add a master category before adding a subcategory.", "warning")
+            return
+
+        dialog = AddTransactionCategoryDialog(master_rows, category_name, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            apply_category(None)
+            return
+
+        try:
+            category_row = self.on_category_added(
+                dialog.selected_master_category_id(),
+                dialog.category_name(),
+            )
+        except ValueError as exc:
+            self.show_feedback(str(exc), "warning")
+            apply_category(None)
+            return
+
+        if category_row is None:
+            apply_category(None)
+            return
+
+        category_row = self.normalized_category_row(
+            category_row,
+            dialog.selected_master_category_id(),
+        )
+        if category_row is None:
+            apply_category(None)
+            return
+
+        self.add_category_row_to_suggestions(category_row)
+        option = {
+            "database_id": category_row["id"],
+            "name": category_row["category_name"],
+            "display_name": self.category_display_name(category_row),
+            "master_category_name": category_row["master_category_name"],
+            "master_budget_category_id": category_row[
+                "master_budget_category_id"
+            ],
+        }
+        apply_category(option)
+
+    def add_category_row_to_suggestions(self, category_row):
+        if any(row["id"] == category_row["id"] for row in self.category_rows):
+            return
+        self.category_rows = list(self.category_rows) + [category_row]
+
+    def normalized_category_row(self, category_row, master_category_id):
+        master_category_name = next(
+            (
+                row["name"]
+                for row in self.master_category_rows
+                if row["id"] == master_category_id
+            ),
+            None,
+        )
+        category_name = self.category_row_value(category_row, "category_name")
+        if category_name is None:
+            category_name = self.category_row_value(category_row, "name")
+        if master_category_name is None or category_name is None:
+            return None
+        return {
+            "id": category_row["id"],
+            "master_budget_category_id": master_category_id,
+            "master_category_name": master_category_name,
+            "category_name": category_name,
+            "name": category_name,
+        }
+
+    def set_master_category_rows(self, master_category_rows):
+        self.master_category_rows = master_category_rows
         self.refresh()
 
     def _set_money_input(self, row, column, value, apply_value):

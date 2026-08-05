@@ -534,6 +534,9 @@ class MainWindow(QMainWindow):
             on_account_delete_requested=self.delete_account,
             allow_new_transactions=allow_new_transactions,
             payee_names=self.payee_names(),
+            on_payee_category_requested=self.latest_category_for_payee,
+            on_category_added=self.add_transaction_subcategory,
+            master_category_rows=categories.list_master_categories(self.con),
         )
 
     def payee_names(self):
@@ -545,6 +548,15 @@ class MainWindow(QMainWindow):
         payee_names = self.payee_names()
         for page in self.transaction_pages + self.closed_transaction_pages:
             page.set_payee_names(payee_names)
+
+    def latest_category_for_payee(self, payee_name):
+        payee_row = payees.get_payee_by_name(self.con, payee_name.strip())
+        if payee_row is None:
+            return None
+        return transactions.get_latest_category_for_payee(
+            self.con,
+            payee_row["id"],
+        )
 
     def refresh_transaction_pages(self):
         # Payee management can change joined transaction display names
@@ -1182,10 +1194,12 @@ class MainWindow(QMainWindow):
     def refresh_transaction_categories(self):
         # Query once so every existing account page receives the same current choices
         category_rows = categories.list_transaction_categories(self.con)
+        master_category_rows = categories.list_master_categories(self.con)
         for page in (
             self.transaction_pages + self.closed_transaction_pages
         ):
             page.set_category_rows(category_rows)
+            page.set_master_category_rows(master_category_rows)
 
     def active_budget_category_ids(self, budget):
         # Hidden categories are absent from active Budget rows
@@ -1476,7 +1490,7 @@ class MainWindow(QMainWindow):
         # Closed-row action restores account through shared state transition
         return self.set_account_closed(account, False)
 
-    def add_subcategory(self, master_category_id, name):
+    def add_subcategory(self, master_category_id, name, refresh_views=True):
         existing_subcategory = categories.get_budget_category_by_name(
             self.con,
             master_category_id,
@@ -1504,4 +1518,26 @@ class MainWindow(QMainWindow):
                 master_category.subcategories.append(subcategory)
                 break
 
-        self.refresh_category_views()
+        if refresh_views:
+            self.refresh_category_views()
+        return subcategory_row
+
+    def add_transaction_subcategory(self, master_category_id, name):
+        # Transaction entry keeps its active editor alive while selecting the new row
+        subcategory_row = self.add_subcategory(
+            master_category_id,
+            name,
+            refresh_views=False,
+        )
+        master_category = next(
+            category
+            for category in self.budgets[0].master_categories
+            if category.database_id == master_category_id
+        )
+        return {
+            "id": subcategory_row["id"],
+            "master_budget_category_id": master_category_id,
+            "master_category_name": master_category.name,
+            "category_name": subcategory_row["name"],
+            "name": subcategory_row["name"],
+        }
