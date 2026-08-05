@@ -2,9 +2,10 @@ from datetime import date
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QDate, QStringListModel, QTimer, QSize, Qt
-from PyQt6.QtGui import QColor, QIcon, QPalette
+from PyQt6.QtCore import QDate, QEvent, QStringListModel, QTimer, QSize, Qt
+from PyQt6.QtGui import QColor, QIcon, QKeyEvent, QPalette
 from PyQt6.QtWidgets import (
+    QApplication,
     QCalendarWidget,
     QCheckBox,
     QCompleter,
@@ -67,9 +68,28 @@ class DateInput(QLineEdit):
         self.on_calendar_date_selected = on_calendar_date_selected
         self.calendar_popup = QCalendarWidget(self)
         self.calendar_popup.setWindowFlags(Qt.WindowType.Popup)
+        self.calendar_popup.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.calendar_popup.setMinimumDate(QDate(1, 1, 1))
         self.calendar_popup.setMaximumDate(QDate(9999, 12, 31))
         self.calendar_popup.clicked.connect(self.apply_calendar_date)
+        self.calendar_popup.installEventFilter(self)
+
+    def eventFilter(self, watched, event):
+        if (
+            watched is self.calendar_popup
+            and event.type() == QEvent.Type.KeyPress
+        ):
+            forwarded_event = QKeyEvent(
+                event.type(),
+                event.key(),
+                event.modifiers(),
+                event.text(),
+                event.isAutoRepeat(),
+                event.count(),
+            )
+            QApplication.sendEvent(self, forwarded_event)
+            return True
+        return super().eventFilter(watched, event)
 
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
@@ -92,6 +112,7 @@ class DateInput(QLineEdit):
         self.calendar_popup.setSelectedDate(selected_date)
         self.calendar_popup.move(self.mapToGlobal(self.rect().bottomLeft()))
         self.calendar_popup.show()
+        self.setFocus(Qt.FocusReason.MouseFocusReason)
 
     def apply_calendar_date(self, selected_date):
         self.setText(

@@ -5,7 +5,13 @@ from decimal import Decimal
 
 from PyQt6.QtCore import QDate, QSize, Qt
 from PyQt6.QtGui import QKeyEvent
-from PyQt6.QtWidgets import QDialog, QHeaderView, QMessageBox, QPushButton
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHeaderView,
+    QMessageBox,
+    QPushButton,
+)
 
 from budget_model import Account, Transaction
 from ui import transactions_page
@@ -455,6 +461,7 @@ def test_calendar_popup_can_create_transaction_date():
     date_input = page.table.cellWidget(0, 0)
 
     assert isinstance(date_input, DateInput)
+    assert date_input.calendar_popup.focusPolicy() == Qt.FocusPolicy.NoFocus
     assert date_input.calendar_popup.minimumDate() == QDate(1, 1, 1)
     assert date_input.calendar_popup.maximumDate() == QDate(9999, 12, 31)
 
@@ -462,6 +469,38 @@ def test_calendar_popup_can_create_transaction_date():
 
     assert account.transactions[0].date == "2026-07-21"
     assert page.table.cellWidget(0, 0).text() == "07/21/2026"
+
+
+def test_calendar_popup_keeps_date_input_focused(qapp):
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+    page.show()
+    qapp.processEvents()
+    date_input = page.table.cellWidget(0, 0)
+
+    date_input.setFocus()
+    date_input.show_calendar()
+
+    assert date_input.hasFocus() is True
+
+
+def test_calendar_popup_key_presses_type_in_date_input(qapp):
+    page = TransactionsPage(Account("Checking"), category_rows=[])
+    page.show()
+    qapp.processEvents()
+    date_input = page.table.cellWidget(0, 0)
+    date_input.show_calendar()
+
+    QApplication.sendEvent(
+        date_input.calendar_popup,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_7,
+            Qt.KeyboardModifier.NoModifier,
+            "7",
+        ),
+    )
+
+    assert date_input.text() == "7"
 
 
 def test_existing_transaction_date_edit_normalizes_storage_and_display():
