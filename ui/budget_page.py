@@ -361,10 +361,14 @@ class BudgetPage(QWidget):
             return False
 
         budget = input_field.property("budget")
-        subcategory = budget.get_subcategory(
-            input_field.property("category_name"),
-            input_field.property("subcategory_name"),
-        )
+        try:
+            subcategory = budget.get_subcategory(
+                input_field.property("category_name"),
+                input_field.property("subcategory_name"),
+            )
+        except KeyError:
+            # This input belonged to a category that was just hidden and removed.
+            return False
         return new_budgeted != subcategory.budgeted
 
     def visible_budgets(self):
@@ -1132,7 +1136,11 @@ class BudgetPage(QWidget):
             self.show_feedback(str(exc), "warning")
             return False
 
-        subcategory = budget.get_subcategory(category_name, subcategory_name)
+        try:
+            subcategory = budget.get_subcategory(category_name, subcategory_name)
+        except KeyError:
+            # This input belonged to a category that was just hidden and removed
+            return False
         if new_budgeted == subcategory.budgeted:
             input_field.setText(format(subcategory.budgeted, ".2f"))
             return True

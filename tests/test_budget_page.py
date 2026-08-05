@@ -813,6 +813,28 @@ def test_editing_budgeted_cell_reports_budget_and_subcategory():
     assert changed_allocations == [(budgets[0], subcategory)]
 
 
+def test_budget_input_for_hidden_subcategory_is_ignored():
+    budgets = create_sample_budgets()
+    changed_allocations = []
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+        lambda budget, subcategory: changed_allocations.append((budget, subcategory)),
+    )
+    master_category = budgets[0].master_categories[0]
+    subcategory = master_category.subcategories[0]
+    row = page.rows.index((master_category.name, subcategory.name)) + 2
+    budgeted_input = page.table.cellWidget(row, 1)
+
+    budgeted_input.setText("2000.00")
+    master_category.subcategories = []
+    budgeted_input.editingFinished.emit()
+
+    assert changed_allocations == []
+
+
 def test_refresh_removes_stale_master_widget_from_new_subcategory_row():
     budgets = create_sample_budgets()
     page = BudgetPage(
