@@ -62,6 +62,7 @@ SUCCESS_FEEDBACK_TIMEOUT_MS = 5000
 CATEGORY_PLACEHOLDER_TEXT = "Select budget category"
 ADD_CATEGORY_SUFFIX = "..."
 CATEGORY_INLINE_COMPLETE_MINIMUM = 2
+PAYEE_INLINE_COMPLETE_MINIMUM = 2
 
 
 class DateInput(QLineEdit):
@@ -154,6 +155,38 @@ class AddTransactionCategoryDialog(QDialog):
 
     def category_name(self):
         return self.category_name_input.text().strip()
+
+
+class PayeeInput(QLineEdit):
+    def __init__(self, payee_names, text=""):
+        super().__init__(text)
+        self.payee_names = payee_names
+        self.completer_model = QStringListModel(payee_names)
+        completer = QCompleter(self.completer_model, self)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setCompleter(completer)
+        self.textEdited.connect(self.complete_best_match)
+
+    def complete_best_match(self, text):
+        if len(text.strip()) < PAYEE_INLINE_COMPLETE_MINIMUM:
+            return
+
+        match = self.first_matching_payee(text)
+        if match is None or text.casefold() == match.casefold():
+            return
+
+        self.setText(match)
+        self.setSelection(len(text), len(match) - len(text))
+
+    def first_matching_payee(self, text):
+        if not text:
+            return None
+
+        normalized_text = text.casefold()
+        for payee_name in self.payee_names:
+            if payee_name.casefold().startswith(normalized_text):
+                return payee_name
+        return None
 
 
 class CategoryInput(QLineEdit):
@@ -604,19 +637,19 @@ class TransactionsPage(QWidget):
         self.table.setCellWidget(row, 2, category_input)
 
     def _set_new_transaction_input(self, row, column, money_column=None):
-        input_field = (
-            DateInput(
+        if column == 0:
+            input_field = DateInput(
                 on_calendar_date_selected=lambda: self.create_transaction_from_input(
                     column,
                     input_field,
                     money_column,
                 )
             )
-            if column == 0
-            else QLineEdit()
-        )
-        if column == 1:
-            self._add_payee_completer(input_field)
+        elif column == 1:
+            input_field = PayeeInput(self.payee_names)
+        else:
+            input_field = QLineEdit()
+
         if column == 0:
             input_field.setAlignment(Qt.AlignmentFlag.AlignCenter)
             input_field.setFont(numeric_font())
@@ -733,10 +766,12 @@ class TransactionsPage(QWidget):
         return f"Not saved yet: enter {missing_text}."
 
     def _set_text_input(self, row, column, value, apply_value):
-        input_field = QLineEdit(value)
+        input_field = (
+            PayeeInput(self.payee_names, value)
+            if column == 1
+            else QLineEdit(value)
+        )
         input_field.setProperty("transaction_row", row)
-        if column == 1:
-            self._add_payee_completer(input_field)
         # Stored values trimmed to avoid accidental spaces in reports and filters
         input_field.editingFinished.connect(
             lambda: self.apply_text_value(column, input_field, apply_value)
@@ -754,11 +789,6 @@ class TransactionsPage(QWidget):
             transaction = self.account.transactions[row]
             if transaction.category_database_id is None:
                 self.apply_latest_category_for_payee(transaction, value)
-
-    def _add_payee_completer(self, input_field):
-        completer = QCompleter(self.payee_names, input_field)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        input_field.setCompleter(completer)
 
     def _set_date_input(self, row, transaction):
         try:

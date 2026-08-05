@@ -125,6 +125,35 @@ def test_payee_input_autocompletes_saved_payees():
     )
 
 
+def test_payee_input_fills_best_match_after_two_characters():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[],
+        payee_names=["Grocery Store", "Fuel Stop"],
+    )
+    payee_input = page.table.cellWidget(0, 1)
+
+    payee_input.setText("gr")
+    payee_input.complete_best_match("gr")
+
+    assert payee_input.text() == "Grocery Store"
+    assert payee_input.selectedText() == "ocery Store"
+
+
+def test_payee_input_keeps_unmatched_new_payee_text():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[],
+        payee_names=["Grocery Store", "Fuel Stop"],
+    )
+    payee_input = page.table.cellWidget(0, 1)
+
+    payee_input.setText("New Store")
+    payee_input.complete_best_match("New Store")
+
+    assert payee_input.text() == "New Store"
+
+
 def test_payee_autocomplete_refreshes_open_editors():
     page = TransactionsPage(
         Account("Checking"),
