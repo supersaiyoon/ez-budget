@@ -1,6 +1,6 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtWidgets import QTableWidgetItem
+from PyQt6.QtWidgets import QPushButton, QTableWidgetItem
 
 from budget_model import format_money
 
@@ -17,6 +17,25 @@ def numeric_font(bold=False):
     # Monospace digits keep date and money columns easy to scan
     weight = QFont.Weight.DemiBold if bold else QFont.Weight.Normal
     return QFont("Consolas", 10, weight)
+
+
+class ButtonCursorFilter(QObject):
+    def eventFilter(self, watched, event):
+        if (
+            isinstance(watched, QPushButton)
+            and event.type() == QEvent.Type.Enter
+        ):
+            if watched.isEnabled():
+                watched.setCursor(Qt.CursorShape.PointingHandCursor)
+            else:
+                watched.unsetCursor()
+        return super().eventFilter(watched, event)
+
+
+def install_button_hand_cursor(app):
+    cursor_filter = ButtonCursorFilter(app)
+    app.installEventFilter(cursor_filter)
+    app.ez_budget_button_cursor_filter = cursor_filter
 
 
 def money_item(amount, bold=False, negative_is_warning=False):
