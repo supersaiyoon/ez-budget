@@ -80,9 +80,9 @@ def test_master_category_name_is_sent_to_callback():
 
     page.submit_master_category_name(" Savings ")
 
-    assert page.add_master_category_button.text() == "+"
-    assert page.add_master_category_button.font().pixelSize() == 18
-    assert page.add_master_category_button.font().bold() is True
+    assert page.add_master_category_button.text() == ""
+    assert page.add_master_category_button.icon().isNull() is False
+    assert page.add_master_category_button.iconSize() == QSize(14, 14)
     assert added_names == ["Savings"]
 
 
@@ -448,10 +448,10 @@ def test_master_category_row_has_subcategory_button_with_database_id():
         button for button in buttons if button.property("master_category_id") == 12
     )
 
-    assert add_button.text() == "+"
+    assert add_button.text() == ""
+    assert add_button.icon().isNull() is False
+    assert add_button.iconSize() == QSize(14, 14)
     assert add_button.isEnabled() == True
-    assert add_button.font().pixelSize() == 18
-    assert add_button.font().bold() is True
 
 
 def test_master_category_rename_button_reports_selected_model():

@@ -35,6 +35,9 @@ RENAME_ICON_PATH = (
 DELETE_ICON_PATH = (
     Path(__file__).parent / "assets" / "icons" / "delete.svg"
 )
+ADD_ICON_PATH = (
+    Path(__file__).parent / "assets" / "icons" / "add.svg"
+)
 BUDGET_VALUE_COLUMN_WIDTH = 96
 FEEDBACK_KIND_PROPERTY = "feedbackKind"
 EMPTY_FEEDBACK_KIND = "empty"
@@ -211,14 +214,11 @@ class BudgetPage(QWidget):
         category_label.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
         category_header_layout.addWidget(category_label)
         category_header_layout.addStretch()
-        self.add_master_category_button = QPushButton("+")
+        self.add_master_category_button = QPushButton()
         self.add_master_category_button.setObjectName("addMasterCategoryButton")
         self.add_master_category_button.setToolTip("Add master category")
-        # Bold icon-sized plus matches weight of filled rename SVG
-        add_master_font = self.add_master_category_button.font()
-        add_master_font.setPixelSize(18)
-        add_master_font.setBold(True)
-        self.add_master_category_button.setFont(add_master_font)
+        self.add_master_category_button.setIcon(QIcon(str(ADD_ICON_PATH)))
+        self.add_master_category_button.setIconSize(QSize(14, 14))
         self.add_master_category_button.setFixedWidth(28)
         self.add_master_category_button.clicked.connect(self.prompt_for_master_category)
         category_header_layout.addWidget(self.add_master_category_button)
@@ -975,15 +975,12 @@ class BudgetPage(QWidget):
         )
         category_layout.addWidget(delete_button)
 
-        add_button = QPushButton("+")
+        add_button = QPushButton()
         add_button.setObjectName("addSubcategoryButton")
         add_button.setToolTip(f"Add subcategory to {category_name}")
         add_button.setProperty("master_category_id", master_category.database_id)
-        # Same glyph sizing keeps category actions visually balanced
-        add_button_font = add_button.font()
-        add_button_font.setPixelSize(18)
-        add_button_font.setBold(True)
-        add_button.setFont(add_button_font)
+        add_button.setIcon(QIcon(str(ADD_ICON_PATH)))
+        add_button.setIconSize(QSize(14, 14))
         add_button.setFixedSize(32, 32)
         add_button.setEnabled(master_category.database_id is not None)
         add_button.clicked.connect(
