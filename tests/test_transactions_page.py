@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from PyQt6.QtCore import QDate, QSize, Qt
+from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import QDialog, QHeaderView, QMessageBox, QPushButton
 
 from budget_model import Account, Transaction
@@ -167,6 +168,52 @@ def test_category_input_exact_suggestion_assigns_category():
     assert transaction.category_database_id == 7
 
 
+def test_category_input_fills_best_match_after_two_characters():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Lifestyle",
+                "category_name": "Eating Out",
+            }
+        ],
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    category_input.setText("ea")
+    category_input.update_suggestions_for_text("ea")
+
+    assert category_input.text() == "Eating Out"
+    assert category_input.selectedText() == "ting Out"
+
+
+def test_category_input_preserves_spaces_while_typing_new_match():
+    page = TransactionsPage(
+        Account("Checking"),
+        category_rows=[
+            {
+                "id": 7,
+                "master_budget_category_id": 3,
+                "master_category_name": "Lifestyle",
+                "category_name": "Eating Out",
+            }
+        ],
+    )
+    category_input = page.table.cellWidget(0, 2)
+
+    category_input.setText("Eating ")
+    category_input.update_suggestions_for_text("Eating ")
+    category_input.insert("In")
+    category_input.update_suggestions_for_text("Eating In")
+
+    assert category_input.text() == "Eating In"
+    assert category_input.itemText(category_input.count() - 1) == (
+        'Add "Eating In"...'
+    )
+
+
 def test_unmatched_category_text_does_not_assign_category():
     transaction = Transaction(
         date="2026-07-25",
@@ -288,7 +335,7 @@ def test_add_category_suggestion_creates_and_selects_category(monkeypatch):
     )
     category_input = page.table.cellWidget(0, 2)
 
-    category_input.refresh_add_suggestion("Utilities")
+    category_input.update_suggestions_for_text("Utilities")
 
     assert category_input.itemText(category_input.count() - 1) == 'Add "Utilities"...'
 
@@ -297,6 +344,63 @@ def test_add_category_suggestion_creates_and_selects_category(monkeypatch):
     assert added_categories == [(3, "Utilities")]
     assert account.transactions[0].category == "Utilities"
     assert account.transactions[0].category_database_id == 9
+
+
+def test_tab_then_enter_can_select_add_category_suggestion(monkeypatch):
+    account = Account("Checking")
+    added_categories = []
+
+    class FakeAddCategoryDialog:
+        def __init__(self, master_category_rows, category_name, parent=None):
+            self.category_name_input = category_name
+
+        def exec(self):
+            return QDialog.DialogCode.Accepted
+
+        def selected_master_category_id(self):
+            return 3
+
+        def category_name(self):
+            return self.category_name_input
+
+    def add_category(master_category_id, category_name):
+        added_categories.append((master_category_id, category_name))
+        return {"id": 10, "name": category_name}
+
+    monkeypatch.setattr(
+        transactions_page,
+        "AddTransactionCategoryDialog",
+        FakeAddCategoryDialog,
+    )
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        master_category_rows=[{"id": 3, "name": "Everyday Expenses"}],
+        on_category_added=add_category,
+        on_transaction_changed=lambda *args: False,
+    )
+    category_input = page.table.cellWidget(0, 2)
+    category_input.setText("Early")
+    category_input.update_suggestions_for_text("Early")
+
+    category_input.keyPressEvent(
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Tab,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    category_input.keyPressEvent(
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Return,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+
+    assert added_categories == [(3, "Early")]
+    assert account.transactions[0].category == "Early"
+    assert account.transactions[0].category_database_id == 10
 
 
 def test_closed_account_page_omits_blank_transaction_row():

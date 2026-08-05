@@ -58,6 +58,7 @@ EMPTY_FEEDBACK_KIND = "empty"
 SUCCESS_FEEDBACK_TIMEOUT_MS = 5000
 CATEGORY_PLACEHOLDER_TEXT = "Select budget category"
 ADD_CATEGORY_SUFFIX = "..."
+CATEGORY_INLINE_COMPLETE_MINIMUM = 2
 
 
 class DateInput(QLineEdit):
@@ -159,18 +160,42 @@ class CategoryInput(QLineEdit):
         self.completer.activated[str].connect(self.apply_suggestion)
         self.setCompleter(self.completer)
         self.setPlaceholderText(CATEGORY_PLACEHOLDER_TEXT)
-        self.textEdited.connect(self.refresh_add_suggestion)
+        self.textEdited.connect(self.update_suggestions_for_text)
         self.editingFinished.connect(self.apply_typed_category)
 
     def suggestion_names(self):
         return [option["display_name"] for option in self.category_options]
 
-    def refresh_add_suggestion(self, text):
+    def update_suggestions_for_text(self, text):
         suggestions = self.suggestion_names()
-        name = text.strip()
-        if name and name.casefold() not in self.option_by_display_name:
-            suggestions.append(self.add_category_display_name(name))
+        typed_prefix = text
+        add_name = text.strip()
+        match = self.first_matching_option(typed_prefix)
+        if (
+            len(typed_prefix.strip()) >= CATEGORY_INLINE_COMPLETE_MINIMUM
+            and match is not None
+            and typed_prefix.casefold() != match["display_name"].casefold()
+        ):
+            self.setText(match["display_name"])
+            self.setSelection(
+                len(typed_prefix),
+                len(match["display_name"]) - len(typed_prefix),
+            )
+            self.completer_model.setStringList(suggestions)
+            return
+
+        if add_name and match is None:
+            suggestions.append(self.add_category_display_name(add_name))
         self.completer_model.setStringList(suggestions)
+
+    def first_matching_option(self, text):
+        if not text:
+            return None
+        normalized_text = text.casefold()
+        for option in self.category_options:
+            if option["display_name"].casefold().startswith(normalized_text):
+                return option
+        return None
 
     def add_category_display_name(self, name):
         return f'Add "{name}"{ADD_CATEGORY_SUFFIX}'
@@ -199,6 +224,27 @@ class CategoryInput(QLineEdit):
         self.setText(option["display_name"])
         self.apply_category(option)
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Tab and self.add_suggestion_text() is not None:
+            self.setText(self.add_suggestion_text())
+            event.accept()
+            return
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            add_suggestion = self.add_category_name_from_display(
+                self.text().strip()
+            )
+            if add_suggestion is not None:
+                self.apply_suggestion(self.text().strip())
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def add_suggestion_text(self):
+        for suggestion in self.completer_model.stringList():
+            if self.add_category_name_from_display(suggestion) is not None:
+                return suggestion
+        return None
+
     def apply_typed_category(self):
         if self.adding_category:
             return
@@ -206,6 +252,11 @@ class CategoryInput(QLineEdit):
         typed_name = self.text().strip()
         if not typed_name:
             self.apply_category(None)
+            return
+
+        category_name = self.add_category_name_from_display(typed_name)
+        if category_name is not None:
+            self.apply_suggestion(typed_name)
             return
 
         option = self.option_by_display_name.get(typed_name.casefold())
