@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtGui import QColor, QKeyEvent
 from PyQt6.QtWidgets import QApplication, QHeaderView, QLabel, QPushButton
 
 from budget_model import Subcategory, create_sample_budgets, format_money
@@ -327,6 +327,24 @@ def test_negative_available_month_summary_is_red():
 
     assert "Available: -" in month_item.text()
     assert '<span style="color: #c62828;">Available: -' in month_label.text()
+
+
+def test_negative_remaining_cells_are_red():
+    budgets = create_sample_budgets()
+    budgets[0].master_categories[0].subcategories[0].spent = Decimal("2000.00")
+    page = BudgetPage(
+        budgets,
+        lambda: None,
+        lambda name: None,
+        lambda master_category_id, name: None,
+    )
+    master_row = page.rows.index(("Monthly Bills", None)) + 2
+    subcategory_row = page.rows.index(("Monthly Bills", "Mortgage")) + 2
+
+    assert page.table.item(master_row, 3).foreground().color() == QColor("#c62828")
+    assert page.table.item(subcategory_row, 3).foreground().color() == QColor(
+        "#c62828"
+    )
 
 
 def test_hidden_categories_section_toggles_open_and_closed():

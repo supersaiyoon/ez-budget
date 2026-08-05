@@ -1000,7 +1000,15 @@ class BudgetPage(QWidget):
 
             self.table.setItem(row, column, QTableWidgetItem(""))
             self.table.setItem(row, column + 1, money_item(-category.spent, bold=True))
-            self.table.setItem(row, column + 2, money_item(category.remaining, bold=True))
+            self.table.setItem(
+                row,
+                column + 2,
+                money_item(
+                    category.remaining,
+                    bold=True,
+                    negative_is_warning=True,
+                ),
+            )
         self.table.setRowHeight(row, 34)
 
     def _set_subcategory_row(self, row, category_name, subcategory_name, budgets):
@@ -1106,7 +1114,11 @@ class BudgetPage(QWidget):
 
             self.table.setCellWidget(row, column, input_field)
             self.table.setItem(row, column + 1, money_item(-subcategory.spent))
-            self.table.setItem(row, column + 2, money_item(subcategory.remaining))
+            self.table.setItem(
+                row,
+                column + 2,
+                money_item(subcategory.remaining, negative_is_warning=True),
+            )
         self.table.setRowHeight(row, 38)
 
     def apply_adjustment(self, budget, category_name, subcategory_name, input_field):

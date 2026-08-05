@@ -1,5 +1,5 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import QTableWidgetItem
 
 from budget_model import format_money
@@ -19,9 +19,11 @@ def numeric_font(bold=False):
     return QFont("Consolas", 10, weight)
 
 
-def money_item(amount, bold=False):
+def money_item(amount, bold=False, negative_is_warning=False):
     # Centralized money cells keep alignment and formatting consistent across tables
     item = QTableWidgetItem(format_money(amount))
     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     item.setFont(numeric_font(bold))
+    if negative_is_warning and amount < 0:
+        item.setForeground(QColor("#c62828"))
     return item
