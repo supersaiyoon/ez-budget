@@ -622,7 +622,7 @@ def test_budgeted_cell_displays_current_subcategory_amount():
     row = page.rows.index(("Monthly Bills", subcategory.name)) + 2
     budgeted_input = page.table.cellWidget(row, 1)
 
-    assert budgeted_input.text() == format(subcategory.budgeted, ".2f")
+    assert budgeted_input.text() == format_money(subcategory.budgeted)
     assert isinstance(budgeted_input, BudgetAmountInput)
     assert budgeted_input.property("budget_row") == row
     assert budgeted_input.property("budget_column") == 1

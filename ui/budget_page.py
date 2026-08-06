@@ -50,6 +50,24 @@ class BudgetAmountInput(QLineEdit):
         self.on_tab_navigation = on_tab_navigation
         self.on_enter_pressed = on_enter_pressed
 
+    def focusInEvent(self, event):
+        try:
+            amount = parse_money(self.text())
+        except ValueError:
+            pass
+        else:
+            self.setText(format(amount, ".2f"))
+        super().focusInEvent(event)
+
+    def focusOutEvent(self, event):
+        try:
+            amount = parse_money(self.text())
+        except ValueError:
+            pass
+        else:
+            self.setText(format_money(amount))
+        super().focusOutEvent(event)
+
     def event(self, event):
         if event.type() == QEvent.Type.ShortcutOverride:
             if event.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
@@ -1103,7 +1121,7 @@ class BudgetPage(QWidget):
             input_field.setProperty("subcategory_name", subcategory_name)
             # Current assignment stays visible while cell remains editable
             if subcategory.budgeted != 0:
-                input_field.setText(format(subcategory.budgeted, ".2f"))
+                input_field.setText(format_money(subcategory.budgeted))
             input_field.setPlaceholderText("0.00")
             # Cell widget fills fixed Budgeted column instead of spilling over
             input_field.setMaximumWidth(BUDGET_VALUE_COLUMN_WIDTH)
@@ -1142,7 +1160,10 @@ class BudgetPage(QWidget):
             # This input belonged to a category that was just hidden and removed
             return False
         if new_budgeted == subcategory.budgeted:
-            input_field.setText(format(subcategory.budgeted, ".2f"))
+            if input_field.hasFocus():
+                input_field.setText(format(subcategory.budgeted, ".2f"))
+            else:
+                input_field.setText(format_money(subcategory.budgeted))
             return True
 
         # Displayed value is target total, so model receives only difference
