@@ -754,7 +754,7 @@ def test_budget_navigation_displays_refreshed_income():
     assert "Available: $2,000.00" in refreshed_header
 
 
-def test_grid_transaction_is_saved_and_reloaded(tmp_path):
+def test_grid_transaction_is_saved_and_reloaded(tmp_path, qapp):
     db_path = tmp_path / "budget.db"
     con = database.connect(db_path)
     database.initialize_database(con)
@@ -778,7 +778,7 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     assert transaction.date == stored_date
     assert page.table.cellWidget(0, 0).text() == display_date
 
-    # Remaining required editors complete transaction and trigger persistence
+    # Remaining required editors complete transaction; Enter triggers persistence
     payee_input = page.table.cellWidget(0, 1)
     payee_input.setText("Grocery Store")
     payee_input.editingFinished.emit()
@@ -786,7 +786,9 @@ def test_grid_transaction_is_saved_and_reloaded(tmp_path):
     category_input.setCurrentIndex(category_input.findText("Groceries"))
     outgoing_input = page.table.cellWidget(0, 4)
     outgoing_input.setText("42.50")
+    outgoing_input.returnPressed.emit()
     outgoing_input.editingFinished.emit()
+    qapp.processEvents()
 
     saved_database_id = transaction.database_id
     assert saved_database_id is not None
@@ -853,7 +855,7 @@ def test_saved_new_payee_refreshes_transaction_autocomplete(tmp_path):
     ] == ["Grocery Store"]
 
 
-def test_grid_income_without_payee_updates_budget_and_survives_restart(tmp_path):
+def test_grid_income_without_payee_updates_budget_and_survives_restart(tmp_path, qapp):
     db_path = tmp_path / "budget.db"
     window = MainWindow(db_path)
     window.add_account("Checking")
@@ -877,7 +879,9 @@ def test_grid_income_without_payee_updates_budget_and_survives_restart(tmp_path)
 
     incoming_input = page.table.cellWidget(0, 5)
     incoming_input.setText("2000")
+    incoming_input.returnPressed.emit()
     incoming_input.editingFinished.emit()
+    qapp.processEvents()
 
     saved_row = transactions.list_transactions(
         window.con,

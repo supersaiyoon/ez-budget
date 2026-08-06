@@ -32,7 +32,7 @@ from ui.transactions_page import (
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
-def test_transaction_editors_report_new_and_changed_transactions():
+def test_transaction_editors_stage_existing_row_changes_until_enter():
     account = Account("Checking")
     reported_changes = []
     page = TransactionsPage(
@@ -49,20 +49,17 @@ def test_transaction_editors_report_new_and_changed_transactions():
     date_input.editingFinished.emit()
     transaction = account.transactions[0]
 
-    # Editing its rebuilt payee row reports the same transaction again
+    # Leaving its rebuilt payee row only stages the edit
     payee_input = page.table.cellWidget(0, 1)
     payee_input.setText("Grocery Store")
     payee_input.editingFinished.emit()
 
-    assert reported_changes == [
-        (account, transaction),
-        (account, transaction),
-    ]
+    assert reported_changes == [(account, transaction)]
     assert transaction.date == "2026-07-21"
     assert transaction.payee == "Grocery Store"
 
 
-def test_transaction_page_reports_pending_and_saved_states():
+def test_transaction_page_reports_pending_and_enter_saved_states(qapp):
     account = Account("Checking")
     instruction = (
         "Edit transaction cells directly. Use Outgoing for payments and "
@@ -93,7 +90,15 @@ def test_transaction_page_reports_pending_and_saved_states():
 
     payee_input = page.table.cellWidget(0, 1)
     payee_input.setText("Grocery Store")
-    payee_input.editingFinished.emit()
+    QApplication.sendEvent(
+        payee_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Return,
+            Qt.KeyboardModifier.NoModifier,
+        ),
+    )
+    qapp.processEvents()
 
     assert page.feedback.text() == "Transaction saved."
     assert page.feedback.property("feedbackKind") == "success"
@@ -479,7 +484,7 @@ def test_blank_transaction_row_defaults_to_today_and_focuses_payee(qapp):
     assert page.table.cellWidget(0, 1).hasFocus() is True
 
 
-def test_saved_transaction_moves_focus_to_next_payee(qapp):
+def test_saved_transaction_allows_backward_navigation_until_enter(qapp):
     transaction = Transaction(
         date=date.today().isoformat(),
         payee="Grocery Store",
@@ -488,6 +493,7 @@ def test_saved_transaction_moves_focus_to_next_payee(qapp):
         category_database_id=7,
     )
     account = Account("Checking", transactions=[transaction])
+    reported_changes = []
     page = TransactionsPage(
         account,
         category_rows=[
@@ -498,17 +504,34 @@ def test_saved_transaction_moves_focus_to_next_payee(qapp):
                 "category_name": "Groceries",
             }
         ],
-        on_transaction_changed=lambda *args: True,
+        on_transaction_changed=lambda *args: reported_changes.append(args) or True,
     )
     page.show()
     qapp.processEvents()
     outgoing_input = page.table.cellWidget(0, 4)
+    notes_input = page.table.cellWidget(0, 3)
 
+    outgoing_input.setFocus()
     outgoing_input.setText("12.34")
-    outgoing_input.editingFinished.emit()
+    outgoing_input.focusNextPrevChild(False)
     qapp.processEvents()
 
     assert transaction.outgoing == Decimal("12.34")
+    assert notes_input.hasFocus() is True
+    assert reported_changes == []
+
+    QApplication.sendEvent(
+        notes_input,
+        QKeyEvent(
+            QKeyEvent.Type.KeyPress,
+            Qt.Key.Key_Return,
+            Qt.KeyboardModifier.NoModifier,
+        ),
+    )
+    qapp.processEvents()
+    qapp.processEvents()
+
+    assert reported_changes == [(account, transaction)]
     assert page.table.cellWidget(1, 1).hasFocus() is True
 
 

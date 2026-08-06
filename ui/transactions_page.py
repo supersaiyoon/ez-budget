@@ -615,17 +615,11 @@ class TransactionsPage(QWidget):
             transaction.payee,
             lambda value: self._update_transaction_field(transaction, "payee", value),
         )
-        if transaction.payee == INCOME_PAYEE_PLACEHOLDER:
-            # Muted italic treatment distinguishes automatic value from real payee
-            placeholder_font = payee_input.font()
-            placeholder_font.setItalic(True)
-            payee_input.setFont(placeholder_font)
-            placeholder_palette = payee_input.palette()
-            placeholder_palette.setColor(
-                QPalette.ColorRole.Text,
-                QColor("#7a8794"),
-            )
-            payee_input.setPalette(placeholder_palette)
+        payee_input.setProperty(
+            "normal_text_color",
+            payee_input.palette().color(QPalette.ColorRole.Text),
+        )
+        self.style_transaction_payee_input(payee_input, transaction.payee)
         self._set_category_input(row, transaction)
         self._set_text_input(
             row,
@@ -645,6 +639,12 @@ class TransactionsPage(QWidget):
             transaction.incoming,
             lambda value: self._update_transaction_field(transaction, "incoming", value),
         )
+        for column in range(6):
+            input_field = self.table.cellWidget(row, column)
+            if isinstance(input_field, QLineEdit):
+                input_field.returnPressed.connect(
+                    partial(self.save_edited_transaction, transaction)
+                )
         self._set_cleared_input(row, transaction)
         self._set_delete_button(row, transaction)
         self.table.setRowHeight(row, 36)
@@ -774,9 +774,16 @@ class TransactionsPage(QWidget):
         self.refresh()
 
     def _update_transaction_field(self, transaction, field, value):
-        # Central update path ensures every editor reports the same model change
+        # Row edits stay local until Enter
         setattr(transaction, field, value)
-        return self._notify_transaction_changed(transaction)
+
+    def save_edited_transaction(self, transaction):
+        # Run after editingFinished applies the active cell
+        QTimer.singleShot(0, partial(self.finish_edited_transaction, transaction))
+
+    def finish_edited_transaction(self, transaction):
+        self._notify_transaction_changed(transaction)
+        self.refresh()
 
     def _notify_transaction_changed(self, transaction):
         # Tests and MainWindow can react without TransactionsPage knowing why
@@ -834,7 +841,7 @@ class TransactionsPage(QWidget):
 
     def apply_text_value(self, column, input_field, apply_value):
         value = input_field.text().strip()
-        saved = apply_value(value)
+        apply_value(value)
         if column == 1:
             row = input_field.property("transaction_row")
             if row is None or row >= len(self.account.transactions):
@@ -842,9 +849,6 @@ class TransactionsPage(QWidget):
             transaction = self.account.transactions[row]
             if transaction.category_database_id is None:
                 self.apply_latest_category_for_payee(transaction, value)
-                return
-        if saved:
-            self.refresh()
 
     def _set_date_input(self, row, transaction):
         try:
@@ -875,8 +879,7 @@ class TransactionsPage(QWidget):
             return
 
         self._update_transaction_field(transaction, "date", stored_date)
-        # Refresh shows normalized date and rebuilds date-based category choices
-        self.refresh()
+        input_field.setText(format_transaction_date(stored_date))
 
     def _set_category_input(self, row, transaction):
         category_input = CategoryInput(
@@ -951,12 +954,11 @@ class TransactionsPage(QWidget):
             transaction.income_month_date = None
             if transaction.payee == INCOME_PAYEE_PLACEHOLDER:
                 transaction.payee = ""
-            self._notify_transaction_changed(transaction)
+            self.sync_transaction_payee_input(transaction)
             self.show_feedback(
                 "Choose a category from the suggestions or add a new category.",
                 "warning",
             )
-            self.refresh()
             return
 
         transaction.category = category_option["name"]
@@ -969,8 +971,36 @@ class TransactionsPage(QWidget):
         elif transaction.payee == INCOME_PAYEE_PLACEHOLDER:
             # Automatic value should not follow transaction back to spending
             transaction.payee = ""
-        self._notify_transaction_changed(transaction)
-        self.refresh()
+        self.sync_transaction_payee_input(transaction)
+
+    def sync_transaction_payee_input(self, transaction):
+        for row, existing_transaction in enumerate(self.account.transactions):
+            if existing_transaction is transaction:
+                payee_input = self.table.cellWidget(row, 1)
+                if isinstance(payee_input, QLineEdit):
+                    payee_input.setText(transaction.payee)
+                    self.style_transaction_payee_input(
+                        payee_input,
+                        transaction.payee,
+                    )
+                return
+
+    def style_transaction_payee_input(self, payee_input, payee_name):
+        automatic_payee = payee_name == INCOME_PAYEE_PLACEHOLDER
+        payee_font = payee_input.font()
+        payee_font.setItalic(automatic_payee)
+        payee_input.setFont(payee_font)
+
+        normal_text_color = payee_input.property("normal_text_color")
+        if normal_text_color is None:
+            normal_text_color = payee_input.palette().color(QPalette.ColorRole.Text)
+            payee_input.setProperty("normal_text_color", normal_text_color)
+        payee_palette = payee_input.palette()
+        payee_palette.setColor(
+            QPalette.ColorRole.Text,
+            QColor("#7a8794") if automatic_payee else normal_text_color,
+        )
+        payee_input.setPalette(payee_palette)
 
     def latest_category_values_for_payee(self, payee_name):
         category_option = self.latest_category_option_for_payee(payee_name)
@@ -999,8 +1029,12 @@ class TransactionsPage(QWidget):
         transaction.category = category_option["name"]
         transaction.category_database_id = category_option["database_id"]
         transaction.income_month_date = None
-        self._notify_transaction_changed(transaction)
-        self.refresh()
+        for row, existing_transaction in enumerate(self.account.transactions):
+            if existing_transaction is transaction:
+                category_input = self.table.cellWidget(row, 2)
+                if isinstance(category_input, CategoryInput):
+                    category_input.setText(category_option["display_name"])
+                return
 
     def add_category_from_input(self, category_input, category_name):
         apply_category = category_input.apply_category
@@ -1103,7 +1137,6 @@ class TransactionsPage(QWidget):
         if not raw_value:
             # Clearing a money field means reset to zero
             apply_value(parse_money("0"))
-            self.refresh()
             return
 
         try:
@@ -1114,8 +1147,6 @@ class TransactionsPage(QWidget):
             return
 
         apply_value(amount)
-        # Refresh needed because balances depend on both money columns
-        self.refresh()
 
     def category_display_name(self, category_row):
         category_name = category_row["category_name"]
