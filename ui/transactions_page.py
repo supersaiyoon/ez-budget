@@ -65,6 +65,26 @@ CATEGORY_INLINE_COMPLETE_MINIMUM = 2
 PAYEE_INLINE_COMPLETE_MINIMUM = 2
 
 
+class TransactionAmountInput(QLineEdit):
+    def focusInEvent(self, event):
+        try:
+            amount = parse_money(self.text())
+        except ValueError:
+            pass
+        else:
+            self.setText(format(amount, ".2f"))
+        super().focusInEvent(event)
+
+    def focusOutEvent(self, event):
+        try:
+            amount = parse_money(self.text())
+        except ValueError:
+            pass
+        else:
+            self.setText(format_money(amount))
+        super().focusOutEvent(event)
+
+
 class DateInput(QLineEdit):
     def __init__(self, text="", on_calendar_date_selected=None):
         super().__init__(text)
@@ -676,6 +696,8 @@ class TransactionsPage(QWidget):
             )
         elif column == 1:
             input_field = PayeeInput(self.payee_names)
+        elif money_column is not None:
+            input_field = TransactionAmountInput()
         else:
             input_field = QLineEdit()
 
@@ -1066,7 +1088,9 @@ class TransactionsPage(QWidget):
 
     def _set_money_input(self, row, column, value, apply_value):
         # Zero shown blank so empty money cells stay quick to scan
-        input_field = QLineEdit("" if value == 0 else format(value, ".2f"))
+        input_field = TransactionAmountInput(
+            "" if value == 0 else format_money(value)
+        )
         input_field.setAlignment(Qt.AlignmentFlag.AlignRight)
         input_field.setFont(numeric_font())
 
