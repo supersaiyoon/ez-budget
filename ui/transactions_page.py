@@ -655,11 +655,29 @@ class TransactionsPage(QWidget):
         if self.date_sort_order is None:
             return self.account.transactions
 
-        return sorted(
-            self.account.transactions,
-            key=lambda transaction: transaction.date,
+        indexed_transactions = list(enumerate(self.account.transactions))
+        latest_database_id = max(
+            (
+                transaction.database_id or 0
+                for transaction in self.account.transactions
+            ),
+            default=0,
+        )
+
+        # Unsaved rows follow saved IDs in their original entry order
+        def date_and_entry_order(indexed_transaction):
+            index, transaction = indexed_transaction
+            entry_order = transaction.database_id
+            if entry_order is None:
+                entry_order = latest_database_id + index + 1
+            return transaction.date, entry_order
+
+        sorted_transactions = sorted(
+            indexed_transactions,
+            key=date_and_entry_order,
             reverse=self.date_sort_order == Qt.SortOrder.DescendingOrder,
         )
+        return [transaction for _, transaction in sorted_transactions]
 
     def sort_by_date_column(self, column):
         if column != 0:

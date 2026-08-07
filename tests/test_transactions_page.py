@@ -528,9 +528,27 @@ def test_saved_transaction_allows_backward_navigation_until_enter(qapp):
 
 def test_date_header_sorts_transactions_and_keeps_blank_row_last():
     transactions = [
-        Transaction(date="2026-08-03", payee="August", category="", notes=""),
-        Transaction(date="2026-06-10", payee="June", category="", notes=""),
-        Transaction(date="2026-07-20", payee="July", category="", notes=""),
+        Transaction(
+            date="2026-08-03",
+            payee="Earlier August",
+            category="",
+            notes="",
+            database_id=1,
+        ),
+        Transaction(
+            date="2026-06-10",
+            payee="June",
+            category="",
+            notes="",
+            database_id=2,
+        ),
+        Transaction(
+            date="2026-08-03",
+            payee="Later August",
+            category="",
+            notes="",
+            database_id=3,
+        ),
     ]
     page = TransactionsPage(
         Account("Checking", transactions=transactions),
@@ -543,7 +561,7 @@ def test_date_header_sorts_transactions_and_keeps_blank_row_last():
     assert [
         page.table.cellWidget(row, 1).text()
         for row in range(len(transactions))
-    ] == ["June", "July", "August"]
+    ] == ["June", "Earlier August", "Later August"]
     assert page.table.cellWidget(len(transactions), 0).text() == (
         page.default_transaction_date_display()
     )
@@ -554,7 +572,7 @@ def test_date_header_sorts_transactions_and_keeps_blank_row_last():
     assert [
         page.table.cellWidget(row, 1).text()
         for row in range(len(transactions))
-    ] == ["August", "July", "June"]
+    ] == ["Later August", "Earlier August", "June"]
 
 
 def test_short_date_input_stores_iso_and_displays_full_year():
