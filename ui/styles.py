@@ -46,6 +46,12 @@ QMainWindow {
     max-width: 28px;
     padding: 4px 0;
 }
+QWidget[incomeTransaction="true"] {
+    background: #edf8f1;
+    color: #24543a;
+    border-color: #8fc6a3;
+    font-weight: 600;
+}
 #feedbackMessage {
     padding: 4px 8px;
     border-radius: 4px;

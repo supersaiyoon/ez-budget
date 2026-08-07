@@ -148,6 +148,68 @@ class DateInput(QLineEdit):
             self.on_calendar_date_selected()
 
 
+class AddIncomeDialog(QDialog):
+    def __init__(self, income_reference_date, parent=None, current_date=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Income")
+        self.income_reference_date = income_reference_date
+
+        layout = QFormLayout(self)
+        default_date = current_date or date.today()
+        self.date_input = DateInput(format_transaction_date(default_date.isoformat()))
+        layout.addRow("Transaction date:", self.date_input)
+
+        self.amount_input = TransactionAmountInput()
+        self.amount_input.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.amount_input.setFont(numeric_font())
+        self.amount_input.setPlaceholderText("0.00")
+        layout.addRow("Amount:", self.amount_input)
+
+        this_month, next_month = income_target_month_dates(income_reference_date)
+        self.target_month_input = QComboBox()
+        self.target_month_input.addItem("This month", this_month)
+        self.target_month_input.addItem("Next month", next_month)
+        layout.addRow("Add income to:", self.target_month_input)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.validate_and_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def validate_and_accept(self):
+        try:
+            self.parsed_date = parse_transaction_date(self.date_input.text())
+            self.parsed_amount = parse_money(self.amount_input.text())
+        except ValueError as exc:
+            QMessageBox.warning(self, "Add Income", str(exc))
+            return
+        if self.parsed_amount <= 0:
+            QMessageBox.warning(
+                self,
+                "Add Income",
+                "Enter an amount greater than zero.",
+            )
+            return
+        self.accept()
+
+    def transaction_date(self):
+        return self.parsed_date
+
+    def amount(self):
+        return self.parsed_amount
+
+    def income_month_date(self):
+        return self.target_month_input.currentData()
+
+    def category_name(self):
+        if self.target_month_input.currentIndex() == 0:
+            return "Income for this month"
+        return "Income for next month"
+
+
 class AddTransactionCategoryDialog(QDialog):
     def __init__(self, master_category_rows, category_name="", parent=None):
         super().__init__(parent)
@@ -449,6 +511,15 @@ class TransactionsPage(QWidget):
 
         # Account action stays separate from transaction-row actions
         account_actions = QHBoxLayout()
+        self.add_income_button = QPushButton("Add Income")
+        self.add_income_button.setObjectName("addIncomeButton")
+        self.add_income_button.clicked.connect(self.prompt_for_income)
+        self.add_income_button.setVisible(
+            self.allow_new_transactions
+            and self.account.on_budget
+            and self.income_category_id is not None
+        )
+        account_actions.addWidget(self.add_income_button)
         account_actions.addStretch()
         self.close_account_button = QPushButton("Close Account")
         self.close_account_button.setObjectName("closeAccountButton")
@@ -501,7 +572,17 @@ class TransactionsPage(QWidget):
         layout.addWidget(self.table, 1)
 
         # Instruction line stays separate from transient save feedback
-        self.status = QLabel("Edit transaction cells directly. Use Outgoing for payments and Incoming for refunds or income.")
+        if self.account.on_budget and self.allow_new_transactions:
+            instruction = (
+                "Edit transaction cells directly. Use Add Income for income and "
+                "Incoming for refunds."
+            )
+        else:
+            instruction = (
+                "Edit transaction cells directly. Use Outgoing for payments and "
+                "Incoming for deposits or refunds."
+            )
+        self.status = QLabel(instruction)
         self.status.setObjectName("statusText")
         self.status.setFixedHeight(20)
         layout.addWidget(self.status)
@@ -647,7 +728,18 @@ class TransactionsPage(QWidget):
                 )
         self._set_cleared_input(row, transaction)
         self._set_delete_button(row, transaction)
+        if transaction.income_month_date is not None:
+            self.style_income_transaction_row(row)
         self.table.setRowHeight(row, 36)
+
+    def style_income_transaction_row(self, row):
+        for column in range(self.table.columnCount()):
+            cell_widget = self.table.cellWidget(row, column)
+            if cell_widget is None:
+                continue
+            cell_widget.setProperty("incomeTransaction", True)
+            cell_widget.style().unpolish(cell_widget)
+            cell_widget.style().polish(cell_widget)
 
     def _set_blank_row(self, row):
         # Blank row creates a transaction from whichever field user starts with
@@ -772,6 +864,34 @@ class TransactionsPage(QWidget):
         self._notify_transaction_changed(transaction)
         # Full refresh replaces the blank row and updates balances together
         self.refresh()
+
+    def prompt_for_income(self):
+        dialog = AddIncomeDialog(self.income_reference_date, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.add_income(
+            dialog.transaction_date(),
+            dialog.amount(),
+            dialog.income_month_date(),
+            dialog.category_name(),
+        )
+
+    def add_income(
+        self,
+        transaction_date,
+        amount,
+        income_month_date,
+        category_name,
+    ):
+        self.create_transaction(
+            date=transaction_date,
+            payee=INCOME_PAYEE_PLACEHOLDER,
+            category=category_name,
+            notes="",
+            incoming=amount,
+            category_database_id=self.income_category_id,
+            income_month_date=income_month_date,
+        )
 
     def _update_transaction_field(self, transaction, field, value):
         # Row edits stay local until Enter

@@ -62,8 +62,8 @@ def test_transaction_editors_stage_existing_row_changes_until_enter():
 def test_transaction_page_reports_pending_and_enter_saved_states(qapp):
     account = Account("Checking")
     instruction = (
-        "Edit transaction cells directly. Use Outgoing for payments and "
-        "Incoming for refunds or income."
+        "Edit transaction cells directly. Use Add Income for income and "
+        "Incoming for refunds."
     )
     save_results = iter([False, True])
     page = TransactionsPage(
@@ -927,6 +927,35 @@ def test_income_category_options_use_current_planning_month():
     ]
     assert page.income_category_options("") == []
     assert page.income_category_options("not-a-date") == []
+
+
+def test_add_income_creates_highlighted_transaction_row():
+    account = Account("Checking")
+    saved_transactions = []
+    page = TransactionsPage(
+        account,
+        category_rows=[],
+        on_transaction_changed=lambda changed_account, transaction: (
+            saved_transactions.append((changed_account, transaction)) or True
+        ),
+        income_category_id=42,
+        income_reference_date="2026-07-01",
+    )
+
+    page.add_income(
+        "2026-07-25",
+        Decimal("2000.00"),
+        "2026-08-01",
+        "Income for next month",
+    )
+
+    transaction = account.transactions[0]
+    assert transaction.payee == "Not needed for income"
+    assert transaction.incoming == Decimal("2000.00")
+    assert transaction.income_month_date == "2026-08-01"
+    assert saved_transactions == [(account, transaction)]
+    assert page.table.cellWidget(0, 0).property("incomeTransaction") is True
+    assert page.table.cellWidget(0, 5).text() == "$2,000.00"
 
 
 def test_dated_transaction_row_selects_income_target_month():
