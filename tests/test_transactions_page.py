@@ -526,7 +526,7 @@ def test_saved_transaction_allows_backward_navigation_until_enter(qapp):
     assert page.table.cellWidget(1, 1).hasFocus() is True
 
 
-def test_date_header_sorts_transactions_and_keeps_blank_row_last():
+def test_date_header_sorts_transactions_and_keeps_entry_focus(qapp):
     transactions = [
         Transaction(
             date="2026-08-03",
@@ -554,6 +554,8 @@ def test_date_header_sorts_transactions_and_keeps_blank_row_last():
         Account("Checking", transactions=transactions),
         category_rows=[],
     )
+    page.show()
+    qapp.processEvents()
     header = page.table.horizontalHeader()
 
     header.sectionClicked.emit(0)
@@ -573,6 +575,14 @@ def test_date_header_sorts_transactions_and_keeps_blank_row_last():
         page.table.cellWidget(row, 1).text()
         for row in range(len(transactions))
     ] == ["Later August", "Earlier August", "June"]
+
+    blank_payee = page.table.cellWidget(len(transactions), 1)
+    blank_payee.setText("Newest transaction")
+    blank_payee.editingFinished.emit()
+    qapp.processEvents()
+
+    assert page.table.cellWidget(0, 1).text() == "Newest transaction"
+    assert page.table.cellWidget(0, 2).hasFocus() is True
 
 
 def test_short_date_input_stores_iso_and_displays_full_year():

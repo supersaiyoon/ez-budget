@@ -891,6 +891,7 @@ class TransactionsPage(QWidget):
         }
         if column == 1:
             self.create_transaction(
+                focus_column=2,
                 payee=value,
                 **self.latest_category_values_for_payee(value),
             )
@@ -899,7 +900,7 @@ class TransactionsPage(QWidget):
         # Column map keeps generic editor code from knowing transaction names
         self.create_transaction(**{fields[column]: value})
 
-    def create_transaction(self, **values):
+    def create_transaction(self, focus_column=None, **values):
         if not any(value not in ("", None, False, 0) for value in values.values()):
             # Default-only edits ignored so checkbox setup cannot add empty rows
             return
@@ -920,6 +921,38 @@ class TransactionsPage(QWidget):
         self._notify_transaction_changed(transaction)
         # Full refresh replaces the blank row and updates balances together
         self.refresh()
+        if focus_column is not None:
+            QTimer.singleShot(
+                0,
+                partial(
+                    self.focus_transaction_field,
+                    transaction,
+                    focus_column,
+                ),
+            )
+
+    def focus_transaction_field(self, transaction, column):
+        row = next(
+            (
+                row
+                for row, displayed_transaction in enumerate(
+                    self.display_transactions()
+                )
+                if displayed_transaction is transaction
+            ),
+            None,
+        )
+        if row is None:
+            return
+
+        input_field = self.table.cellWidget(row, column)
+        if input_field is None:
+            return
+
+        self.table.setCurrentCell(row, column)
+        input_field.setFocus(Qt.FocusReason.OtherFocusReason)
+        if isinstance(input_field, QLineEdit):
+            input_field.setCursorPosition(len(input_field.text()))
 
     def prompt_for_income(self):
         dialog = AddIncomeDialog(self.income_reference_date, self)
