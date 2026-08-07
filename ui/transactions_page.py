@@ -493,6 +493,7 @@ class TransactionsPage(QWidget):
         self.master_category_rows = master_category_rows or []
         self.focus_blank_payee_after_refresh = False
         self.focus_blank_payee_when_shown = allow_new_transactions
+        self.date_sort_order = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -554,7 +555,11 @@ class TransactionsPage(QWidget):
         self.table.setHorizontalHeaderLabels(TRANSACTION_COLUMNS)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header = self.table.horizontalHeader()
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self.sort_by_date_column)
+        header.setSortIndicatorShown(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, TRANSACTION_DATE_COLUMN_WIDTH)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
         self.table.setColumnWidth(1, TRANSACTION_PAYEE_COLUMN_WIDTH)
@@ -638,13 +643,37 @@ class TransactionsPage(QWidget):
             len(self.account.transactions) + extra_row_count
         )
 
-        for row, transaction in enumerate(self.account.transactions):
+        for row, transaction in enumerate(self.display_transactions()):
             self._set_transaction_row(row, transaction)
         if self.allow_new_transactions:
             self._set_blank_row(len(self.account.transactions))
         if self.focus_blank_payee_after_refresh:
             self.focus_blank_payee_after_refresh = False
             QTimer.singleShot(0, self.focus_blank_payee)
+
+    def display_transactions(self):
+        if self.date_sort_order is None:
+            return self.account.transactions
+
+        return sorted(
+            self.account.transactions,
+            key=lambda transaction: transaction.date,
+            reverse=self.date_sort_order == Qt.SortOrder.DescendingOrder,
+        )
+
+    def sort_by_date_column(self, column):
+        if column != 0:
+            return
+
+        if self.date_sort_order == Qt.SortOrder.AscendingOrder:
+            self.date_sort_order = Qt.SortOrder.DescendingOrder
+        else:
+            self.date_sort_order = Qt.SortOrder.AscendingOrder
+
+        header = self.table.horizontalHeader()
+        header.setSortIndicator(0, self.date_sort_order)
+        header.setSortIndicatorShown(True)
+        self.refresh()
 
     def default_transaction_date(self):
         return date.today().isoformat()

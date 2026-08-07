@@ -526,6 +526,37 @@ def test_saved_transaction_allows_backward_navigation_until_enter(qapp):
     assert page.table.cellWidget(1, 1).hasFocus() is True
 
 
+def test_date_header_sorts_transactions_and_keeps_blank_row_last():
+    transactions = [
+        Transaction(date="2026-08-03", payee="August", category="", notes=""),
+        Transaction(date="2026-06-10", payee="June", category="", notes=""),
+        Transaction(date="2026-07-20", payee="July", category="", notes=""),
+    ]
+    page = TransactionsPage(
+        Account("Checking", transactions=transactions),
+        category_rows=[],
+    )
+    header = page.table.horizontalHeader()
+
+    header.sectionClicked.emit(0)
+
+    assert [
+        page.table.cellWidget(row, 1).text()
+        for row in range(len(transactions))
+    ] == ["June", "July", "August"]
+    assert page.table.cellWidget(len(transactions), 0).text() == (
+        page.default_transaction_date_display()
+    )
+
+    header.sectionClicked.emit(0)
+    page.refresh()
+
+    assert [
+        page.table.cellWidget(row, 1).text()
+        for row in range(len(transactions))
+    ] == ["August", "July", "June"]
+
+
 def test_short_date_input_stores_iso_and_displays_full_year():
     account = Account("Checking")
     page = TransactionsPage(account, category_rows=[])
