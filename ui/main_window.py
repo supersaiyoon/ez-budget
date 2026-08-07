@@ -34,6 +34,7 @@ from db import (
     transactions,
 )
 from ui import budget_page, payees_dialog, reports_page, styles, transactions_page
+from ui.widgets import VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
 CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
@@ -137,7 +138,6 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.budget_page = self.create_budget_page()
 
-        self.refresh_budget_page_totals()
         self.reports_page = reports_page.ReportsPage(
             self.budgets,
             self.accounts,
@@ -154,8 +154,9 @@ class MainWindow(QMainWindow):
 
         shell_layout.addWidget(self.stack)
 
-        self.nav.currentRowChanged.connect(self.show_navigation_page)
+        # Initial stack already shows Budget; connect after selecting its nav row
         self.nav.setCurrentRow(0)
+        self.nav.currentRowChanged.connect(self.show_navigation_page)
         self.setCentralWidget(shell)
         self.setStyleSheet(styles.APP_STYLE)
 
@@ -191,12 +192,24 @@ class MainWindow(QMainWindow):
         ]
 
     def load_startup_budget_data(self):
-        # BudgetPage constructor needs the first month already populated
+        # BudgetPage constructor needs every initial visible month populated
         current_budget = self.budgets[0]
         self.load_budget_income(current_budget)
         self.load_budget_categories(current_budget)
         self.load_budget_allocations(current_budget)
         self.load_budget_spending(current_budget)
+
+        startup_month_count = max(VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS)
+        while len(self.budgets) < startup_month_count:
+            self.budgets.append(
+                budget_model.create_next_month_budget(self.budgets[-1])
+            )
+
+        # Later months already inherit the current category structure
+        for budget in self.budgets[1:]:
+            self.load_budget_allocations(budget)
+            self.load_budget_income(budget)
+            self.load_budget_spending(budget)
 
     def load_budget_categories(self, budget):
         # Visible database categories become active Budget rows

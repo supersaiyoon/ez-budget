@@ -491,7 +491,8 @@ class TransactionsPage(QWidget):
         self.on_payee_category_requested = on_payee_category_requested
         self.on_category_added = on_category_added
         self.master_category_rows = master_category_rows or []
-        self.focus_blank_payee_after_refresh = allow_new_transactions
+        self.focus_blank_payee_after_refresh = False
+        self.focus_blank_payee_when_shown = allow_new_transactions
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -588,6 +589,14 @@ class TransactionsPage(QWidget):
         layout.addWidget(self.status)
 
         self.refresh()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self.focus_blank_payee_when_shown:
+            return
+
+        self.focus_blank_payee_when_shown = False
+        QTimer.singleShot(0, self.focus_blank_payee)
 
     def show_feedback(self, message, kind="info"):
         self.feedback_generation += 1
