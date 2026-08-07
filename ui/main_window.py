@@ -138,7 +138,10 @@ class MainWindow(QMainWindow):
         self.budget_page = self.create_budget_page()
 
         self.refresh_budget_page_totals()
-        self.reports_page = reports_page.ReportsPage(self.budgets)
+        self.reports_page = reports_page.ReportsPage(
+            self.budgets,
+            self.accounts,
+        )
         self.stack.addWidget(self.budget_page)
         self.stack.addWidget(self.reports_page)
 

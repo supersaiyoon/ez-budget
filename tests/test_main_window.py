@@ -719,12 +719,16 @@ def test_report_navigation_refreshes_transaction_spending():
         category_database_id=groceries.database_id,
     )
 
+    window.accounts[0].transactions.append(transaction)
     window.save_transaction(window.accounts[0], transaction)
     assert window.reports_page.table.item(0, 3).text() == "$0.00"
+    assert window.reports_page.transaction_data.empty is True
 
     window.show_navigation_page(1)
 
     assert window.reports_page.table.item(0, 3).text() == "$42.50"
+    assert window.reports_page.accounts is window.accounts
+    assert window.reports_page.transaction_data["amount_cents"].tolist() == [-4250]
 
 
 def test_budget_navigation_displays_refreshed_income():

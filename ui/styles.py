@@ -31,6 +31,21 @@ QMainWindow {
 #statusText {
     color: #4d5b6a;
 }
+#reportCard {
+    background: #ffffff;
+    border: 1px solid #d8dee6;
+    border-radius: 5px;
+}
+#reportCardTitle {
+    color: #26323f;
+    font-size: 16px;
+    font-weight: 700;
+}
+#reportMonthArrow {
+    min-width: 28px;
+    max-width: 28px;
+    padding: 4px 0;
+}
 #feedbackMessage {
     padding: 4px 8px;
     border-radius: 4px;
