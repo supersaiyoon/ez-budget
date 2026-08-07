@@ -601,6 +601,7 @@ def test_spending_values_display_as_negative_on_budget_page():
     ) + 2
 
     assert f"Spent: {format_money(-budget.total_spent)}" in page.table.item(0, 1).text()
+    assert page.table.item(master_row, 1).text() == format_money(master_category.budgeted)
     assert page.table.item(master_row, 2).text() == format_money(-master_category.spent)
     assert page.table.item(master_row, 2).font().family() == "Consolas"
     assert page.table.item(master_row, 3).font().family() == "Consolas"

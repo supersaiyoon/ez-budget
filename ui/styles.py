@@ -132,6 +132,18 @@ QPushButton {
 QPushButton:hover {
     background: #255d78;
 }
+#addIncomeButton {
+    background: #2e7d32;
+}
+#addIncomeButton:hover {
+    background: #256628;
+}
+#deleteAccountButton {
+    background: #c62828;
+}
+#deleteAccountButton:hover {
+    background: #a61f1f;
+}
 #payeesButton,
 #settingsButton {
     padding: 0;

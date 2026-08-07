@@ -3,7 +3,7 @@ from html import escape
 from pathlib import Path
 
 from PyQt6.QtCore import QEvent, QTimer, QSize, Qt
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtGui import QColor, QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
@@ -1017,17 +1017,18 @@ class BudgetPage(QWidget):
             category = get_category(budget, category_name)
             column = 1 + (month_index * 3)
 
-            self.table.setItem(row, column, QTableWidgetItem(""))
-            self.table.setItem(row, column + 1, money_item(-category.spent, bold=True))
-            self.table.setItem(
-                row,
-                column + 2,
-                money_item(
-                    category.remaining,
-                    bold=True,
-                    negative_is_warning=True,
-                ),
+            budgeted_item = money_item(category.budgeted, bold=True)
+            spent_item = money_item(-category.spent, bold=True)
+            remaining_item = money_item(
+                category.remaining,
+                bold=True,
+                negative_is_warning=True,
             )
+            for item in (budgeted_item, spent_item, remaining_item):
+                item.setBackground(QColor("lightgray"))
+            self.table.setItem(row, column, budgeted_item)
+            self.table.setItem(row, column + 1, spent_item)
+            self.table.setItem(row, column + 2, remaining_item)
         self.table.setRowHeight(row, 34)
 
     def _set_subcategory_row(self, row, category_name, subcategory_name, budgets):
