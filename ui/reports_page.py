@@ -22,6 +22,7 @@ from ui.helpers import money_item
 
 
 REPORT_MONTH_COUNT = 12
+CASH_FLOW_MONTH_COUNT = 3
 OPENING_BALANCE_PAYEE = "Opening Balance"
 NET_WORTH_COLOR = "#55b89b"
 INCOMING_COLOR = "#74c69d"
@@ -76,17 +77,31 @@ def net_worth_by_month(frame, through_date):
     return (balance_before_range + visible_change.cumsum()) / 100
 
 
-def cash_flow_for_month(frame, month):
+def cash_flow_by_month(frame, ending_month):
+    months = pd.period_range(
+        end=ending_month,
+        periods=CASH_FLOW_MONTH_COUNT,
+        freq="M",
+    )
     if frame.empty:
-        return pd.Series({"Incoming": 0.0, "Expenses": 0.0})
+        return pd.DataFrame(0.0, index=months, columns=["Incoming", "Expenses"])
 
-    activity = frame[
-        (frame["month"] == month)
-        & (frame["payee"] != OPENING_BALANCE_PAYEE)
-    ]["amount_cents"]
-    incoming = activity[activity > 0].sum() / 100
-    expenses = -activity[activity < 0].sum() / 100
-    return pd.Series({"Incoming": incoming, "Expenses": expenses})
+    activity = frame[frame["payee"] != OPENING_BALANCE_PAYEE]
+    incoming = (
+        activity[activity["amount_cents"] > 0]
+        .groupby("month")["amount_cents"]
+        .sum()
+        .reindex(months, fill_value=0)
+        / 100
+    )
+    expenses = (
+        -activity[activity["amount_cents"] < 0]
+        .groupby("month")["amount_cents"]
+        .sum()
+        .reindex(months, fill_value=0)
+        / 100
+    )
+    return pd.DataFrame({"Incoming": incoming, "Expenses": expenses})
 
 
 def currency_tick(value, _position=None):
@@ -149,7 +164,7 @@ class ReportsPage(QWidget):
         cash_flow_header.addWidget(self.previous_month_button)
         self.cash_flow_month_label = QLabel()
         self.cash_flow_month_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.cash_flow_month_label.setMinimumWidth(105)
+        self.cash_flow_month_label.setMinimumWidth(180)
         cash_flow_header.addWidget(self.cash_flow_month_label)
         self.next_month_button = QPushButton(">")
         self.next_month_button.setObjectName("reportMonthArrow")
@@ -211,8 +226,10 @@ class ReportsPage(QWidget):
         self.update_cash_flow_controls()
 
     def update_cash_flow_controls(self):
+        first_month = self.selected_cash_flow_month - (CASH_FLOW_MONTH_COUNT - 1)
         self.cash_flow_month_label.setText(
-            self.selected_cash_flow_month.strftime("%B %Y")
+            f'{first_month.strftime("%b %Y")} - '
+            f'{self.selected_cash_flow_month.strftime("%b %Y")}'
         )
         self.previous_month_button.setEnabled(
             self.selected_cash_flow_month > self.earliest_cash_flow_month
@@ -290,38 +307,44 @@ class ReportsPage(QWidget):
         self.net_worth_canvas.draw_idle()
 
     def draw_cash_flow_chart(self):
-        cash_flow = cash_flow_for_month(
+        cash_flow = cash_flow_by_month(
             self.transaction_data,
             self.selected_cash_flow_month,
         )
-        if cash_flow.sum() == 0:
+        if cash_flow.to_numpy().sum() == 0:
             self.draw_empty_chart(
                 self.cash_flow_figure,
                 self.cash_flow_canvas,
-                "No cash flow for this month.",
+                "No cash flow for these months.",
             )
             return
 
         axes = self.prepare_axes(self.cash_flow_figure)
-        values = cash_flow.astype(float).to_numpy()
-        bars = axes.bar(
-            cash_flow.index,
-            values,
+        plot_data = cash_flow.astype(float).copy()
+        plot_data.index = [month.strftime("%b") for month in plot_data.index]
+        plot_data.plot.bar(
+            ax=axes,
             color=[INCOMING_COLOR, EXPENSE_COLOR],
-            width=0.55,
+            width=0.6,
+            rot=0,
         )
         axes.margins(y=0.18)
         axes.grid(axis="y", color=GRID_COLOR, linewidth=0.6, alpha=0.8)
         axes.yaxis.set_major_formatter(FuncFormatter(currency_tick))
-        for bar, value in zip(bars, values):
-            axes.annotate(
-                f"${value:,.2f}",
-                (bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                xytext=(0, 5),
-                textcoords="offset points",
-                ha="center",
-                va="bottom",
-                color=TEXT_COLOR,
-                fontsize=8,
-            )
+        axes.legend(frameon=False, fontsize=8)
+        for container in axes.containers:
+            for bar in container:
+                value = bar.get_height()
+                if value == 0:
+                    continue
+                axes.annotate(
+                    f"${value:,.2f}",
+                    (bar.get_x() + bar.get_width() / 2, value),
+                    xytext=(0, 5),
+                    textcoords="offset points",
+                    ha="center",
+                    va="bottom",
+                    color=TEXT_COLOR,
+                    fontsize=7,
+                )
         self.cash_flow_canvas.draw_idle()

@@ -6,7 +6,7 @@ import pytest
 from budget_model import Account, Budget, MasterCategory, Subcategory, Transaction
 from ui.reports_page import (
     ReportsPage,
-    cash_flow_for_month,
+    cash_flow_by_month,
     net_worth_by_month,
     transaction_frame,
 )
@@ -93,7 +93,7 @@ def test_report_data_tracks_net_worth_and_cash_flow_rules():
         through_date,
     )
     net_worth = net_worth_by_month(frame, through_date)
-    cash_flow = cash_flow_for_month(frame, net_worth.index[-1])
+    cash_flow = cash_flow_by_month(frame, net_worth.index[-1])
 
     assert len(net_worth) == 12
     assert net_worth.index[0].strftime("%Y-%m") == "2025-08"
@@ -101,8 +101,14 @@ def test_report_data_tracks_net_worth_and_cash_flow_rules():
     assert net_worth.loc["2025-11"] == 900
     assert net_worth.loc["2026-06"] == 1400
     assert net_worth.loc["2026-07"] == 2050
-    assert cash_flow["Incoming"] == 300
-    assert cash_flow["Expenses"] == 50
+    assert [month.strftime("%Y-%m") for month in cash_flow.index] == [
+        "2026-05",
+        "2026-06",
+        "2026-07",
+    ]
+    assert cash_flow.loc["2026-06", "Incoming"] == 500
+    assert cash_flow.loc["2026-07", "Incoming"] == 300
+    assert cash_flow.loc["2026-07", "Expenses"] == 50
 
 
 def test_cash_flow_navigation_uses_saved_month_boundaries():
@@ -115,17 +121,17 @@ def test_cash_flow_navigation_uses_saved_month_boundaries():
     )
     page = ReportsPage([], [account], current_date=date(2026, 7, 15))
 
-    assert page.cash_flow_month_label.text() == "July 2026"
+    assert page.cash_flow_month_label.text() == "May 2026 - Jul 2026"
     assert page.next_month_button.isEnabled() is False
     assert page.previous_month_button.isEnabled() is True
 
     page.shift_cash_flow_month(-1)
     page.refresh()
 
-    assert page.cash_flow_month_label.text() == "June 2026"
+    assert page.cash_flow_month_label.text() == "Apr 2026 - Jun 2026"
     assert page.selected_cash_flow_month.strftime("%Y-%m") == "2026-06"
 
     page.shift_cash_flow_month(-1)
 
-    assert page.cash_flow_month_label.text() == "May 2026"
+    assert page.cash_flow_month_label.text() == "Mar 2026 - May 2026"
     assert page.previous_month_button.isEnabled() is False
