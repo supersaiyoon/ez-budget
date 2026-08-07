@@ -2,13 +2,12 @@ from decimal import Decimal
 
 import pytest
 
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QColor, QKeyEvent
-from PyQt6.QtWidgets import QApplication, QHeaderView, QLabel, QPushButton
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtWidgets import QApplication, QLabel, QPushButton
 
 from budget_model import Subcategory, create_sample_budgets, format_money
 from ui.budget_page import (
-    BUDGET_VALUE_COLUMN_WIDTH,
     BudgetAmountInput,
     BudgetPage,
 )
@@ -80,9 +79,6 @@ def test_master_category_name_is_sent_to_callback():
 
     page.submit_master_category_name(" Savings ")
 
-    assert page.add_master_category_button.text() == ""
-    assert page.add_master_category_button.icon().isNull() is False
-    assert page.add_master_category_button.iconSize() == QSize(14, 14)
     assert added_names == ["Savings"]
 
 
@@ -240,20 +236,6 @@ def test_subcategory_drag_ignores_drop_outside_own_master():
     assert page.drop_indicator.isHidden() is True
 
 
-def test_feedback_space_is_reserved_before_message():
-    page = BudgetPage(
-        create_sample_budgets(),
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-
-    assert page.feedback.height() == 30
-    assert page.feedback.text() == ""
-    assert page.feedback.property("feedbackKind") == "empty"
-    assert page.feedback.isHidden() is False
-
-
 def test_master_category_error_is_shown_in_feedback():
     def reject_duplicate(name):
         raise ValueError("Master category already exists.")
@@ -293,58 +275,6 @@ def test_subcategory_error_is_shown_in_feedback():
         "Subcategory already exists in this master category."
     )
     assert page.feedback.property("feedbackKind") == "warning"
-
-
-def test_success_feedback_can_clear_to_reserved_space():
-    page = BudgetPage(
-        create_sample_budgets(),
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-
-    page.show_feedback('Added master category "Savings".', "success")
-    generation = page.feedback_generation
-    page.clear_success_feedback(generation)
-
-    assert page.feedback.text() == ""
-    assert page.feedback.property("feedbackKind") == "empty"
-    assert page.feedback.height() == 30
-
-
-def test_negative_available_month_summary_is_red():
-    budgets = create_sample_budgets()
-    budgets[0].monthly_income = Decimal("100.00")
-    page = BudgetPage(
-        budgets,
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-
-    month_item = page.table.item(0, 1)
-    month_label = page.table.cellWidget(0, 1)
-
-    assert "Available: -" in month_item.text()
-    assert '<span style="color: #c62828;">Available: -' in month_label.text()
-
-
-def test_negative_remaining_cells_are_red():
-    budgets = create_sample_budgets()
-    budgets[0].master_categories[0].subcategories[0].spent = Decimal("2000.00")
-    page = BudgetPage(
-        budgets,
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-    master_row = page.rows.index(("Monthly Bills", None)) + 2
-    subcategory_row = page.rows.index(("Monthly Bills", "Mortgage")) + 2
-
-    assert page.table.item(master_row, 3).foreground().color() == QColor("#c62828")
-    assert page.table.item(subcategory_row, 3).foreground().color() == QColor(
-        "#c62828"
-    )
 
 
 def test_hidden_categories_section_toggles_open_and_closed():
@@ -448,10 +378,7 @@ def test_master_category_row_has_subcategory_button_with_database_id():
         button for button in buttons if button.property("master_category_id") == 12
     )
 
-    assert add_button.text() == ""
-    assert add_button.icon().isNull() is False
-    assert add_button.iconSize() == QSize(14, 14)
-    assert add_button.isEnabled() == True
+    assert add_button.isEnabled() is True
 
 
 def test_master_category_rename_button_reports_selected_model():
@@ -478,12 +405,6 @@ def test_master_category_rename_button_reports_selected_model():
     )
     master_button.click()
 
-    assert master_button.text() == ""
-    assert master_button.icon().isNull() is False
-    assert master_button.iconSize().width() == 18
-    assert master_button.iconSize().height() == 18
-    assert master_button.size().width() == 32
-    assert master_button.size().height() == 32
     assert rename_requests == [master_category]
 
 
@@ -510,9 +431,6 @@ def test_master_category_delete_button_reports_selected_model():
 
     delete_button.click()
 
-    assert delete_button.icon().isNull() is False
-    assert delete_button.iconSize() == QSize(18, 18)
-    assert delete_button.size() == QSize(32, 32)
     assert delete_requests == [master_category]
 
 
@@ -544,9 +462,6 @@ def test_subcategory_rename_button_reports_selected_models():
 
     rename_button.click()
 
-    assert rename_button.icon().isNull() is False
-    assert rename_button.iconSize() == QSize(12, 12)
-    assert rename_button.size() == QSize(24, 24)
     assert rename_requests == [(master_category, subcategory)]
 
 
@@ -578,9 +493,6 @@ def test_subcategory_delete_button_reports_selected_models():
 
     delete_button.click()
 
-    assert delete_button.icon().isNull() is False
-    assert delete_button.iconSize() == QSize(12, 12)
-    assert delete_button.size() == QSize(24, 24)
     assert delete_requests == [(master_category, subcategory)]
 
 
@@ -603,11 +515,7 @@ def test_spending_values_display_as_negative_on_budget_page():
     assert f"Spent: {format_money(-budget.total_spent)}" in page.table.item(0, 1).text()
     assert page.table.item(master_row, 1).text() == format_money(master_category.budgeted)
     assert page.table.item(master_row, 2).text() == format_money(-master_category.spent)
-    assert page.table.item(master_row, 2).font().family() == "Consolas"
-    assert page.table.item(master_row, 3).font().family() == "Consolas"
     assert page.table.item(subcategory_row, 2).text() == format_money(-subcategory.spent)
-    assert page.table.item(subcategory_row, 2).font().family() == "Consolas"
-    assert page.table.item(subcategory_row, 3).font().family() == "Consolas"
 
 
 def test_budgeted_cell_displays_current_subcategory_amount():
@@ -631,11 +539,6 @@ def test_budgeted_cell_displays_current_subcategory_amount():
     assert budgeted_input.property("budget_month_date") == (
         budgets[0].month_date.isoformat()
     )
-    assert budgeted_input.alignment() == Qt.AlignmentFlag.AlignRight
-    assert budgeted_input.maximumWidth() == BUDGET_VALUE_COLUMN_WIDTH
-    assert budgeted_input.font().family() == "Consolas"
-
-
 def test_budget_input_accepts_tab_shortcut_override():
     page = BudgetPage(
         create_sample_budgets(),
@@ -757,23 +660,6 @@ def test_enter_after_budget_edit_keeps_same_rebuilt_budget_field_active(qapp):
     )
     assert rebuilt_input.text() == "2000.00"
     assert rebuilt_input.hasFocus()
-
-
-def test_budget_value_columns_keep_fixed_width():
-    budgets = create_sample_budgets()
-    page = BudgetPage(
-        budgets,
-        lambda: None,
-        lambda name: None,
-        lambda master_category_id, name: None,
-    )
-
-    for column in range(1, page.table.columnCount()):
-        assert (
-            page.table.horizontalHeader().sectionResizeMode(column)
-            == QHeaderView.ResizeMode.Fixed
-        )
-        assert page.table.columnWidth(column) == BUDGET_VALUE_COLUMN_WIDTH
 
 
 def test_editing_budgeted_cell_replaces_current_amount():

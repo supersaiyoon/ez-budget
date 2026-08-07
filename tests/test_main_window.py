@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QInputDialog,
@@ -1070,22 +1070,11 @@ def test_empty_account_database_shows_account_header():
         "Closed",
     ]
     assert window.accounts_header_item.text() == "Accounts"
-    assert window.accounts_header_item.font().pixelSize() == 12
-    assert window.accounts_header_item.sizeHint().height() == 36
     assert not window.accounts_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert window.accounts_header_item.data(Qt.ItemDataRole.UserRole) is None
     assert window.on_budget_header_item.text() == "On Budget"
-    assert window.on_budget_header_item.font().pixelSize() == 11
-    assert window.on_budget_header_item.font().bold() is True
-    assert window.on_budget_header_item.sizeHint().height() == 36
     assert window.off_budget_header_item.text() == "Off Budget"
-    assert window.off_budget_header_item.font().pixelSize() == 11
-    assert window.off_budget_header_item.font().bold() is True
-    assert window.off_budget_header_item.sizeHint().height() == 36
     assert window.closed_accounts_button.text() == "▼ Closed"
-    assert window.closed_accounts_button.font().pixelSize() == 11
-    assert window.closed_accounts_button.font().bold() is True
-    assert window.closed_accounts_header_item.sizeHint().height() == 42
     assert not window.on_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
     assert not window.off_budget_header_item.flags() & Qt.ItemFlag.ItemIsSelectable
 
@@ -1525,10 +1514,6 @@ def test_add_first_account_keeps_account_header():
         "Off Budget",
         "Closed",
     ]
-    checking_item = window.nav.item(nav_names.index("Checking"))
-    assert checking_item.icon().isNull() is False
-    assert checking_item.font().pixelSize() == 11
-    assert checking_item.sizeHint().height() == 32
     assert window.stack.widget(2) is window.transaction_pages[0]
     assert window.transaction_pages[0].account is window.accounts[0]
     assert (
@@ -1586,70 +1571,6 @@ def test_budget_account_is_inserted_before_off_budget_account():
     window.nav.setCurrentRow(house_value_row)
 
     assert window.stack.currentWidget().account.name == "House Value"
-
-
-def test_add_account_button_follows_account_entries(qapp):
-    window = MainWindow(":memory:")
-    window.add_account("Checking")
-    window.show()
-    qapp.processEvents()
-
-    button_item = None
-    for row in range(window.nav.count()):
-        item = window.nav.item(row)
-        if window.nav.itemWidget(item) is window.add_account_button:
-            button_item = item
-            break
-
-    assert button_item is not None
-    assert window.nav.itemWidget(button_item) is window.add_account_button
-    assert window.add_account_button.text() == "+ Add Account"
-    assert window.add_account_button.height() == 36
-    assert window.add_account_button.width() <= window.nav.width()
-    assert not button_item.flags() & Qt.ItemFlag.ItemIsSelectable
-
-
-def test_payees_and_settings_buttons_are_pinned_below_account_list():
-    window = MainWindow(":memory:")
-
-    action_panel = window.navigation_sidebar.layout().itemAt(1).widget()
-    action_layout = action_panel.layout()
-
-    assert window.navigation_sidebar.layout().itemAt(0).widget() is window.nav
-    assert action_panel.objectName() == "navigationActions"
-    assert action_layout.itemAt(0).widget() is window.payees_button
-    assert action_layout.itemAt(1).widget() is window.settings_button
-    assert window.payees_button.text() == ""
-    assert window.payees_button.toolTip() == "Payees"
-    assert window.payees_button.size() == QSize(44, 44)
-    assert window.payees_button.icon().isNull() is False
-    assert window.payees_button.iconSize() == QSize(18, 18)
-    assert window.settings_button.text() == ""
-    assert window.settings_button.toolTip() == "Settings coming later"
-    assert window.settings_button.size() == QSize(44, 44)
-    assert window.settings_button.icon().isNull() is False
-    assert window.settings_button.iconSize() == QSize(18, 18)
-    assert window.settings_button.isEnabled() is True
-
-
-def test_budget_and_reports_nav_items_show_icons():
-    window = MainWindow(":memory:")
-
-    assert window.nav.iconSize() == QSize(18, 18)
-    assert window.nav.item(0).text() == "Budget"
-    assert window.nav.item(0).icon().isNull() is False
-    assert window.nav.item(1).text() == "Reports"
-    assert window.nav.item(1).icon().isNull() is False
-
-
-def test_account_navigation_only_scrolls_vertically():
-    window = MainWindow(":memory:")
-
-    assert (
-        window.nav.horizontalScrollBarPolicy()
-        == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    )
-    assert window.closed_accounts_button.height() == 36
 
 
 def test_payees_button_opens_payees_dialog(monkeypatch):

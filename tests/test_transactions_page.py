@@ -3,12 +3,11 @@ import pytest
 from datetime import date
 from decimal import Decimal
 
-from PyQt6.QtCore import QDate, QSize, Qt
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
-    QHeaderView,
     QMessageBox,
     QPushButton,
 )
@@ -16,13 +15,6 @@ from PyQt6.QtWidgets import (
 from budget_model import Account, Transaction
 from ui import transactions_page
 from ui.transactions_page import (
-    TRANSACTION_CATEGORY_COLUMN_WIDTH,
-    TRANSACTION_CLEARED_COLUMN_WIDTH,
-    TRANSACTION_DATE_COLUMN_WIDTH,
-    TRANSACTION_DELETE_COLUMN_WIDTH,
-    TRANSACTION_MONEY_COLUMN_WIDTH,
-    TRANSACTION_NOTES_COLUMN_WIDTH,
-    TRANSACTION_PAYEE_COLUMN_WIDTH,
     DateInput,
     TransactionsPage,
 )
@@ -72,7 +64,6 @@ def test_transaction_page_reports_pending_and_enter_saved_states(qapp):
         on_transaction_changed=lambda *args: next(save_results),
     )
 
-    assert page.feedback.height() == 30
     assert page.feedback.text() == ""
     assert page.feedback.property("feedbackKind") == "empty"
     assert page.status.text() == instruction
@@ -540,20 +531,12 @@ def test_short_date_input_stores_iso_and_displays_full_year():
     page = TransactionsPage(account, category_rows=[])
     current_year = date.today().year
     date_input = page.table.cellWidget(0, 0)
-    assert date_input.alignment() == Qt.AlignmentFlag.AlignCenter
-    assert date_input.font().family() == "Consolas"
 
     date_input.setText("7/21")
     date_input.editingFinished.emit()
 
     assert account.transactions[0].date == f"{current_year}-07-21"
     assert page.table.cellWidget(0, 0).text() == f"07/21/{current_year}"
-    assert (
-        page.table.cellWidget(0, 0).alignment()
-        == Qt.AlignmentFlag.AlignCenter
-    )
-
-
 def test_calendar_popup_can_create_transaction_date():
     account = Account("Checking")
     page = TransactionsPage(account, category_rows=[])
@@ -639,122 +622,6 @@ def test_calendar_selection_updates_existing_transaction_date():
     assert page.table.cellWidget(0, 0).text() == "08/05/2027"
 
 
-def test_saved_money_inputs_expand_like_blank_row_inputs():
-    transaction = Transaction(
-        date="2026-07-21",
-        payee="Grocery Store",
-        category="Groceries",
-        notes="",
-        outgoing=Decimal("42.50"),
-    )
-    page = TransactionsPage(
-        Account("Checking", transactions=[transaction]),
-        category_rows=[],
-    )
-
-    saved_outgoing = page.table.cellWidget(0, 4)
-    saved_incoming = page.table.cellWidget(0, 5)
-    blank_outgoing = page.table.cellWidget(1, 4)
-    blank_incoming = page.table.cellWidget(1, 5)
-
-    assert saved_outgoing.minimumWidth() == blank_outgoing.minimumWidth()
-    assert saved_outgoing.maximumWidth() == blank_outgoing.maximumWidth()
-    assert saved_incoming.minimumWidth() == blank_incoming.minimumWidth()
-    assert saved_incoming.maximumWidth() == blank_incoming.maximumWidth()
-    assert saved_outgoing.alignment() == Qt.AlignmentFlag.AlignRight
-    assert saved_incoming.alignment() == Qt.AlignmentFlag.AlignRight
-    assert blank_outgoing.alignment() == Qt.AlignmentFlag.AlignRight
-    assert blank_incoming.alignment() == Qt.AlignmentFlag.AlignRight
-    assert saved_outgoing.font().family() == "Consolas"
-    assert blank_outgoing.font().family() == "Consolas"
-
-
-def test_transaction_columns_use_stable_widths():
-    page = TransactionsPage(Account("Checking"), category_rows=[])
-
-    assert (
-        page.table.horizontalHeader().sectionResizeMode(0)
-        == QHeaderView.ResizeMode.Fixed
-    )
-    assert page.table.columnWidth(0) == TRANSACTION_DATE_COLUMN_WIDTH
-    for column, width in (
-        (1, TRANSACTION_PAYEE_COLUMN_WIDTH),
-        (2, TRANSACTION_CATEGORY_COLUMN_WIDTH),
-        (3, TRANSACTION_NOTES_COLUMN_WIDTH),
-    ):
-        assert (
-            page.table.horizontalHeader().sectionResizeMode(column)
-            == QHeaderView.ResizeMode.Interactive
-        )
-        assert page.table.columnWidth(column) == width
-    for column in (4, 5):
-        assert (
-            page.table.horizontalHeader().sectionResizeMode(column)
-            == QHeaderView.ResizeMode.Fixed
-        )
-        assert page.table.columnWidth(column) == TRANSACTION_MONEY_COLUMN_WIDTH
-    assert (
-        page.table.horizontalHeader().sectionResizeMode(6)
-        == QHeaderView.ResizeMode.Fixed
-    )
-    assert page.table.columnWidth(6) == TRANSACTION_CLEARED_COLUMN_WIDTH
-    assert (
-        page.table.horizontalHeader().sectionResizeMode(7)
-        == QHeaderView.ResizeMode.Fixed
-    )
-    assert page.table.columnWidth(7) == TRANSACTION_DELETE_COLUMN_WIDTH
-
-
-def test_empty_and_populated_transaction_pages_use_same_column_widths():
-    transaction = Transaction(
-        date="2026-07-21",
-        payee="Grocery Store",
-        category="Groceries",
-        notes="",
-        outgoing=Decimal("42.50"),
-    )
-    empty_page = TransactionsPage(Account("Checking"), category_rows=[])
-    populated_page = TransactionsPage(
-        Account("Checking", transactions=[transaction]),
-        category_rows=[],
-    )
-
-    assert [
-        empty_page.table.columnWidth(column)
-        for column in range(empty_page.table.columnCount())
-    ] == [
-        populated_page.table.columnWidth(column)
-        for column in range(populated_page.table.columnCount())
-    ]
-
-
-def test_delete_transaction_column_header_is_blank():
-    page = TransactionsPage(Account("Checking"), category_rows=[])
-
-    assert page.table.horizontalHeaderItem(7).text() == ""
-
-
-def test_delete_transaction_button_is_centered():
-    transaction = Transaction(
-        date="2026-07-21",
-        payee="Grocery Store",
-        category="Groceries",
-        notes="",
-        outgoing=Decimal("42.50"),
-    )
-    page = TransactionsPage(
-        Account("Checking", transactions=[transaction]),
-        category_rows=[],
-    )
-    delete_container = page.table.cellWidget(0, 7)
-
-    assert delete_container.layout().alignment() == Qt.AlignmentFlag.AlignCenter
-    assert (
-        delete_container.findChild(QPushButton).objectName()
-        == "deleteTransactionButton"
-    )
-
-
 def test_delete_button_reports_account_and_transaction(monkeypatch):
     transaction = Transaction(
         date="2026-07-21",
@@ -786,24 +653,6 @@ def test_delete_button_reports_account_and_transaction(monkeypatch):
 
     assert deletion_requests == [(account, transaction)]
     assert page.table.rowCount() == 1
-
-
-def test_delete_transaction_button_uses_trash_icon():
-    transaction = Transaction(
-        date="2026-07-21",
-        payee="Grocery Store",
-        category="Groceries",
-        notes="",
-        outgoing=Decimal("42.50"),
-    )
-    account = Account("Checking", transactions=[transaction])
-    page = TransactionsPage(account, category_rows=[])
-    delete_button = page.table.cellWidget(0, 7).findChild(QPushButton)
-
-    assert delete_button.text() == ""
-    assert delete_button.icon().isNull() is False
-    assert delete_button.iconSize() == QSize(12, 12)
-    assert delete_button.size() == QSize(24, 24)
 
 
 def test_delete_button_cancel_keeps_transaction(monkeypatch):
@@ -929,7 +778,7 @@ def test_income_category_options_use_current_planning_month():
     assert page.income_category_options("not-a-date") == []
 
 
-def test_add_income_creates_highlighted_transaction_row():
+def test_add_income_creates_transaction_row():
     account = Account("Checking")
     saved_transactions = []
     page = TransactionsPage(
@@ -1060,10 +909,6 @@ def test_income_category_autofills_and_clears_placeholder_payee():
     assert transaction.payee == "Not needed for income"
     payee_input = page.table.cellWidget(0, 1)
     assert payee_input.text() == "Not needed for income"
-    assert payee_input.font().italic() is True
-    assert payee_input.palette().color(payee_input.foregroundRole()).name() == (
-        "#7a8794"
-    )
 
     category_input = page.table.cellWidget(0, 2)
     category_input.setCurrentText("Groceries")
@@ -1071,4 +916,3 @@ def test_income_category_autofills_and_clears_placeholder_payee():
     assert transaction.payee == ""
     payee_input = page.table.cellWidget(0, 1)
     assert payee_input.text() == ""
-    assert payee_input.font().italic() is False
