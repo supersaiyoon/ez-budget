@@ -110,3 +110,43 @@ def set_budget_allocation(
         budget_category_id,
         amount,
     )
+
+
+def list_monthly_totals(con, through_month):
+    # Historical rows independent from Budget scroller state
+    return con.execute(
+        """
+        SELECT
+            budget_months.month_date,
+            COALESCE((
+                SELECT SUM(transactions.amount)
+                FROM transactions
+                JOIN accounts ON accounts.id = transactions.account_id
+                WHERE transactions.income_month_date = budget_months.month_date
+                  AND accounts.on_budget = TRUE
+                  AND transactions.amount > 0
+            ), 0) AS income,
+            COALESCE((
+                SELECT SUM(budget_allocations.amount)
+                FROM budget_allocations
+                WHERE budget_allocations.budget_month_id = budget_months.id
+            ), 0) AS budgeted,
+            COALESCE((
+                SELECT -SUM(transactions.amount)
+                FROM transactions
+                JOIN accounts ON accounts.id = transactions.account_id
+                JOIN budget_categories
+                  ON budget_categories.id = transactions.budget_category_id
+                WHERE transactions.transaction_date
+                      BETWEEN budget_months.month_date
+                          AND date(budget_months.month_date, '+1 month', '-1 day')
+                  AND accounts.on_budget = TRUE
+                  AND transactions.income_month_date IS NULL
+                  AND transactions.amount < 0
+            ), 0) AS spent
+        FROM budget_months
+        WHERE budget_months.month_date <= ?
+        ORDER BY budget_months.month_date DESC
+        """,
+        (through_month,),
+    ).fetchall()

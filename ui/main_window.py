@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
         self.reports_page = reports_page.ReportsPage(
             self.budgets,
             self.accounts,
+            monthly_totals_provider=self.report_monthly_totals,
         )
         self.stack.addWidget(self.budget_page)
         self.stack.addWidget(self.reports_page)
@@ -733,6 +734,10 @@ class MainWindow(QMainWindow):
     def refresh_reports(self):
         # Budget edits need report totals recalculated on demand
         self.reports_page.refresh()
+
+    def report_monthly_totals(self):
+        current_month = date.today().replace(day=1).isoformat()
+        return budget_records.list_monthly_totals(self.con, current_month)
 
     def refresh_budget_page_totals(self):
         # Generated months reload saved planning data before repaint

@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from budget_model import money_to_cents
+from budget_model import format_month_name, money_from_cents, money_to_cents
 from ui.helpers import money_item
 
 
@@ -110,13 +110,20 @@ def currency_tick(value, _position=None):
 
 
 class ReportsPage(QWidget):
-    def __init__(self, budgets, accounts=None, current_date=None):
+    def __init__(
+        self,
+        budgets,
+        accounts=None,
+        current_date=None,
+        monthly_totals_provider=None,
+    ):
         super().__init__()
-        # Shared budget list so reports reflect budget-page edits and generated months
+        # Fallback rows for standalone Reports views
         self.budgets = budgets
         self.accounts = accounts if accounts is not None else []
         self.current_date = current_date or date.today()
         self.current_month = pd.Period(self.current_date, freq="M")
+        self.monthly_totals_provider = monthly_totals_provider
         self.selected_cash_flow_month = self.current_month
         self.earliest_cash_flow_month = self.current_month
 
@@ -204,15 +211,42 @@ class ReportsPage(QWidget):
         self.draw_net_worth_chart()
         self.draw_cash_flow_chart()
 
-        # Row count follows budget list because future months can be added from navigation
-        self.table.setRowCount(len(self.budgets))
-        for row, budget in enumerate(self.budgets):
-            # Values pulled live so totals stay consistent with model properties
-            self.table.setItem(row, 0, QTableWidgetItem(budget.month_name))
-            self.table.setItem(row, 1, money_item(budget.monthly_income))
-            self.table.setItem(row, 2, money_item(budget.total_budgeted))
-            self.table.setItem(row, 3, money_item(budget.total_spent))
-            self.table.setItem(row, 4, money_item(budget.total_remaining))
+        self.refresh_monthly_totals_table()
+
+    def refresh_monthly_totals_table(self):
+        if self.monthly_totals_provider is None:
+            rows = [
+                (
+                    budget.month_name,
+                    budget.monthly_income,
+                    budget.total_budgeted,
+                    budget.total_spent,
+                    budget.total_remaining,
+                )
+                for budget in self.budgets
+            ]
+        else:
+            rows = []
+            for total in self.monthly_totals_provider():
+                budgeted = money_from_cents(total["budgeted"])
+                spent = money_from_cents(total["spent"])
+                rows.append(
+                    (
+                        format_month_name(
+                            date.fromisoformat(total["month_date"])
+                        ),
+                        money_from_cents(total["income"]),
+                        budgeted,
+                        spent,
+                        budgeted - spent,
+                    )
+                )
+
+        self.table.setRowCount(len(rows))
+        for row, values in enumerate(rows):
+            self.table.setItem(row, 0, QTableWidgetItem(values[0]))
+            for column, amount in enumerate(values[1:], start=1):
+                self.table.setItem(row, column, money_item(amount))
 
     def update_cash_flow_bounds(self):
         if self.transaction_data.empty:
