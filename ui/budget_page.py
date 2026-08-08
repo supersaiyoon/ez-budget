@@ -486,19 +486,29 @@ class BudgetPage(QWidget):
             self.on_subcategory_restore_requested(category_row)
 
     def visible_scroller_indexes(self):
-        # Centered window when possible, easier context while stepping through months
+        # Negative indexes represent earlier months not loaded into the model yet
         half_window = VISIBLE_SCROLLER_MONTHS // 2
-        start_index = max(self.active_index - half_window, 0)
+        start_index = self.active_index - half_window
         return range(start_index, start_index + VISIBLE_SCROLLER_MONTHS)
+
+    def scroller_budget(self, index):
+        if index >= 0:
+            return self.budgets[index]
+
+        budget = self.budgets[0]
+        for _ in range(-index):
+            budget = create_previous_month_budget(budget)
+        return budget
 
     def set_active_month(self, index):
         created_month = False
         if index < 0:
             # Left navigation creates earlier months on demand
-            self.budgets.insert(
-                0,
-                create_previous_month_budget(self.budgets[0]),
-            )
+            for _ in range(-index):
+                self.budgets.insert(
+                    0,
+                    create_previous_month_budget(self.budgets[0]),
+                )
             self.active_index = 0
             created_month = True
         else:
@@ -527,7 +537,10 @@ class BudgetPage(QWidget):
         self.ensure_visible_months()
         scroller_indexes = list(self.visible_scroller_indexes())
         budgets = self.visible_budgets()
-        indexed_budgets = [(index, self.budgets[index]) for index in scroller_indexes]
+        indexed_budgets = [
+            (index, self.scroller_budget(index))
+            for index in scroller_indexes
+        ]
         self.month_scroller.set_months(indexed_budgets, self.active_index)
         self._refresh_budget_table(budgets)
 
