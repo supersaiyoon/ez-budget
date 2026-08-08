@@ -8,6 +8,13 @@ QMainWindow {
 #navigationActions {
     background: #26323f;
 }
+#budgetNameLabel {
+    background: #26323f;
+    color: #ffffff;
+    padding: 14px 12px 4px 12px;
+    font-size: 16px;
+    font-weight: 700;
+}
 #navList {
     background: #26323f;
     color: #f7fafc;
@@ -145,7 +152,8 @@ QPushButton:hover {
     background: #a61f1f;
 }
 #payeesButton,
-#settingsButton {
+#settingsButton,
+#openBudgetButton {
     padding: 0;
 }
 """

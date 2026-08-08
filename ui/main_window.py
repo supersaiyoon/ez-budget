@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
+import budget_files
 from db import (
     accounts,
     budgets as budget_records,
@@ -109,9 +110,10 @@ class AccountDialog(QDialog):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_path="ez_budget.db"):
+    def __init__(self, db_path="ez_budget.db", global_settings=None):
         super().__init__()
         self.db_path = db_path
+        self.global_settings = global_settings
         # One month keeps navigation valid without showing sample data
         self.budgets = [budget_model.create_empty_budget()]
         self.con = database.connect(db_path)
@@ -320,6 +322,11 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        self.budget_name_label = QLabel(self.budget_display_name())
+        self.budget_name_label.setObjectName("budgetNameLabel")
+        self.budget_name_label.setWordWrap(True)
+        layout.addWidget(self.budget_name_label)
+
         self.nav = self.create_navigation_list()
         layout.addWidget(self.nav, 1)
 
@@ -359,6 +366,11 @@ class MainWindow(QMainWindow):
         layout.addWidget(actions)
         return sidebar
 
+    def budget_display_name(self):
+        if self.db_path == ":memory:":
+            return "Budget"
+        return Path(self.db_path).stem
+
     def prompt_for_budget_file(self):
         if self.db_path == ":memory:":
             start_directory = ""
@@ -386,7 +398,10 @@ class MainWindow(QMainWindow):
             return False
 
         try:
-            replacement_window = MainWindow(db_path)
+            replacement_window = MainWindow(
+                db_path,
+                global_settings=self.global_settings,
+            )
         except (OSError, sqlite3.Error):
             QMessageBox.warning(
                 self,
@@ -395,6 +410,7 @@ class MainWindow(QMainWindow):
             )
             return False
 
+        budget_files.remember_budget_path(db_path, self.global_settings)
         # Application reference keeps the replacement alive after this window closes
         app = QApplication.instance()
         if app is not None:

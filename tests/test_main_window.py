@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 
 import budget_model
+import budget_files
 from db import accounts, budgets, categories, database, payees, transactions
 from ui import payees_dialog
 from ui.main_window import AccountDialog, MainWindow
@@ -1615,7 +1616,11 @@ def test_open_budget_replaces_window_with_selected_database(
     database.initialize_database(con)
     accounts.create_account(con, "Vacation Checking")
     con.close()
-    window = MainWindow(":memory:")
+    settings = QSettings(
+        str(tmp_path / "settings.ini"),
+        QSettings.Format.IniFormat,
+    )
+    window = MainWindow(":memory:", global_settings=settings)
     monkeypatch.setattr(
         QFileDialog,
         "getOpenFileName",
@@ -1631,6 +1636,8 @@ def test_open_budget_replaces_window_with_selected_database(
         "Vacation Checking"
     ]
     assert qapp.active_budget_window is replacement_window
+    assert budget_files.existing_startup_budget(settings) == db_path.resolve()
+    assert replacement_window.budget_name_label.text() == "second_budget"
 
     replacement_window.close()
     replacement_window.con.close()
