@@ -41,6 +41,10 @@ from ui.widgets import VISIBLE_MONTHS, VISIBLE_SCROLLER_MONTHS
 
 
 CLOSED_ACCOUNTS_EXPANDED_SETTING = "closed_accounts_expanded"
+WINDOW_WIDTH_SETTING = "window_width"
+DEFAULT_WINDOW_WIDTH = 1280
+MINIMUM_SAVED_WINDOW_WIDTH = 800
+DEFAULT_WINDOW_HEIGHT = 720
 ACCOUNT_NAV_INDENT_WIDTH = 12
 NAV_WIDTH = 170
 NAV_BUTTON_WIDTH = NAV_WIDTH - 24
@@ -131,7 +135,7 @@ class MainWindow(QMainWindow):
         self.closed_accounts = self.load_closed_accounts()
 
         self.setWindowTitle("EZ Budget")
-        self.resize(1160, 720)
+        self.resize(self.saved_window_width(), DEFAULT_WINDOW_HEIGHT)
 
         shell = QWidget()
         shell_layout = QHBoxLayout(shell)
@@ -166,6 +170,28 @@ class MainWindow(QMainWindow):
         self.nav.currentRowChanged.connect(self.show_navigation_page)
         self.setCentralWidget(shell)
         self.setStyleSheet(styles.APP_STYLE)
+
+    def saved_window_width(self):
+        saved_width = app_settings.get_setting(
+            self.con,
+            WINDOW_WIDTH_SETTING,
+            default=str(DEFAULT_WINDOW_WIDTH),
+        )
+        try:
+            return max(int(saved_width), MINIMUM_SAVED_WINDOW_WIDTH)
+        except (TypeError, ValueError):
+            return DEFAULT_WINDOW_WIDTH
+
+    def closeEvent(self, event):
+        try:
+            app_settings.set_setting(
+                self.con,
+                WINDOW_WIDTH_SETTING,
+                str(self.width()),
+            )
+        except sqlite3.ProgrammingError:
+            pass
+        super().closeEvent(event)
 
     def account_from_database_row(self, account_row):
         # Startup account models include persisted transaction history

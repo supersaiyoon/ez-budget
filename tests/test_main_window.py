@@ -1101,6 +1101,19 @@ def test_closed_accounts_expansion_state_survives_restart(tmp_path):
     assert final_window.closed_accounts_button.text() == "▼ Closed"
 
 
+def test_window_width_survives_restart(tmp_path):
+    db_path = tmp_path / "budget.db"
+    window = MainWindow(db_path)
+    window.resize(1420, 720)
+
+    window.close()
+    window.con.close()
+
+    reopened_window = MainWindow(db_path)
+
+    assert reopened_window.width() == 1420
+
+
 def test_add_account_persists_and_updates_loaded_accounts():
     window = MainWindow(":memory:")
 
