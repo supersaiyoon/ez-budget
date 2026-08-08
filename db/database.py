@@ -10,6 +10,16 @@ def resource_path(*parts):
 
 
 SCHEMA_PATH = resource_path("db", "schema.sql")
+EZ_BUDGET_TABLES = {
+    "accounts",
+    "app_settings",
+    "budget_months",
+    "payees",
+    "master_budget_categories",
+    "budget_categories",
+    "budget_allocations",
+    "transactions",
+}
 
 
 def connect(db_path):
@@ -19,6 +29,27 @@ def connect(db_path):
     # Required to enforce foreign key constraints in SQLite
     con.execute("PRAGMA foreign_keys = ON")
     return con
+
+
+def is_ez_budget_database(db_path):
+    # Read-only validation avoids modifying unrelated SQLite files
+    database_uri = f"file:{Path(db_path).resolve().as_posix()}?mode=ro"
+    con = None
+    try:
+        con = sqlite3.connect(database_uri, uri=True)
+        table_names = {
+            row[0]
+            for row in con.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+    except sqlite3.Error:
+        return False
+    finally:
+        if con is not None:
+            con.close()
+
+    return EZ_BUDGET_TABLES.issubset(table_names)
 
 
 def initialize_database(con):

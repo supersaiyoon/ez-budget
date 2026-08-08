@@ -6,6 +6,7 @@ import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QFileDialog,
     QInputDialog,
     QMessageBox,
     QPushButton,
@@ -1589,6 +1590,37 @@ def test_payees_button_opens_payees_dialog(monkeypatch):
     window.payees_button.click()
 
     assert opened_dialogs == [(window.con, window), "exec"]
+
+
+def test_open_budget_replaces_window_with_selected_database(
+    tmp_path,
+    monkeypatch,
+    qapp,
+):
+    db_path = tmp_path / "second_budget.db"
+    con = database.connect(db_path)
+    database.initialize_database(con)
+    accounts.create_account(con, "Vacation Checking")
+    con.close()
+    window = MainWindow(":memory:")
+    monkeypatch.setattr(
+        QFileDialog,
+        "getOpenFileName",
+        lambda *args: (str(db_path), "EZ Budget Database (*.db)"),
+    )
+
+    opened = window.prompt_for_budget_file()
+    replacement_window = window.replacement_window
+
+    assert opened is True
+    assert replacement_window.db_path == str(db_path)
+    assert [account.name for account in replacement_window.accounts] == [
+        "Vacation Checking"
+    ]
+    assert qapp.active_budget_window is replacement_window
+
+    replacement_window.close()
+    replacement_window.con.close()
 
 
 def test_payees_dialog_refreshes_transaction_autocomplete(monkeypatch):

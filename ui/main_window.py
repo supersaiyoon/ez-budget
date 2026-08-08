@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -5,8 +6,10 @@ from pathlib import Path
 from PyQt6.QtCore import QTimer, QSize, Qt
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
+    QApplication,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QInputDialog,
@@ -45,6 +48,9 @@ BUDGET_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "budget.svg"
 REPORTS_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "reports.svg"
 PAYEES_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "payees.svg"
 SETTINGS_ICON_PATH = Path(__file__).parent / "assets" / "icons" / "settings.svg"
+OPEN_BUDGET_ICON_PATH = (
+    Path(__file__).parent / "assets" / "icons" / "folder_open.svg"
+)
 
 
 def index_by_identity(items, selected_item):
@@ -101,6 +107,7 @@ class AccountDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self, db_path="ez_budget.db"):
         super().__init__()
+        self.db_path = db_path
         # One month keeps navigation valid without showing sample data
         self.budgets = [budget_model.create_empty_budget()]
         self.con = database.connect(db_path)
@@ -312,10 +319,66 @@ class MainWindow(QMainWindow):
         self.settings_button.setIconSize(QSize(18, 18))
         self.settings_button.setFixedSize(44, 44)
         actions_layout.addWidget(self.settings_button)
+
+        self.open_budget_button = QPushButton()
+        self.open_budget_button.setObjectName("openBudgetButton")
+        self.open_budget_button.setToolTip("Open Budget")
+        self.open_budget_button.setIcon(QIcon(str(OPEN_BUDGET_ICON_PATH)))
+        self.open_budget_button.setIconSize(QSize(18, 18))
+        self.open_budget_button.setFixedSize(44, 44)
+        self.open_budget_button.clicked.connect(self.prompt_for_budget_file)
+        actions_layout.addWidget(self.open_budget_button)
         actions_layout.addStretch()
 
         layout.addWidget(actions)
         return sidebar
+
+    def prompt_for_budget_file(self):
+        if self.db_path == ":memory:":
+            start_directory = ""
+        else:
+            start_directory = str(Path(self.db_path).resolve().parent)
+
+        selected_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Budget",
+            start_directory,
+            "EZ Budget Database (*.db);;All Files (*)",
+        )
+        if not selected_path:
+            return False
+
+        return self.open_budget(selected_path)
+
+    def open_budget(self, db_path):
+        if not database.is_ez_budget_database(db_path):
+            QMessageBox.warning(
+                self,
+                "Open Budget",
+                "Choose an EZ Budget database file.",
+            )
+            return False
+
+        try:
+            replacement_window = MainWindow(db_path)
+        except (OSError, sqlite3.Error):
+            QMessageBox.warning(
+                self,
+                "Open Budget",
+                "EZ Budget could not open that database file.",
+            )
+            return False
+
+        # Application reference keeps the replacement alive after this window closes
+        app = QApplication.instance()
+        if app is not None:
+            app.active_budget_window = replacement_window
+        self.replacement_window = replacement_window
+        replacement_window.show()
+        self.close()
+        self.con.close()
+        self.deleteLater()
+        return True
 
     def create_navigation_list(self):
         # Left rail kept fixed so page switching stays predictable
